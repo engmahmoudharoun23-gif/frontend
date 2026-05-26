@@ -1035,8 +1035,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </div>
               )}
               
-              {/* 🔔 جرس الإشعارات الموحّد - يُضبط بصلاحية reports_notifications */}
-              {hasPermission('reports_notifications') && (
+              {/* 🔔 جرس الإشعارات الموحّد - يُضبط بصلاحية reports_notifications أو reports_review */}
+              {(hasPermission('reports_notifications') || hasPermission('reports_review')) && (
               <div className="relative">
                 <button
                   onClick={() => setReportNotificationsOpen(!reportNotificationsOpen)}
