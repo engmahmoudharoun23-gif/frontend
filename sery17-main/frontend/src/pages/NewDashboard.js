@@ -782,13 +782,7 @@ function NewDashboard({ user, onLogout }) {
       governorate: selectedGovernorate72h
     });
     
-    // إذا لم يتم اختيار تاريخ، يكون العدد صفراً كما طلب المستخدم
-    if (!selectedDate72h) {
-      setReports72hCount(0);
-      setReports72hList([]);
-      setLoading72h(false);
-      return;
-    }
+    // السماح بجلب بيانات آخر 72 ساعة افتراضياً حتى لو لم يتم تحديد تاريخ
 
     setLoading72h(true);
     try {
@@ -1598,7 +1592,7 @@ function NewDashboard({ user, onLogout }) {
             return (
               <div 
                 key={key} 
-                className={`rounded-xl shadow-lg p-4 sm:p-5 text-white transition-all cursor-pointer ${
+                className={`rounded-xl shadow-lg p-4 sm:p-5 text-white transition-all cursor-default ${
                   selectedProject72h === stats.name 
                   ? 'ring-4 ring-white ring-opacity-60 scale-105 z-10 shadow-2xl' 
                   : 'hover:scale-[1.02] opacity-90 hover:opacity-100'
@@ -1607,9 +1601,7 @@ function NewDashboard({ user, onLogout }) {
                   background: `linear-gradient(135deg, ${getThemeColor('primary')}, ${getThemeColor('hover')})`
                 }}
                 onClick={() => {
-                  if (!isConnectionProject) {
-                    navigate(`/reports?project=${encodeURIComponent(stats.name)}`);
-                  }
+                  // البطاقة للعرض فقط بناءً على طلب المستخدم
                 }}
               >
                 {isConnectionProject ? (
@@ -1622,8 +1614,7 @@ function NewDashboard({ user, onLogout }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {showWater && (
                         <div 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/water-connections?project=${encodeURIComponent(stats.name)}`); }}
-                          className="bg-white/10 rounded-lg p-3 backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all cursor-pointer group"
+                          className="bg-white/10 rounded-lg p-3 backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all cursor-default group"
                         >
                           <p className="text-[10px] opacity-80 mb-1 uppercase font-bold group-hover:opacity-100 transition-opacity">{d('توصيلات المياه', 'Water Connections')}</p>
                           <div className="flex items-center justify-between">
@@ -1634,8 +1625,7 @@ function NewDashboard({ user, onLogout }) {
                       )}
                       {showSewage && (
                         <div 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/sewage-connections?project=${encodeURIComponent(stats.name)}`); }}
-                          className="bg-white/10 rounded-lg p-3 backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all cursor-pointer group"
+                          className="bg-white/10 rounded-lg p-3 backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all cursor-default group"
                         >
                           <p className="text-[10px] opacity-80 mb-1 uppercase font-bold group-hover:opacity-100 transition-opacity">{d('توصيلات الصرف', 'Sewage Connections')}</p>
                           <div className="flex items-center justify-between">
