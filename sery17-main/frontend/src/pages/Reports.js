@@ -2725,8 +2725,8 @@ const fetchReports = async () => {
                                     {t('consultantNoteModal.title', { defaultValue: 'ملاحظات الاستشاري' })}
                                   </button>
                                 )}
-                                {/* خيار مغلقة بواسطة الاستشاري - يظهر لمديري المشاريع ومن لديهم صلاحية الكل */}
-                                {(user?.role === 'admin' || user?.can_create_subusers || (user?.governorates || []).some(g => ["الكل", "جميع المحافظات", "كل المحافظات"].includes(g))) && (
+                                {/* خيار مغلقة بواسطة الاستشاري - يظهر فقط لمن لديه الصلاحية */}
+                                {(user?.role === 'admin' || hasReportPermission(report, 'consultant_close')) && (
                                   <button 
                                     onClick={() => {
                                       console.log('🔘 Closed WFM button clicked for report:', report.id);
