@@ -180,7 +180,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
         <div className="p-0">
           {loading ? (
             <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              <div className="flex flex-col items-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div>
             </div>
           ) : reports.length === 0 ? (
             <div className="text-center py-20">

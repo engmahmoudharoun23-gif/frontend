@@ -673,7 +673,7 @@ function Extracts({ user, onLogout }) {
               
               {managerLoading ? (
                 <div className="text-center py-10">
-                  <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto"></div>
+                  <div className="flex flex-col items-center"><div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mb-4"></div><span className="text-purple-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div>
                   <p className="text-gray-500 mt-2">{t('extractsPage.loading')}</p>
                 </div>
               ) : managerExtracts.length === 0 ? (
@@ -945,7 +945,7 @@ function Extracts({ user, onLogout }) {
 
         {/* الجداول */}
         {loading ? (
-          <div className="text-center py-10 bg-white rounded-xl shadow"><div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto"></div></div>
+          <div className="text-center py-10 bg-white rounded-xl shadow"><div className="flex flex-col items-center"><div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mb-4"></div><span className="text-purple-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div></div>
         ) : filteredExtracts.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl shadow">
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
