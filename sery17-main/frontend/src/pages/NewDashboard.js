@@ -579,7 +579,7 @@ function NewDashboard({ user, onLogout }) {
     return new Intl.DateTimeFormat(isRtl ? 'ar-EG' : 'en-US', { weekday: 'long' }).format(date);
   };
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [projectsStats, setProjectsStats] = useState({});
   const [allProjects, setAllProjects] = useState([]); // جميع المشاريع المتاحة
   const [projectCardLabels, setProjectCardLabels] = useState({}); // مسميات البطاقات لكل مشروع
@@ -739,7 +739,7 @@ function NewDashboard({ user, onLogout }) {
   useEffect(() => {
     // تحميل البيانات الأساسية التي تعتمد على الشهر - مع عرض شاشة التحميل الكاملة
     const loadMainData = async () => {
-      // setLoading(true);
+      setLoading(true);
       try {
         await Promise.all([
           fetchConnectionsStats(),
@@ -942,68 +942,100 @@ function NewDashboard({ user, onLogout }) {
     }
   };
   const fetchProjectsData = async (showLoading = true) => {
-    if (showLoading) // setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const monthParam = selectedMonth ? `?month=${selectedMonth}` : '';
       
-      // نستخدم المسار الجديد الذي يجمع كل البيانات في طلب واحد فقط!
-      const response = await axios.get(`${API}/dashboard/init-all${monthParam}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // جلب جميع المشاريع من قاعدة البيانات
+      let projectsToFetch = [];
       
-      const data = response.data || {};
-      const projectsData = data.projects || {};
-      const allowedProjects = data.allowed_projects || [];
+      if (user.role === 'admin') {
+        // Admin يرى جميع المشاريع من قاعدة البيانات
+        try {
+          const projectsRes = await axios.get(`${API}/projects`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          projectsToFetch = projectsRes.data.map(p => p.name || p);
+        } catch {
+          projectsToFetch = Object.values(PROJECT_NAMES);
+        }
+      } else if (user.projects && user.projects.length > 0) {
+        // المستخدم لديه مشاريع محددة - يرى فقط هذه المشاريع
+        projectsToFetch = user.projects;
+      } else if (user.assigned_projects && user.assigned_projects.length > 0) {
+        // المستخدم لديه مشاريع معينة عبر assigned_projects
+        projectsToFetch = user.assigned_projects;
+      } else {
+        // المستخدم ليس لديه مشاريع معينة - لا يرى أي مشروع
+        projectsToFetch = [];
+      }
       
-      setAllProjects(allowedProjects);
+      setAllProjects(projectsToFetch);
       
+      // استخدام endpoint الإحصائيات الجديد - أسرع بكثير!
+      const monthParam = selectedMonth ? `&month=${selectedMonth}` : '';
+      const promises = projectsToFetch.map(project => 
+        axios.get(`${API}/reports/stats?project=${encodeURIComponent(project)}${monthParam}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => res.data)
+        .catch(err => {
+          console.error(`Error fetching stats for ${project}:`, err);
+          return { total: 0, fixed: 0, asphalt_remaining: 0, licensed: 0, unlicensed: 0 };
+        })
+      );
+
+      const responses = await Promise.all(promises);
+      
+      // جلب إحصائيات التوصيلات لكل مشروع
+      await fetchConnectionsStatsByProject(projectsToFetch);
+      
+      // جلب مسميات البطاقات لكل مشروع
+      const labelsPromises = projectsToFetch.map(project => 
+        fetchProjectCardLabels(project)
+        .catch(() => [])
+      );
+      const labelsResponses = await Promise.all(labelsPromises);
+      
+      // ربط النتائج بالمشاريع ديناميكياً
       const results = {};
       const monthlyResults = {};
       const labelsMap = {};
       
-      allowedProjects.forEach((project) => {
+      projectsToFetch.forEach((project, index) => {
         const key = getProjectKey(project);
-        const pData = projectsData[project] || {};
+        const data = responses[index] || {};
         
         results[key] = {
           name: project,
-          total: pData.total || 0,
-          fixed: pData.fixed || 0,
-          asphaltRemaining: pData.asphalt_remaining || 0,
-          licensed: pData.licensed || 0,
-          unlicensed: pData.unlicensed || 0,
-          tile_licensed: pData.tile_licensed || 0,
-          tile_unlicensed: pData.tile_unlicensed || 0,
-          terrestrial_licensed: pData.terrestrial_licensed || 0,
-          terrestrial_unlicensed: pData.terrestrial_unlicensed || 0,
-          terrestrial: pData.terrestrial || 0,
-          tile: pData.tile || 0,
-          asphalt: pData.asphalt || 0,
-          by_type: pData.by_type || {}
+          total: data.total || 0,
+          fixed: data.fixed || 0,
+          asphaltRemaining: data.asphalt_remaining || 0,
+          licensed: data.licensed || 0,
+          unlicensed: data.unlicensed || 0,
+          tile_licensed: data.tile_licensed || 0,
+          tile_unlicensed: data.tile_unlicensed || 0,
+          terrestrial_licensed: data.terrestrial_licensed || 0,
+          terrestrial_unlicensed: data.terrestrial_unlicensed || 0,
+          terrestrial: data.terrestrial || 0,
+          tile: data.tile || 0,
+          asphalt: data.asphalt || 0,
+          by_type: data.by_type || {}  // أنواع البلاغات ديناميكياً
         };
         
         monthlyResults[key] = {
-          terrestrial: pData.terrestrial || 0,
-          tile: pData.tile || 0,
-          asphalt: pData.asphalt || 0
+          terrestrial: data.terrestrial || 0,
+          tile: data.tile || 0,
+          asphalt: data.asphalt || 0
         };
         
-        labelsMap[project] = pData.cards || [];
-        
-        // Update connections stats for this project dynamically if connections map exists
-        if (!connectionsStatsByProject[project]) {
-            setConnectionsStatsByProject(prev => ({
-                ...prev,
-                [project]: { grand_total: pData.connections || 0, water: {total: pData.connections || 0}, sewage: {total: 0} }
-            }));
-        }
+        // حفظ مسميات البطاقات
+        labelsMap[project] = labelsResponses[index] || [];
       });
       
       setProjectsStats(results);
       setMonthlyStats(monthlyResults);
       setProjectCardLabels(labelsMap);
-      
     } catch (error) {
       console.error('Failed to fetch projects data:', error);
     } finally {
@@ -1011,6 +1043,7 @@ function NewDashboard({ user, onLogout }) {
     }
   };
 
+  // دالة موحدة للتحقق من الصلاحيات بشكل هرمي (خاص بالمشروع أو عام) لتحديد نوع المشروع
   const checkExplicitPerm = (projectName, permKey) => {
     if (!currentUser) return false;
     
@@ -1037,7 +1070,9 @@ function NewDashboard({ user, onLogout }) {
     return (currentUser.permissions || []).includes(permKey);
   };
 
-  // Removed blocking loader to allow instant page render  // تحضير بيانات الرسوم البيانية
+  // Removed blocking loader to allow instant page render
+
+  // تحضير بيانات الرسوم البيانية
   // Admin يرى جميع المشاريع، باقي المستخدمين يرون مشاريعهم فقط
   
   // ترتيب المشاريع: الأساسية أولاً ثم المضافة
@@ -1736,13 +1771,13 @@ function NewDashboard({ user, onLogout }) {
                 {/* إظهار أعمدة الإصلاح فقط إذا كان هناك بيانات لها */}
                 {chartData.some(d => d.total > 0) && (
                   <>
-                    <Bar isAnimationActive={false} dataKey="total" fill="#3B82F6" name={d('بلاغات الإصلاح', 'Repair Reports')} />
-                    <Bar isAnimationActive={false} dataKey="fixed" fill="#10B981" name={d('تم الإصلاح', 'Repaired')} />
+                    <Bar dataKey="total" fill="#3B82F6" name={d('بلاغات الإصلاح', 'Repair Reports')} />
+                    <Bar dataKey="fixed" fill="#10B981" name={d('تم الإصلاح', 'Repaired')} />
                   </>
                 )}
                 {/* إظهار أعمدة التوصيلات دائماً إذا وجدت */}
-                {chartData.some(d => d.water > 0) && <Bar isAnimationActive={false} dataKey="water" fill="#0EA5E9" name={d('توصيلات المياه', 'Water Connections')} />}
-                {chartData.some(d => d.sewage) && <Bar isAnimationActive={false} dataKey="sewage" fill="#059669" name={d('توصيلات الصرف', 'Sewage Connections')} />}
+                {chartData.some(d => d.water > 0) && <Bar dataKey="water" fill="#0EA5E9" name={d('توصيلات المياه', 'Water Connections')} />}
+                {chartData.some(d => d.sewage) && <Bar dataKey="sewage" fill="#059669" name={d('توصيلات الصرف', 'Sewage Connections')} />}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1752,7 +1787,7 @@ function NewDashboard({ user, onLogout }) {
             <h3 className="text-xl font-bold text-gray-900 mb-4">{d('توزيع البلاغات حسب المشاريع', 'Distribution of Reports by Projects')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie isAnimationActive={false} isAnimationActive={false} isAnimationActive={false}
+                <Pie
                   data={pieData}
                   cx="50%"
                   cy="50%"
