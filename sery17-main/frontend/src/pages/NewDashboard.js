@@ -945,97 +945,65 @@ function NewDashboard({ user, onLogout }) {
     if (showLoading) setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      const monthParam = selectedMonth ? `?month=${selectedMonth}` : '';
       
-      // جلب جميع المشاريع من قاعدة البيانات
-      let projectsToFetch = [];
+      // نستخدم المسار الجديد الذي يجمع كل البيانات في طلب واحد فقط!
+      const response = await axios.get(`${API}/dashboard/init-all${monthParam}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
-      if (user.role === 'admin') {
-        // Admin يرى جميع المشاريع من قاعدة البيانات
-        try {
-          const projectsRes = await axios.get(`${API}/projects`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          projectsToFetch = projectsRes.data.map(p => p.name || p);
-        } catch {
-          projectsToFetch = Object.values(PROJECT_NAMES);
-        }
-      } else if (user.projects && user.projects.length > 0) {
-        // المستخدم لديه مشاريع محددة - يرى فقط هذه المشاريع
-        projectsToFetch = user.projects;
-      } else if (user.assigned_projects && user.assigned_projects.length > 0) {
-        // المستخدم لديه مشاريع معينة عبر assigned_projects
-        projectsToFetch = user.assigned_projects;
-      } else {
-        // المستخدم ليس لديه مشاريع معينة - لا يرى أي مشروع
-        projectsToFetch = [];
-      }
+      const data = response.data || {};
+      const projectsData = data.projects || {};
+      const allowedProjects = data.allowed_projects || [];
       
-      setAllProjects(projectsToFetch);
+      setAllProjects(allowedProjects);
       
-      // استخدام endpoint الإحصائيات الجديد - أسرع بكثير!
-      const monthParam = selectedMonth ? `&month=${selectedMonth}` : '';
-      const promises = projectsToFetch.map(project => 
-        axios.get(`${API}/reports/stats?project=${encodeURIComponent(project)}${monthParam}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => res.data)
-        .catch(err => {
-          console.error(`Error fetching stats for ${project}:`, err);
-          return { total: 0, fixed: 0, asphalt_remaining: 0, licensed: 0, unlicensed: 0 };
-        })
-      );
-
-      const responses = await Promise.all(promises);
-      
-      // جلب إحصائيات التوصيلات لكل مشروع
-      await fetchConnectionsStatsByProject(projectsToFetch);
-      
-      // جلب مسميات البطاقات لكل مشروع
-      const labelsPromises = projectsToFetch.map(project => 
-        fetchProjectCardLabels(project)
-        .catch(() => [])
-      );
-      const labelsResponses = await Promise.all(labelsPromises);
-      
-      // ربط النتائج بالمشاريع ديناميكياً
       const results = {};
       const monthlyResults = {};
       const labelsMap = {};
       
-      projectsToFetch.forEach((project, index) => {
+      allowedProjects.forEach((project) => {
         const key = getProjectKey(project);
-        const data = responses[index] || {};
+        const pData = projectsData[project] || {};
         
         results[key] = {
           name: project,
-          total: data.total || 0,
-          fixed: data.fixed || 0,
-          asphaltRemaining: data.asphalt_remaining || 0,
-          licensed: data.licensed || 0,
-          unlicensed: data.unlicensed || 0,
-          tile_licensed: data.tile_licensed || 0,
-          tile_unlicensed: data.tile_unlicensed || 0,
-          terrestrial_licensed: data.terrestrial_licensed || 0,
-          terrestrial_unlicensed: data.terrestrial_unlicensed || 0,
-          terrestrial: data.terrestrial || 0,
-          tile: data.tile || 0,
-          asphalt: data.asphalt || 0,
-          by_type: data.by_type || {}  // أنواع البلاغات ديناميكياً
+          total: pData.total || 0,
+          fixed: pData.fixed || 0,
+          asphaltRemaining: pData.asphalt_remaining || 0,
+          licensed: pData.licensed || 0,
+          unlicensed: pData.unlicensed || 0,
+          tile_licensed: pData.tile_licensed || 0,
+          tile_unlicensed: pData.tile_unlicensed || 0,
+          terrestrial_licensed: pData.terrestrial_licensed || 0,
+          terrestrial_unlicensed: pData.terrestrial_unlicensed || 0,
+          terrestrial: pData.terrestrial || 0,
+          tile: pData.tile || 0,
+          asphalt: pData.asphalt || 0,
+          by_type: pData.by_type || {}
         };
         
         monthlyResults[key] = {
-          terrestrial: data.terrestrial || 0,
-          tile: data.tile || 0,
-          asphalt: data.asphalt || 0
+          terrestrial: pData.terrestrial || 0,
+          tile: pData.tile || 0,
+          asphalt: pData.asphalt || 0
         };
         
-        // حفظ مسميات البطاقات
-        labelsMap[project] = labelsResponses[index] || [];
+        labelsMap[project] = pData.cards || [];
+        
+        // Update connections stats for this project dynamically if connections map exists
+        if (!connectionsStatsByProject[project]) {
+            setConnectionsStatsByProject(prev => ({
+                ...prev,
+                [project]: { grand_total: pData.connections || 0, water: {total: pData.connections || 0}, sewage: {total: 0} }
+            }));
+        }
       });
       
       setProjectsStats(results);
       setMonthlyStats(monthlyResults);
       setProjectCardLabels(labelsMap);
+      
     } catch (error) {
       console.error('Failed to fetch projects data:', error);
     } finally {
@@ -1043,7 +1011,6 @@ function NewDashboard({ user, onLogout }) {
     }
   };
 
-  // دالة موحدة للتحقق من الصلاحيات بشكل هرمي (خاص بالمشروع أو عام) لتحديد نوع المشروع
   const checkExplicitPerm = (projectName, permKey) => {
     if (!currentUser) return false;
     
@@ -1070,17 +1037,7 @@ function NewDashboard({ user, onLogout }) {
     return (currentUser.permissions || []).includes(permKey);
   };
 
-  if (loading) {
-    return (
-      <Layout user={user} onLogout={onLogout}>
-        <div className="flex items-center justify-center h-96">
-          <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div>
-        </div>
-      </Layout>
-    );
-  }
-
-  // تحضير بيانات الرسوم البيانية
+  // Removed blocking loader to allow instant page render  // تحضير بيانات الرسوم البيانية
   // Admin يرى جميع المشاريع، باقي المستخدمين يرون مشاريعهم فقط
   
   // ترتيب المشاريع: الأساسية أولاً ثم المضافة
