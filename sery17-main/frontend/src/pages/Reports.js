@@ -2492,7 +2492,7 @@ const fetchReports = async () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                  <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500">{t('common.loading')}</td></tr>
+                  <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div></td></tr>
                 ) : reports.length === 0 ? (
                   <tr>
                     <td colSpan="14" className="px-6 py-8 text-center">
@@ -2622,7 +2622,7 @@ const fetchReports = async () => {
                         const s = report.status || '';
                         let colorClass = 'bg-gray-100 text-gray-800 border-gray-200';
                         if (s.includes('تم الإصلاح') && !s.includes('متبقي')) colorClass = 'bg-green-100 text-green-700 border-green-200';
-                        else if (s.includes('متبقي الأسفلت')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
+                        else if (s.includes('متبقي الأسفلت') || s.includes('متبقي')) colorClass = 'bg-red-100 text-red-700 border-red-200';
                         else if (s.includes('تحت التنفيذ') || s.includes('قيد المعالجة') || s.includes('جاري العمل')) colorClass = 'bg-blue-100 text-blue-700 border-blue-200';
                         else if (s.includes('معلق') || s.includes('متوقف')) colorClass = 'bg-red-100 text-red-700 border-red-200';
                         
@@ -3102,11 +3102,85 @@ const fetchReports = async () => {
             </div>
             
             {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
-              <div className="mb-5 relative bg-indigo-50 border border-indigo-200 p-4 rounded-xl text-sm whitespace-pre-wrap text-indigo-900">
-                <span className="absolute -top-3 right-4 bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded border border-indigo-200">
-                  {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })}
-                </span>
-                {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply}
+              <div className="mb-5 flex flex-col gap-4">
+                <div className="text-sm font-bold text-gray-700 border-b pb-1">الردود السابقة:</div>
+                {(() => {
+                  const r = reports.find(rep => rep.id === selectedConsultantReportId);
+                  const replyText = r.consultant_note_reply;
+                  
+                  if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
+                    return (
+                      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 mt-3 shadow-sm">
+                        <div className="font-bold mb-2 opacity-90 text-[12px]">
+                          {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })}
+                        </div>
+                        <div className="whitespace-pre-wrap break-words leading-relaxed">
+                          {replyText}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Convert legacy delimiters to the new format sequentially
+                  let currentText = replyText;
+                  if (currentText.includes('--- إضافة جديدة ---')) {
+                    const legacyParts = currentText.split(/---\s*إضافة جديدة\s*---/);
+                    const lastIndex = legacyParts.length - 1;
+                    currentText = legacyParts.map((part, index) => {
+                      if (index === 0) return part;
+                      const author = index === lastIndex ? (r.consultant_note_replied_by || 'المستوى الثالث') : 'مطلق الغامدي';
+                      return `---رد: ${author}---${part}`;
+                    }).join('');
+                  }
+                  
+                  const parts = currentText.split(/---رد:\s*(.*?)---/);
+                  const bubbles = [];
+                  
+                  if (parts[0].trim()) {
+                    const firstAuthor = parts.length > 1 && replyText.includes('--- إضافة جديدة ---') 
+                      ? 'مطلق الغامدي' 
+                      : (r.consultant_note_replied_by || 'المستوى الثالث');
+                    bubbles.push({ name: firstAuthor, text: parts[0].trim() });
+                  }
+                  
+                  for (let i = 1; i < parts.length; i += 2) {
+                    if (parts[i] && parts[i+1] && parts[i+1].trim()) {
+                      bubbles.push({ name: parts[i].trim(), text: parts[i+1].trim() });
+                    }
+                  }
+                  
+                  return bubbles.map((b, i) => {
+                    // Translate old English names that were saved before the fix
+                    let bubbleName = b.name;
+                    if (bubbleName.toLowerCase().includes('shazly')) bubbleName = 'م / الشاذلي حامد';
+                    
+                    const isMotlaq = bubbleName.includes('مطلق');
+                    const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
+                    
+                    let bgClass = 'bg-indigo-50 border-indigo-200 text-indigo-900';
+                    let badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+                    let prefixText = t('consultantNoteModal.replyPrefix', { defaultValue: 'رد الموظف:' });
+                    
+                    if (isMotlaq) {
+                      bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
+                      badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
+                    } else if (isConsultant) {
+                      bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
+                      badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                      prefixText = "تعقيب الاستشاري:";
+                    }
+                    
+                    return (
+                      <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
+                        <div className="font-bold mb-2 opacity-90 text-[12px]">
+                          {prefixText} {bubbleName}
+                        </div>
+                        <div className="whitespace-pre-wrap break-words leading-relaxed">
+                          {b.text}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
             
