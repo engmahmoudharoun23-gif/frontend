@@ -1736,13 +1736,13 @@ function NewDashboard({ user, onLogout }) {
                 {/* إظهار أعمدة الإصلاح فقط إذا كان هناك بيانات لها */}
                 {chartData.some(d => d.total > 0) && (
                   <>
-                    <Bar dataKey="total" fill="#3B82F6" name={d('بلاغات الإصلاح', 'Repair Reports')} />
-                    <Bar dataKey="fixed" fill="#10B981" name={d('تم الإصلاح', 'Repaired')} />
+                    <Bar isAnimationActive={false} dataKey="total" fill="#3B82F6" name={d('بلاغات الإصلاح', 'Repair Reports')} />
+                    <Bar isAnimationActive={false} dataKey="fixed" fill="#10B981" name={d('تم الإصلاح', 'Repaired')} />
                   </>
                 )}
                 {/* إظهار أعمدة التوصيلات دائماً إذا وجدت */}
-                {chartData.some(d => d.water > 0) && <Bar dataKey="water" fill="#0EA5E9" name={d('توصيلات المياه', 'Water Connections')} />}
-                {chartData.some(d => d.sewage) && <Bar dataKey="sewage" fill="#059669" name={d('توصيلات الصرف', 'Sewage Connections')} />}
+                {chartData.some(d => d.water > 0) && <Bar isAnimationActive={false} dataKey="water" fill="#0EA5E9" name={d('توصيلات المياه', 'Water Connections')} />}
+                {chartData.some(d => d.sewage) && <Bar isAnimationActive={false} dataKey="sewage" fill="#059669" name={d('توصيلات الصرف', 'Sewage Connections')} />}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1752,7 +1752,7 @@ function NewDashboard({ user, onLogout }) {
             <h3 className="text-xl font-bold text-gray-900 mb-4">{d('توزيع البلاغات حسب المشاريع', 'Distribution of Reports by Projects')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie
+                <Pie isAnimationActive={false} isAnimationActive={false} isAnimationActive={false}
                   data={pieData}
                   cx="50%"
                   cy="50%"
