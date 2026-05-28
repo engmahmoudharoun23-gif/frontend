@@ -972,10 +972,83 @@ function NewDashboard({ user, onLogout }) {
       
       setAllProjects(projectsToFetch);
       
-      // استخدام endpoint الإحصائيات الجديد - أسرع بكثير!
-      const monthParam = selectedMonth ? `&month=${selectedMonth}` : '';
+      const monthParam = selectedMonth ? `?month=${selectedMonth}` : '';
+      const fallbackMonthParam = selectedMonth ? `&month=${selectedMonth}` : '';
+      
+      // Try the ultra-fast unified batch endpoint first
+      try {
+        const batchResponse = await axios.get(`${API}/dashboard/init-all${monthParam}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (batchResponse.data && batchResponse.data.projects) {
+          const data = batchResponse.data;
+          const allowedProjs = data.allowed_projects && data.allowed_projects.length > 0 ? data.allowed_projects : projectsToFetch;
+          
+          if (allowedProjs.length > 0) {
+            projectsToFetch = allowedProjs;
+            setAllProjects(projectsToFetch);
+            
+            const results = {};
+            const monthlyResults = {};
+            const labelsMap = {};
+            
+            projectsToFetch.forEach(project => {
+              const key = getProjectKey(project);
+              const pData = data.projects[project] || {};
+              
+              results[key] = {
+                name: project,
+                total: pData.total || 0,
+                fixed: pData.fixed || 0,
+                asphaltRemaining: pData.asphalt_remaining || 0,
+                licensed: pData.licensed || 0,
+                unlicensed: pData.unlicensed || 0,
+                tile_licensed: pData.tile_licensed || 0,
+                tile_unlicensed: pData.tile_unlicensed || 0,
+                terrestrial_licensed: pData.terrestrial_licensed || 0,
+                terrestrial_unlicensed: pData.terrestrial_unlicensed || 0,
+                terrestrial: pData.terrestrial || 0,
+                tile: pData.tile || 0,
+                asphalt: pData.asphalt || 0,
+                by_type: pData.by_type || {}
+              };
+              
+              monthlyResults[key] = {
+                terrestrial: pData.terrestrial || 0,
+                tile: pData.tile || 0,
+                asphalt: pData.asphalt || 0
+              };
+              
+              labelsMap[project] = pData.cards || [];
+              
+              if (!connectionsStatsByProject[project] || connectionsStatsByProject[project].grand_total === undefined) {
+                setConnectionsStatsByProject(prev => ({
+                  ...prev,
+                  [project]: { 
+                    grand_total: pData.connections || 0, 
+                    water: {total: pData.connections || 0}, 
+                    sewage: {total: 0} 
+                  }
+                }));
+              }
+            });
+            
+            setProjectsStats(results);
+            setMonthlyStats(monthlyResults);
+            setProjectCardLabels(labelsMap);
+            
+            if (showLoading) setLoading(false);
+            return; // Exit early, we got the data fast!
+          }
+        }
+      } catch (batchErr) {
+        console.warn("Batch API failed, falling back to sequential fetching:", batchErr);
+      }
+      
+      // Fallback: استخدام endpoint الإحصائيات الفردي
       const promises = projectsToFetch.map(project => 
-        axios.get(`${API}/reports/stats?project=${encodeURIComponent(project)}${monthParam}`, {
+        axios.get(`${API}/reports/stats?project=${encodeURIComponent(project)}${fallbackMonthParam}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         .then(res => res.data)
@@ -986,6 +1059,7 @@ function NewDashboard({ user, onLogout }) {
       );
 
       const responses = await Promise.all(promises);
+
       
       // جلب إحصائيات التوصيلات لكل مشروع
       await fetchConnectionsStatsByProject(projectsToFetch);
