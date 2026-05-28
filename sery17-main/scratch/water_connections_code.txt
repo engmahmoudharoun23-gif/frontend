@@ -1,0 +1,180 @@
+10028: async def get_water_connections(
+10029:     project: Optional[str] = None,
+10030:     governorate: Optional[str] = None,
+10031:     status: Optional[str] = None,
+10032:     date_from: Optional[str] = None,
+10033:     date_to: Optional[str] = None,
+10034:     request_number: Optional[str] = None,
+10035:     ccb_report_number: Optional[str] = None,
+10036:     customer_name: Optional[str] = None,
+10037:     search: Optional[str] = None,
+10038:     page: int = 1,
+10039:     limit: int = 10,
+10040:     current_user: User = Depends(get_current_user)
+10041: ):
+10042:     """جلب قائمة توصيلات المياه مع الترقيم - مفلترة حسب مشاريع المستخدم"""
+10043:     is_admin = current_user.role == "admin"
+10044:     # صلاحية توصيلات المياه: إما عامة أو في أي مشروع من مشاريعه
+10045:     has_permission = user_has_any_project_permission(current_user, "water_connections")
+10046:     
+10047:     if not is_admin and not has_permission:
+10048:         raise HTTPException(status_code=403, detail="ليس لديك صلاحية")
+10049:     
+10050:     query = {}
+10051:     
+10052:     # ⚡ فلترة حسب المشاريع المسموحة (لغير الأدمن)
+10053:     allowed_projects = None
+10054:     if not is_admin:
+10055:         allowed_projects = get_projects_with_permission(current_user, "water_connections")
+10056:         if not allowed_projects:
+10057:             return {"connections": [], "total_count": 0, "total_pages": 0, "current_page": page, "limit": limit}
+10058:         query["project"] = {"$in": allowed_projects}
+10059:     
+10060:     # ⚡ فلترة مرنة حسب اسم المشروع (للجميع)
+10061:     if project:
+10062:         keywords = [k for k in project.replace('-', ' ').split() if len(k) > 1]
+10063:         if keywords:
+10064:             p_regex = ".*".join(keywords).replace('أ', '[أا]').replace('إ', '[إا]').replace('ا', '[اأإ]')
+10065:             regex_query = {"$regex": p_regex, "$options": "i"}
+10066:             
+10067:             if not is_admin:
+10068:                 # دمج البحث مع الصلاحيات المتاحة
+10069:                 query["$and"] = [
+10070:                     {"project": regex_query},
+10071:                     {"project": {"$in": allowed_projects}}
+10072:                 ]
+10073:                 if "project" in query: del query["project"]
+10074:             else:
+10075:                 query["project"] = regex_query
+10076:     
+10077:     if status:
+10078:         query["request_status"] = status
+10079: 
+10080:     if governorate:
+10081:         gov_p = governorate.strip().replace('أ', '[أا]').replace('إ', '[إا]').replace('ا', '[اأإ]').replace('ة', '[هة]').replace('ه', '[هة]').replace('ي', '[يى]').replace('ى', '[يى]').replace(' ', '.*')
+10082:         gov_filter = {"$or": [{"governorate": {"$regex": gov_p, "$options": "i"}}, {"area": {"$regex": gov_p, "$options": "i"}}]}
+10083:         if "$or" in query or "$and" in query:
+10084:             if "$and" not in query: query["$and"] = []
+10085:             if "$or" in query: query["$and"].append({"$or": query.pop("$or")})
+10086:             query["$and"].append(gov_filter)
+10087:         else:
+10088:             query.update(gov_filter)
+10089: 
+10090:     if request_number:
+10091:         query["request_number"] = {"$regex": request_number, "$options": "i"}
+10092:     
+10093:     if ccb_report_number:
+10094:         query["ccb_report_number"] = {"$regex": ccb_report_number, "$options": "i"}
+10095:         
+10096:     if customer_name:
+10097:         query["customer_name"] = {"$regex": customer_name, "$options": "i"}
+10098: 
+10099:     if search:
+10100:         query["$or"] = query.get("$or", []) + [
+10101:             {"request_number": {"$regex": search, "$options": "i"}},
+10102:             {"ccb_report_number": {"$regex": search, "$options": "i"}},
+10103:             {"customer_name": {"$regex": search, "$options": "i"}},
+10104:             {"phone_number": {"$regex": search, "$options": "i"}},
+10105:             {"area": {"$regex": search, "$options": "i"}},
+10106:             {"contractor": {"$regex": search, "$options": "i"}}
+10107:         ]
+10108: 
+10109:     if date_from or date_to:
+10110:         date_query = {}
+10111:         if date_from: date_query["$gte"] = date_from
+10112:         if date_to: date_query["$lte"] = date_to
+10113:         query["work_order_date"] = date_query
+10114:     
+10115:     # ⚡ فلترة حسب المحافظات والتسلسل الهرمي (لغير الأدمن)
+10116:     if not is_admin:
+10117:         hierarchy_filter = await get_hierarchy_filter(current_user)
+10118:         user_governorates = current_user.governorates if hasattr(current_user, 'governorates') and current_user.governorates else []
+10119:         has_all_govs = any(g in ["الكل", "جميع المحافظات", "كل المحافظات"] for g in user_governorates)
+10120:         
+10121:         if not has_all_govs:
+10122:             if len(user_governorates) > 0:
+10123:                 gov_patterns = []
+10124:                 for g in user_governorates:
+10125:                     p = g.replace('أ', '[أا]').replace('إ', '[إا]').replace('ا', '[اأإ]').replace('ة', '[هة]').replace('ه', '[هة]').replace('ي', '[يى]').replace('ى', '[يى]').replace(' ', '.*')
+10126:                     gov_patterns.append(p)
+10127:                 gov_regex = f"({'|'.join(gov_patterns)})"
+10128:                 
+10129:                 # تطبيق الفلترة الصارمة: يجب أن يكون من إنتاج المستخدم أو تابعيه AND ضمن المحافظات المسندة
+10130:                 query.update(hierarchy_filter)
+10131:                 
+10132:                 gov_or = [
+10133:                     {"governorate": {"$regex": gov_regex, "$options": "i"}},
+10134:                     {"area": {"$regex": gov_regex, "$options": "i"}}
+10135:                 ]
+10136:                 
+10137:                 if "$and" in query:
+10138:                     query["$and"].append({"$or": gov_or})
+10139:                 else:
+10140:                     query["$or"] = gov_or
+10141:             else:
+10142:                 # لا توجد محافظات محددة - يرى فقط ما أنشأه هو أو تابعوه
+10143:                 query.update(hierarchy_filter)
+10144:     
+10145:     # Get total count
+10146:     total_count = await db.water_connections.count_documents(query)
+10147:     total_pages = (total_count + limit - 1) // limit if limit > 0 else 1
+10148:     
+10149:     # Apply pagination - استبعاد الصور لتسريع الاستجابة
+10150:     skip = (page - 1) * limit
+10151:     projection = {"_id": 0, "images": 0}  # استبعاد الصور من القائمة
+10152:     connections = await db.water_connections.find(query, projection).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+10153:     
+10154:     # إضافة عدد الصور لكل توصيلة (بدلاً من الصور نفسها)
+10155:     for conn in connections:
+10156:         images_count = await db.water_connections.find_one({"id": conn["id"]}, {"images": 1})
+10157:         conn["images_count"] = len(images_count.get("images", [])) if images_count else 0
+10158:     
+10159:     return {
+10160:         "connections": connections,
+10161:         "total_count": total_count,
+10162:         "total_pages": total_pages,
+10163:         "current_page": page,
+10164:         "limit": limit
+10165:     }
+10166: 
+10167: 
+10168: @api_router.get("/water-connections/{connection_id}")
+10169: async def get_water_connection(connection_id: str, current_user: User = Depends(get_current_user)):
+10170:     """جلب توصيلة مياه واحدة"""
+10171:     is_admin = current_user.role == "admin"
+10172:     has_permission = user_has_any_project_permission(current_user, "water_connections")
+10173:     
+10174:     if not is_admin and not has_permission:
+10175:         raise HTTPException(status_code=403, detail="ليس لديك صلاحية")
+10176:     
+10177:     connection = await db.water_connections.find_one({"id": connection_id}, {"_id": 0})
+10178:     if not connection:
+10179:         raise HTTPException(status_code=404, detail="التوصيلة غير موجودة")
+10180:     
+10181:     return connection
+10182: 
+10183: 
+10184: @api_router.get("/water-connections/{connection_id}/images")
+10185: async def get_water_connection_images(connection_id: str, current_user: User = Depends(get_current_user)):
+10186:     """جلب صور توصيلة مياه فقط - للتحميل عند الطلب"""
+10187:     is_admin = current_user.role == "admin"
+10188:     has_permission = user_has_any_project_permission(current_user, "water_connections")
+10189:     
+10190:     if not is_admin and not has_permission:
+10191:         raise HTTPException(status_code=403, detail="ليس لديك صلاحية")
+10192:     
+10193:     connection = await db.water_connections.find_one({"id": connection_id}, {"_id": 0, "images": 1})
+10194:     if not connection:
+10195:         raise HTTPException(status_code=404, detail="التوصيلة غير موجودة")
+10196:     
+10197:     return {"images": connection.get("images", [])}
+10198: 
+10199: 
+10200: @api_router.post("/water-connections")
+10201: async def create_water_connection(data: WaterConnectionCreate, current_user: User = Depends(get_current_user)):
+10202:     """إضافة توصيلة مياه جديدة"""
+10203:     is_admin = current_user.role == "admin"
+10204:     has_permission = user_has_any_project_permission(current_user, "water_connections")
+10205:     
+10206:     if not is_admin and not has_permission:
+10207:         raise HTTPException(status_code=403, detail="ليس لديك صلاحية")

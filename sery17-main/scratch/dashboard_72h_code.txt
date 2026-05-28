@@ -1,0 +1,220 @@
+891:                     onClick={() => setSelectedCategory72h('reports')}
+892:                     className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${selectedCategory72h === 'reports' ? 'bg-orange-600 text-white shadow-md' : 'bg-white/50 text-orange-800 hover:bg-white'}`}
+893:                   >
+894:                     بلاغات الإصلاح
+895:                   </button>
+896:                   <button 
+897:                     onClick={() => setSelectedCategory72h('water_connections')}
+898:                     className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${selectedCategory72h === 'water_connections' ? 'bg-blue-600 text-white shadow-md' : 'bg-white/50 text-blue-800 hover:bg-white'}`}
+899:                   >
+900:                     توصيلات المياه
+901:                   </button>
+902:                   <button 
+903:                     onClick={() => setSelectedCategory72h('sewage_connections')}
+904:                     className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${selectedCategory72h === 'sewage_connections' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white/50 text-emerald-800 hover:bg-white'}`}
+905:                   >
+906:                     توصيلات الصرف
+907:                   </button>
+908:                 </div>
+909:               </h3>
+910:               
+911:               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+912:                 {/* تاريخ المباشرة Selection */}
+913:                 <div>
+914:                   <label className="block text-xs font-medium text-gray-700 mb-1">تاريخ المباشرة:</label>
+915:                   <input
+916:                     type="date"
+917:                     value={selectedDate72h}
+918:                     onChange={(e) => setSelectedDate72h(e.target.value)}
+919:                     className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+920:                   />
+921:                 </div>
+922:                 {/* Project Selection */}
+923:                 <div>
+924:                   <label className="block text-xs font-medium text-gray-700 mb-1">المشروع:</label>
+925:                   <select
+926:                     value={selectedProject72h}
+927:                     onChange={(e) => {
+928:                       const val = e.target.value;
+929:                       setSelectedProject72h(val);
+930:                       
+931:                       // إذا كان المشروع مشروع إيصال، نغير الفئة تلقائياً لتظهر البيانات
+932:                       if (val && (val.includes('ايصال') || val.includes('إيصال') || val.includes('توصيلات'))) {
+933:                         if (selectedCategory72h === 'reports') {
+934:                           setSelectedCategory72h('water_connections');
+935:                         }
+936:                       } else if (val) {
+937:                         // للمشاريع العادية، نرجع للفئة الافتراضية إذا كانت توصيلات
+938:                         if (selectedCategory72h !== 'reports') {
+939:                           setSelectedCategory72h('reports');
+940:                         }
+941:                       }
+942:                     }}
+943:                     className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+944:                   >
+945:                     <option value="">جميع المشاريع</option>
+946:                     {getAvailableProjects().map(proj => (
+947:                       <option key={proj.value} value={proj.value}>{proj.label}</option>
+948:                     ))}
+949:                   </select>
+950:                 </div>
+951:                 
+952:                 {/* Governorate Selection */}
+953:                 <div>
+954:                   <label className="block text-xs font-medium text-gray-700 mb-1">المحافظة: ({availableGovernorates.length})</label>
+955:                   <select
+956:                     value={selectedGovernorate72h}
+957:                     onChange={(e) => setSelectedGovernorate72h(e.target.value)}
+958:                     className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs disabled:bg-gray-100 disabled:cursor-not-allowed"
+959:                   >
+960:                     <option value="">جميع المحافظات</option>
+961:                     {availableGovernorates.map(gov => (
+962:                       <option key={gov} value={gov}>{gov}</option>
+963:                     ))}
+964:                   </select>
+965:                   {selectedProject72h && availableGovernorates.length === 0 && (
+966:                     <p className="text-xs text-red-600 mt-1">لا توجد محافظات لهذا المشروع</p>
+967:                   )}
+968:                 </div>
+969:                 
+970:                 {/* Reports Count Display */}
+971:                 <div>
+972:                   <label className="block text-xs font-medium text-gray-700 mb-1">عدد البلاغات:</label>
+973:                   <div className="bg-white rounded-lg px-2 py-1.5 border-2 border-orange-300 text-center">
+974:                     <span className="text-xl font-bold text-orange-600">
+975:                       {loading72h ? '...' : reports72hCount}
+976:                     </span>
+977:                   </div>
+978:                 </div>
+979:                 
+980:                 {/* Action Buttons */}
+981:                 <div className="flex flex-col gap-2">
+982:                   <button
+983:                     onClick={() => setShowReports72h(!showReports72h)}
+984:                     disabled={reports72hCount === 0}
+985:                     className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 disabled:bg-gray-400 disabled:cursor-not-allowed"
+986:                   >
+987:                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+988:                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+989:                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+990:                     </svg>
+991:                     <span>{showReports72h ? 'إخفاء' : 'عرض'}</span>
+992:                   </button>
+993:                   <button
+994:                     onClick={handleExport72hReports}
+995:                     disabled={reports72hCount === 0}
+996:                     className="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 disabled:bg-gray-400 disabled:cursor-not-allowed"
+997:                   >
+998:                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+999:                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+1000:                     </svg>
+1001:                     <span>تصدير</span>
+1002:                   </button>
+1003:                   <button
+1004:                     onClick={() => {
+1005:                       setSelectedDate72h('');
+1006:                       setSelectedProject72h('');
+1007:                       setSelectedGovernorate72h('');
+1008:                       setSelectedCategory72h('reports');
+1009:                       setShowReports72h(false);
+1010:                       toast.success('تم بنجاح');
+1011:                     }}
+1012:                     className="w-full bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+1013:                   >
+1014:                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+1015:                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+1016:                     </svg>
+1017:                     <span>إعادة تعيين</span>
+1018:                   </button>
+1019:                 </div>
+1020: 
+1021:               </div>
+1022:               
+1023:               {/* جدول عرض البلاغات */}
+1024:               {showReports72h && reports72hList.length > 0 && (
+1025:                 <div className="mt-4 border-t-2 border-orange-300 pt-3">
+1026:                   <h4 className="text-xs font-semibold text-gray-700 mb-2">
+1027:                     {selectedCategory72h === 'reports' ? 'البلاغات' : 
+1028:                      selectedCategory72h === 'water_connections' ? 'توصيلات المياه' : 'توصيلات الصرف'} ({reports72hList.length})
+1029:                   </h4>
+1030:                   <div className="max-h-60 overflow-y-auto bg-white rounded-lg border border-gray-300">
+1031:                     <table className="min-w-full text-xs">
+1032:                       <thead className="bg-gray-100 sticky top-0">
+1033:                         <tr>
+1034:                           <th className="px-2 py-1 text-right font-semibold text-gray-700">
+1035:                             {selectedCategory72h === 'reports' ? 'رقم البلاغ' : 'رقم الطلب/التوصيلة'}
+1036:                           </th>
+1037:                           <th className="px-2 py-1 text-right font-semibold text-gray-700">
+1038:                             {selectedCategory72h === 'reports' ? 'رقم الرخصة' : 'اسم المشترك'}
+1039:                           </th>
+1040:                           <th className="px-2 py-1 text-right font-semibold text-gray-700">المشروع</th>
+1041:                           <th className="px-2 py-1 text-right font-semibold text-gray-700">المحافظة</th>
+1042:                           <th className="px-2 py-1 text-right font-semibold text-gray-700">الحالة</th>
+1043:                           <th className="px-2 py-1 text-right font-semibold text-gray-700">تاريخ الإضافة</th>
+1044:                           <th className="px-2 py-1 text-right font-semibold text-gray-700 flex items-center gap-1">
+1045:                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+1046:                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+1047:                             </svg>
+1048:                             التاريخ
+1049:                           </th>
+1050:                           <th className="px-2 py-1 text-center font-semibold text-gray-700">نوع البلاغ</th>
+1051:                           <th className="px-2 py-1 text-center font-semibold text-gray-700">عرض</th>
+1052:                         </tr>
+1053:                       </thead>
+1054:                       <tbody>
+1055:                         {reports72hList.map((item, index) => (
+1056:                           <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+1057:                             <td className="px-2 py-1 text-gray-900 font-bold">
+1058:                               {selectedCategory72h === 'reports' ? item.report_number : (item.request_number || item.connection_number || '-')}
+1059:                             </td>
+1060:                             <td className="px-2 py-1 text-blue-600 font-medium">
+1061:                               {selectedCategory72h === 'reports' ? (item.license_number || '-') : (item.customer_name || '-')}
+1062:                             </td>
+1063:                             <td className="px-2 py-1 text-gray-800 font-medium text-[10px]">{item.project || '-'}</td>
+1064:                             <td className="px-2 py-1 text-gray-700">{item.governorate}</td>
+1065:                             <td className="px-2 py-1">
+1066:                               <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+1067:                                 (item.status === 'تم الإصلاح' || item.request_status === 'مكتمل') ? 'bg-green-100 text-green-800' :
+1068:                                 (item.status === 'بانتظار الأسفلت' || item.request_status === 'جاري') ? 'bg-yellow-100 text-yellow-800' :
+1069:                                 'bg-red-100 text-red-800'
+1070:                               }`}>
+1071:                                 {selectedCategory72h === 'reports' ? item.status : (item.request_status || '-')}
+1072:                               </span>
+1073:                             </td>
+1074:                             <td className="px-2 py-1 text-gray-600">
+1075:                               {new Date(item.created_at).toLocaleDateString('en-GB')}
+1076:                             </td>
+1077:                             <td className="px-2 py-1 text-gray-600 font-bold">
+1078:                               {selectedCategory72h === 'reports' ? 
+1079:                                 (item.start_date ? new Date(item.start_date).toLocaleDateString('en-GB') : '-') : 
+1080:                                 (item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : '-')}
+1081:                             </td>
+1082:                             <td className="px-2 py-1 text-center text-gray-700 font-semibold">
+1083:                               {item.report_type || '-'}
+1084:                             </td>
+1085:                             <td className="px-2 py-1 text-center">
+1086:                               <button
+1087:                                 onClick={() => {
+1088:                                   const searchNum = selectedCategory72h === 'reports' ? item.report_number : (item.request_number || item.ccb_report_number);
+1089:                                   const path = selectedCategory72h === 'reports' ? '/reports' : 
+1090:                                                selectedCategory72h === 'water_connections' ? '/water-connections' : '/sewage-connections';
+1091:                                   navigate(`${path}?search=${encodeURIComponent(searchNum)}&exact=true`);
+1092:                                 }}
+1093:                                 className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+1094:                                 title="عرض التفاصيل"
+1095:                               >
+1096:                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+1097:                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+1098:                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+1099:                                 </svg>
+1100:                               </button>
+1101:                             </td>
+1102:                           </tr>
+1103:                         ))}
+1104:                       </tbody>
+1105:                     </table>
+1106:                   </div>
+1107:                 </div>
+1108:               )}
+1109:             </div>
+1110: 

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { hasProjectPermission as hasProjectPermUtil, PROJECT_SCOPED_PERMISSIONS } from '../utils/permissions';
 import { useBranding } from '../hooks/useBranding';
-import { Globe, ShieldAlert, ClipboardCheck, FileBarChart2, Bell } from 'lucide-react';
+import { Globe, ShieldAlert, ClipboardCheck, FileBarChart2, Bell, UserCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;

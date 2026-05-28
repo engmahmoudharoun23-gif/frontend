@@ -554,6 +554,31 @@ function NewDashboard({ user, onLogout }) {
     return () => window.removeEventListener('wfm_translation_updated', handleTranslationUpdate);
   }, []);
   const { branding, currentTheme } = useBranding();
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatHijriDate = (date) => {
+    try {
+      return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }).format(date);
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const formatDayName = (date) => {
+    return new Intl.DateTimeFormat(isRtl ? 'ar-EG' : 'en-US', { weekday: 'long' }).format(date);
+  };
+
   const [loading, setLoading] = useState(true);
   const [projectsStats, setProjectsStats] = useState({});
   const [allProjects, setAllProjects] = useState([]); // جميع المشاريع المتاحة
@@ -746,14 +771,15 @@ function NewDashboard({ user, onLogout }) {
     update72hData();
   }, [selectedDate72h, selectedProject72h, selectedCategory72h]);
   
-  // تحديث الأيقونات كل ثانية واحدة فقط كما طلب المستخدم
+  // تحديث الأيقونات والعدد الإجمالي ديناميكياً
   useEffect(() => {
     const interval = setInterval(() => {
       fetchGovernorate72hBadges();
-    }, 1000); // كل ثانية واحدة
+      fetch72hReportsCount(true);
+    }, 15000); // تحديث كل 15 ثانية لضمان ظهور البيانات في الوقت الفعلي
     
     return () => clearInterval(interval);
-  }, [selectedDate72h, selectedCategory72h, selectedProject72h]);
+  }, [selectedDate72h, selectedCategory72h, selectedProject72h, selectedGovernorate72h]);
   
   // Fetch 72-hour reports count
   const fetchGovernorate72hBadges = async () => {
@@ -776,7 +802,7 @@ function NewDashboard({ user, onLogout }) {
     }
   };
 
-  const fetch72hReportsCount = async () => {
+  const fetch72hReportsCount = async (isBackground = false) => {
     console.log('🔍 fetch72hReportsCount called:', {
       project: selectedProject72h,
       governorate: selectedGovernorate72h
@@ -784,7 +810,9 @@ function NewDashboard({ user, onLogout }) {
     
     // السماح بجلب بيانات آخر 72 ساعة افتراضياً حتى لو لم يتم تحديد تاريخ
 
-    setLoading72h(true);
+    if (!isBackground) {
+      setLoading72h(true);
+    }
     try {
       // استخدام endpoint مخصص لآخر 72 ساعة (بناءً على created_at timestamp)
       const params = new URLSearchParams();
@@ -810,7 +838,9 @@ function NewDashboard({ user, onLogout }) {
       setReports72hCount(0);
       setReports72hList([]);
     } finally {
-      setLoading72h(false);
+      if (!isBackground) {
+        setLoading72h(false);
+      }
     }
   };
   
@@ -1044,7 +1074,7 @@ function NewDashboard({ user, onLogout }) {
     return (
       <Layout user={user} onLogout={onLogout}>
         <div className="flex items-center justify-center h-96">
-          <div className="text-xl text-gray-600">جاري التحميل...</div>
+          <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div>
         </div>
       </Layout>
     );
@@ -1192,6 +1222,46 @@ function NewDashboard({ user, onLogout }) {
     }
   };
 
+  const renderAnalogClock = (sizeClasses, borderClasses) => (
+    <div className={`relative ${sizeClasses} drop-shadow-xl bg-white rounded-full flex items-center justify-center ${borderClasses} border-[#111827] shadow-[inset_0_2px_8px_rgba(0,0,0,0.1)]`}>
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        <circle cx="50" cy="50" r="48" fill="white" />
+        {[...Array(60)].map((_, i) => (
+          <line 
+            key={`tick-${i}`} 
+            x1="50" y1="3" 
+            x2="50" y2={i % 5 === 0 ? "7" : "5"} 
+            stroke={i % 5 === 0 ? "#111827" : "#9ca3af"} 
+            strokeWidth={i % 5 === 0 ? "1.5" : "0.5"} 
+            style={{ transform: `rotate(${i * 6}deg)`, transformOrigin: '50px 50px' }} 
+          />
+        ))}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => {
+          const angle = num * 30;
+          const rad = (angle - 90) * (Math.PI / 180);
+          const x = 50 + 34 * Math.cos(rad);
+          const y = 50 + 34 * Math.sin(rad) + 4.5;
+          return (
+            <text key={`num-${num}`} x={x} y={y} fill="#111827" fontSize="13" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" textAnchor="middle">{num}</text>
+          );
+        })}
+        <text x="50" y="32" fill="#6b7280" fontSize="3.5" fontFamily="Georgia, serif" fontStyle="italic" textAnchor="middle" style={{ opacity: 0.7 }}>Galaxy</text>
+        <g style={{ transform: `rotate(${(currentDateTime.getHours() % 12) * 30 + currentDateTime.getMinutes() * 0.5}deg)`, transformOrigin: '50px 50px' }}>
+          <path d="M 48.5 50 L 50 25 L 51.5 50 Z" fill="#111827" />
+        </g>
+        <g style={{ transform: `rotate(${currentDateTime.getMinutes() * 6 + currentDateTime.getSeconds() * 0.1}deg)`, transformOrigin: '50px 50px' }}>
+          <path d="M 49 50 L 50 14 L 51 50 Z" fill="#111827" />
+        </g>
+        <g style={{ transform: `rotate(${currentDateTime.getSeconds() * 6}deg)`, transformOrigin: '50px 50px', transition: 'transform 0.1s cubic-bezier(0.4, 2.08, 0.55, 0.44)' }}>
+          <line x1="50" y1="60" x2="50" y2="12" stroke="#111827" strokeWidth="0.8" strokeLinecap="round" />
+          <circle cx="50" cy="50" r="1.5" fill="#111827" />
+        </g>
+        <circle cx="50" cy="50" r="2.5" fill="#111827" />
+        <circle cx="50" cy="50" r="1" fill="#e5e7eb" />
+      </svg>
+    </div>
+  );
+
   return (
     <Layout user={user} onLogout={onLogout}>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -1200,37 +1270,65 @@ function NewDashboard({ user, onLogout }) {
           <div className="p-4 sm:p-6">
             <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
               {/* Title Section */}
-              <div className="flex-1 w-full text-right">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-2 h-8 bg-blue-600 rounded-full"></div>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{d('لوحة التحكم', 'Dashboard')} <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full ml-2">v1.1 Dynamic</span></h1>
+              <div className="w-full lg:w-auto text-right">
+                <div className="flex justify-between items-center w-full mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-8 bg-blue-600 rounded-full"></div>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight flex flex-wrap items-center">
+                      {d('لوحة التحكم', 'Dashboard')} 
+                      <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full mr-2 ml-2">v1.1 Dynamic</span>
+                    </h1>
+                  </div>
+                  {/* Small Analog Clock - Mobile Only */}
+                  <div className="lg:hidden flex-shrink-0 mr-auto ml-2">
+                    {renderAnalogClock("w-[60px] h-[60px]", "border-[3px]")}
+                  </div>
                 </div>
-                <p className="text-sm sm:text-base text-gray-500 font-medium mr-5">{translateBrandingText(branding.dashboard_title, isRtl) || d('نظام إدارة البلاغات والمشاريع - WFM', 'Project and Reports Management System - WFM')}</p>
+                
+                <p className="text-sm sm:text-base text-gray-500 font-medium mr-5 mb-3">{translateBrandingText(branding.dashboard_title, isRtl) || d('نظام إدارة البلاغات والمشاريع - WFM', 'Project and Reports Management System - WFM')}</p>
+                
+                <div className="inline-flex flex-wrap items-center gap-2 text-[10px] sm:text-xs font-bold text-gray-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm mr-5" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                  <svg className="w-3.5 h-3.5 text-blue-600 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                  <span className="text-blue-800">{formatDayName(currentDateTime)}</span>
+                  <span className="text-gray-300">|</span>
+                  <span>{currentDateTime.toLocaleDateString('en-GB')}</span>
+                  <span className="text-gray-300">|</span>
+                  <span className="text-emerald-700">{formatHijriDate(currentDateTime)}</span>
+                  <span className="text-gray-300">|</span>
+                  <span className="text-red-600 font-black tracking-wider text-xs sm:text-sm" style={{ direction: 'ltr' }}>{currentDateTime.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                </div>
+              </div>
+
+              {/* Big Analog Clock - Center (Hidden on Mobile) */}
+              <div className="hidden lg:flex justify-center items-center flex-shrink-0 mx-4">
+                {renderAnalogClock("w-28 h-28", "border-[5px]")}
               </div>
 
               {/* Branding Section - Premium Compact Design */}
-              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
-                  <div className="bg-blue-600 text-white p-2 rounded-lg">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
+              <div className="w-full lg:w-auto flex lg:justify-end">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
+                    <div className="bg-blue-600 text-white p-2 rounded-lg">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-blue-600 font-bold">{d('الاستشاري', 'Consultant')}</p>
+                      <p className="text-xs sm:text-sm font-bold text-gray-800">{translateBrandingText(branding.consultant_name, isRtl) || d('مكتب بيت الخبرة للاستشارات الهندسية', 'Expert House Engineering Consultancy')}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-blue-600 font-bold">{d('الاستشاري', 'Consultant')}</p>
-                    <p className="text-xs sm:text-sm font-bold text-gray-800">{translateBrandingText(branding.consultant_name, isRtl) || d('مكتب بيت الخبرة للاستشارات الهندسية', 'Expert House Engineering Consultancy')}</p>
-                  </div>
-                </div>
 
-                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
-                  <div className="bg-gray-800 text-white p-2 rounded-lg">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">{translateBrandingText(branding.project_manager_title, isRtl) || d('مدير عام المشاريع', 'General Projects Manager')}</p>
-                    <p className="text-xs sm:text-sm font-bold text-blue-700">{translateBrandingText(branding.project_manager_name, isRtl) || d('المهندس أحمد عبيدات', 'Eng. Ahmed Obeidat')}</p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
+                    <div className="bg-gray-800 text-white p-2 rounded-lg">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">{translateBrandingText(branding.project_manager_title, isRtl) || d('مدير عام المشاريع', 'General Projects Manager')}</p>
+                      <p className="text-xs sm:text-sm font-bold text-blue-700">{translateBrandingText(branding.project_manager_name, isRtl) || d('المهندس أحمد عبيدات', 'Eng. Ahmed Obeidat')}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1405,16 +1503,19 @@ function NewDashboard({ user, onLogout }) {
                           <th className="px-2 py-1 text-right font-semibold text-gray-700 font-bold">{d('المشروع', 'Project')}</th>
                           <th className="px-2 py-1 text-right font-semibold text-gray-700 font-bold">{d('المحافظة', 'Governorate')}</th>
                           <th className="px-2 py-1 text-right font-semibold text-gray-700 font-bold">{d('الحالة', 'Status')}</th>
-                          <th className="px-2 py-1 text-right font-semibold text-gray-700 font-bold">{d('تاريخ الإضافة', 'Creation Date')}</th>
+                          <th className="px-2 py-1 text-right font-semibold text-gray-700 font-bold">{d('تاريخ الاستلام', 'Receipt Date')}</th>
                           <th className="px-2 py-1 text-right font-semibold text-gray-700 flex items-center gap-1 font-bold">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            {d('التاريخ', 'Date')}
+                            {d('تاريخ المباشرة', 'Start Date')}
                           </th>
                           <th className="px-2 py-1 text-center font-semibold text-gray-700 font-bold">
                             {selectedCategory72h === 'reports' ? d('نوع البلاغ', 'Report Type') : d('نوع التوصيلة', 'Connection Type')}
                           </th>
+                          {selectedCategory72h === 'reports' && (
+                            <th className="px-2 py-1 text-center font-semibold text-gray-700 font-bold">{d('تاريخ الاغلاق', 'Closing Date')}</th>
+                          )}
                           <th className="px-2 py-1 text-center font-semibold text-gray-700 font-bold">{d('عرض', 'View')}</th>
                         </tr>
                       </thead>
@@ -1457,6 +1558,11 @@ function NewDashboard({ user, onLogout }) {
                               <td className="px-2 py-1 text-center text-gray-700 font-semibold">
                                 {translatedType}
                               </td>
+                              {selectedCategory72h === 'reports' && (
+                                <td className="px-2 py-1 text-center text-gray-600 font-bold">
+                                  {item.closed_at ? new Date(item.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB') : '-'}
+                                </td>
+                              )}
                               <td className="px-2 py-1 text-center">
                                 <button
                                   onClick={() => {
@@ -1784,6 +1890,11 @@ function NewDashboard({ user, onLogout }) {
                         className="bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-300 rounded-lg p-4 hover:shadow-lg transition-all transform hover:scale-105 cursor-pointer"
                         onClick={() => {
                           setSelectedGovernorate72h(item.governorate);
+                          if (item.project && item.project !== 'جميع المشاريع' && item.project !== 'غير محدد') {
+                            setSelectedProject72h(item.project);
+                          }
+                          // تفريغ التاريخ لضمان عرض جميع البلاغات في الـ 72 ساعة للمحافظة المحددة
+                          setSelectedDate72h('');
                           setShowReports72h(true);
                           // التمرير لقسم الفلاتر
                           document.getElementById('section-72h')?.scrollIntoView({ behavior: 'smooth' });

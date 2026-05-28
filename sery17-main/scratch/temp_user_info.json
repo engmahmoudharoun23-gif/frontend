@@ -1,0 +1,58 @@
+{
+  "id": "7027903b-f081-477d-8e25-358904cb9e29",
+  "username": "Eng Abdelhafiz",
+  "email": null,
+  "full_name": "م/ عبدالحفيظ",
+  "title": "مهندس جودة",
+  "profile_picture": null,
+  "role": "user",
+  "governorates": [
+    "ساجر",
+    "المزاحمية",
+    "القويعية",
+    "مرات",
+    "ضرماء",
+    "عفيف",
+    "شقراء",
+    "القصب",
+    "الدوادمي"
+  ],
+  "projects": [
+    "مشروع المحافظات الغربية - القطاع الأوسط",
+    "مشروع التشوة البصري",
+    "مشروع كشف التسربات وإصلاحها"
+  ],
+  "created_by": "f3a9c5ac-ef15-4622-aadb-c80ef2116625",
+  "can_create_subusers": false,
+  "permissions": [],
+  "connection_permissions": {},
+  "project_permissions": {
+    "مشروع المحافظات الغربية - القطاع الأوسط": [
+      "invoices",
+      "employee_requests",
+      "settings",
+      "trash",
+      "quality_reports",
+      "team"
+    ],
+    "مشروع التشوة البصري": [
+      "team",
+      "invoices",
+      "employee_requests",
+      "settings",
+      "trash",
+      "quality_reports"
+    ],
+    "مشروع كشف التسربات وإصلاحها": [
+      "team",
+      "invoices",
+      "employee_requests",
+      "settings",
+      "trash",
+      "quality_reports"
+    ]
+  },
+  "personal_theme": null,
+  "created_at": "2026-05-19T15:44:05.054369+00:00",
+  "is_active": true
+}
