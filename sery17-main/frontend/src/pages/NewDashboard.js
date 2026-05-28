@@ -580,11 +580,12 @@ function NewDashboard({ user, onLogout }) {
   };
 
   const [loading, setLoading] = useState(true);
-  const [projectsStats, setProjectsStats] = useState({});
-  const [allProjects, setAllProjects] = useState([]); // جميع المشاريع المتاحة
-  const [projectCardLabels, setProjectCardLabels] = useState({}); // مسميات البطاقات لكل مشروع
+  const safeParse = (key, fallback) => { try { const item = sessionStorage.getItem(key); return item ? JSON.parse(item) : fallback; } catch { return fallback; } };
+  const [projectsStats, setProjectsStats] = useState(() => safeParse('dashboard_projectsStats', {}));
+  const [allProjects, setAllProjects] = useState(() => safeParse('dashboard_allProjects', []));
+  const [projectCardLabels, setProjectCardLabels] = useState(() => safeParse('dashboard_projectCardLabels', {}));
   const [connectionsStats, setConnectionsStats] = useState(null); // إحصائيات التوصيلات
-  const [connectionsStatsByProject, setConnectionsStatsByProject] = useState({}); // إحصائيات التوصيلات لكل مشروع
+  const [connectionsStatsByProject, setConnectionsStatsByProject] = useState(() => safeParse('dashboard_connectionsStatsByProject', {}));
   const [currentUser, setCurrentUser] = useState(user); // نسخة محلية من المستخدم لضمان التحديث الديناميكي
   
   // ثيم المنصة
@@ -654,7 +655,7 @@ function NewDashboard({ user, onLogout }) {
   const [availableGovernorates, setAvailableGovernorates] = useState([]);
   const [showReports72h, setShowReports72h] = useState(false);
   
-  const [monthlyStats, setMonthlyStats] = useState({});
+  const [monthlyStats, setMonthlyStats] = useState(() => safeParse('dashboard_monthlyStats', {}));
   const [last72HoursCounts, setLast72HoursCounts] = useState({});
   const [governorate72hBadges, setGovernorate72hBadges] = useState([]);
 
@@ -942,6 +943,12 @@ function NewDashboard({ user, onLogout }) {
     }
   };
   const fetchProjectsData = async (showLoading = true) => {
+    const lastFetch = sessionStorage.getItem('dashboard_lastFetchTime');
+    const now = Date.now();
+    if (lastFetch && now - parseInt(lastFetch) < 15000) {
+      if (showLoading) setLoading(false);
+      return;
+    }
     if (showLoading) setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -971,6 +978,7 @@ function NewDashboard({ user, onLogout }) {
       }
       
       setAllProjects(projectsToFetch);
+            sessionStorage.setItem('dashboard_allProjects', JSON.stringify(projectsToFetch));
       
       const monthParam = selectedMonth ? `?month=${selectedMonth}` : '';
       const fallbackMonthParam = selectedMonth ? `&month=${selectedMonth}` : '';
@@ -988,6 +996,7 @@ function NewDashboard({ user, onLogout }) {
           if (allowedProjs.length > 0) {
             projectsToFetch = allowedProjs;
             setAllProjects(projectsToFetch);
+            sessionStorage.setItem('dashboard_allProjects', JSON.stringify(projectsToFetch));
             
             const results = {};
             const monthlyResults = {};
@@ -1035,8 +1044,12 @@ function NewDashboard({ user, onLogout }) {
             });
             
             setProjectsStats(results);
+      sessionStorage.setItem('dashboard_projectsStats', JSON.stringify(results));
+      sessionStorage.setItem('dashboard_lastFetchTime', Date.now().toString());
             setMonthlyStats(monthlyResults);
+      sessionStorage.setItem('dashboard_monthlyStats', JSON.stringify(monthlyResults));
             setProjectCardLabels(labelsMap);
+      sessionStorage.setItem('dashboard_projectCardLabels', JSON.stringify(labelsMap));
             
             if (showLoading) setLoading(false);
             return; // Exit early, we got the data fast!
@@ -1108,8 +1121,12 @@ function NewDashboard({ user, onLogout }) {
       });
       
       setProjectsStats(results);
+      sessionStorage.setItem('dashboard_projectsStats', JSON.stringify(results));
+      sessionStorage.setItem('dashboard_lastFetchTime', Date.now().toString());
       setMonthlyStats(monthlyResults);
+      sessionStorage.setItem('dashboard_monthlyStats', JSON.stringify(monthlyResults));
       setProjectCardLabels(labelsMap);
+      sessionStorage.setItem('dashboard_projectCardLabels', JSON.stringify(labelsMap));
     } catch (error) {
       console.error('Failed to fetch projects data:', error);
     } finally {
