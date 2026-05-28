@@ -39,7 +39,7 @@ function QualityReports({ user, onLogout }) {
     return Object.values(pp).some(perms => (perms || []).includes(permKey));
   };
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);

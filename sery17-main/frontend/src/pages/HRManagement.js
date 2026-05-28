@@ -29,7 +29,7 @@ function HRManagement({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const [activeTab, setActiveTab] = useState('employees');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [employees, setEmployees] = useState([]);
   const [contracts, setContracts] = useState([]);

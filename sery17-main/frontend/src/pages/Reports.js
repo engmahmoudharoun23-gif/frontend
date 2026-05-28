@@ -287,7 +287,7 @@ function Reports({ user, onLogout }) {
   };
   
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [PROJECT_GOVERNORATES, setProjectGovernorates] = useState(BASE_PROJECT_GOVERNORATES);
   
   // URL Params & Pagination state

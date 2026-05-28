@@ -14,7 +14,7 @@ function Cars({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const [cars, setCars] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);

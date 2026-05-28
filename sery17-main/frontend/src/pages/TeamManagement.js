@@ -23,7 +23,7 @@ function TeamManagement({ user, onLogout }) {
   const isRtl = i18n.dir() === 'rtl';
 
   const [teams, setTeams] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [selectedProject, setSelectedProject] = useState('');

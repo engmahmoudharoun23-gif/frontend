@@ -232,7 +232,7 @@ function Contractors({ user, onLogout }) {
   }, []);
   
   const [contractors, setContractors] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [filterProject, setFilterProject] = useState('');
   const [showModal, setShowModal] = useState(false);

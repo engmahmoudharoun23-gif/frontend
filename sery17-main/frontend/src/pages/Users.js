@@ -25,7 +25,7 @@ function Users({ user, onLogout }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get('limit')) || 10);
 

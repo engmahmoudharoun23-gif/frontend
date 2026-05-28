@@ -58,7 +58,7 @@ function EmployeeRequests({ user, onLogout }) {
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [lockType, setLockType] = useState(false);

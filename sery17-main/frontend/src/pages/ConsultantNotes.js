@@ -14,7 +14,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);

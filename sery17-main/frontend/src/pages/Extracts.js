@@ -24,7 +24,7 @@ function Extracts({ user, onLogout }) {
   const isRtl = i18n.language === 'ar';
   
   const [extracts, setExtracts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState('');
   const [activeTab, setActiveTab] = useState('incoming');
   const [showModal, setShowModal] = useState(false);
