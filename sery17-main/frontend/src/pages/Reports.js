@@ -3110,8 +3110,8 @@ const fetchReports = async () => {
                   
                   if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
                     return (
-                      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 mt-3 shadow-sm">
-                        <div className="font-bold mb-2 opacity-90 text-[12px]">
+                      <div className="text-indigo-900 text-sm mt-3 p-1">
+                        <div className="font-bold mb-1 text-[13px]">
                           {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })}
                         </div>
                         <div className="whitespace-pre-wrap break-words leading-relaxed">
@@ -3156,25 +3156,22 @@ const fetchReports = async () => {
                     const isMotlaq = bubbleName.includes('مطلق');
                     const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
                     
-                    let bgClass = 'bg-indigo-50 border-indigo-200 text-indigo-900';
-                    let badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+                    let textClass = 'text-indigo-900';
                     let prefixText = t('consultantNoteModal.replyPrefix', { defaultValue: 'رد الموظف:' });
                     
                     if (isMotlaq) {
-                      bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
-                      badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
+                      textClass = 'text-purple-900';
                     } else if (isConsultant) {
-                      bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
-                      badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                      textClass = 'text-yellow-900';
                       prefixText = "تعقيب الاستشاري:";
                     }
                     
                     return (
-                      <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
-                        <div className="font-bold mb-2 opacity-90 text-[12px]">
+                      <div key={i} className={`text-sm mt-2 p-1 ${textClass}`}>
+                        <div className="font-bold mb-1 text-[13px] border-b border-gray-100 pb-1">
                           {prefixText} {bubbleName}
                         </div>
-                        <div className="whitespace-pre-wrap break-words leading-relaxed">
+                        <div className="whitespace-pre-wrap break-words leading-relaxed pt-1">
                           {b.text}
                         </div>
                       </div>
