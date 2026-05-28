@@ -1689,9 +1689,9 @@ function NewDashboard({ user, onLogout }) {
               })}</strong> {d('حتى الآن', 'until now')}
             </p>
             
-            {governorate72hBadges.length > 0 ? (
+            {governorate72hBadges.filter(b => b.count > 0).length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {governorate72hBadges.slice(0, 15).map((badge, index) => {
+                {governorate72hBadges.filter(b => b.count > 0).slice(0, 15).map((badge, index) => {
                   const cleanedProject = badge.project ? badge.project.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').split(' -')[0] : '';
                   const translatedProj = isRtl ? cleanedProject : (CLEAN_PROJECT_NAMES_EN[badge.project] || cleanedProject);
                   return (
