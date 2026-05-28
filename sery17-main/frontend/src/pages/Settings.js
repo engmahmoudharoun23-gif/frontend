@@ -204,7 +204,7 @@ function Settings({ user, onLogout, onLogin }) {
       return;
     }
 
-    setLoading(true);
+    // setLoading(true);
     try {
       const response = await axios.post(`${API}/auth/logout-others`);
       if (onLogin && response.data.access_token) {
@@ -225,7 +225,7 @@ function Settings({ user, onLogout, onLogin }) {
       toast.error(t('settings.errors.passwordMismatch'));
       return;
     }
-    setLoading(true);
+    // setLoading(true);
     try {
       const updateData = {};
       if (formData.full_name !== user.full_name) updateData.full_name = formData.full_name;
@@ -335,7 +335,7 @@ function Settings({ user, onLogout, onLogin }) {
   };
 
   const handleSavePlatformSettings = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       await axios.put(`${API}/settings/platform?platform_name=${encodeURIComponent(platformName)}`);
       toast.success(t('settings.success.platformSettingsSaved'));

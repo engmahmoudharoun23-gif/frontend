@@ -232,7 +232,7 @@ function Contractors({ user, onLogout }) {
   }, []);
   
   const [contractors, setContractors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [filterProject, setFilterProject] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -287,7 +287,7 @@ function Contractors({ user, onLogout }) {
   };
 
   const fetchContractors = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       let url = filterProject 

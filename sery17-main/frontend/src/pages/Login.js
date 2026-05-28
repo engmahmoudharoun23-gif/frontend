@@ -89,7 +89,7 @@ function Login({ onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    // setLoading(true);
     try {
       const response = await axios.post(`${API}/auth/login`, {
         username: formData.username,

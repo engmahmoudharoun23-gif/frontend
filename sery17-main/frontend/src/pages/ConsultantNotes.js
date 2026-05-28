@@ -14,7 +14,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,7 +35,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
 
   const fetchNotes = async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/reports/consultant-notes`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -245,8 +245,8 @@ const ConsultantNotes = ({ user, onLogout }) => {
                               const replyText = report.consultant_note_reply;
                               if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
                                 return (
-                                  <div className="text-blue-900 text-sm mt-3 p-1">
-                                    <div className="font-bold mb-1 text-[13px]">
+                                  <div className="rounded-xl border border-blue-200 bg-blue-50 text-blue-900 text-sm mt-3 p-3 shadow-sm">
+                                    <div className="font-bold mb-2 opacity-90 text-[12px]">
                                       {t("consultantNotesPage.replyPrefix", { defaultValue: "رد:" })} {report.consultant_note_replied_by || t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' })}
                                     </div>
                                     <div className="whitespace-pre-wrap break-words leading-relaxed">
@@ -292,22 +292,25 @@ const ConsultantNotes = ({ user, onLogout }) => {
                                 const isMotlaq = bubbleName.includes('مطلق');
                                 const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
                                 
-                                let textClass = 'text-blue-900';
+                                let bgClass = 'bg-blue-50 border-blue-200 text-blue-900';
+                                let badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
                                 let prefixText = t("consultantNotesPage.replyPrefix", { defaultValue: "رد الموظف:" });
                                 
                                 if (isMotlaq) {
-                                  textClass = 'text-purple-900';
+                                  bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
+                                  badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
                                 } else if (isConsultant) {
-                                  textClass = 'text-yellow-900';
+                                  bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
+                                  badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
                                   prefixText = "تعقيب الاستشاري:";
                                 }
                                 
                                 return (
-                                  <div key={i} className={`text-sm mt-2 p-1 ${textClass}`}>
-                                    <div className="font-bold mb-1 text-[13px] border-b border-gray-100 pb-1">
+                                  <div key={i} className={`rounded-xl border text-sm mt-3 p-3 shadow-sm ${bgClass}`}>
+                                    <div className="font-bold mb-2 opacity-90 text-[12px]">
                                       {prefixText} {bubbleName}
                                     </div>
-                                    <div className="whitespace-pre-wrap break-words leading-relaxed pt-1">
+                                    <div className="whitespace-pre-wrap break-words leading-relaxed">
                                       {b.text}
                                     </div>
                                   </div>
@@ -457,8 +460,8 @@ const ConsultantNotes = ({ user, onLogout }) => {
                     
                     if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
                       return (
-                        <div className="text-blue-900 text-sm mt-3 p-1">
-                          <div className="font-bold mb-1 text-[13px]">
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 text-blue-900 text-sm mt-3 p-3 shadow-sm">
+                          <div className="font-bold mb-2 opacity-90 text-[12px]">
                             رد: {r.consultant_note_replied_by || 'المستوى الثالث'}
                           </div>
                           <div className="whitespace-pre-wrap break-words leading-relaxed">
@@ -504,13 +507,16 @@ const ConsultantNotes = ({ user, onLogout }) => {
                       const isMotlaq = bubbleName.includes('مطلق');
                       const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
                       
-                      let textClass = 'text-blue-900';
+                      let bgClass = 'bg-blue-50 border-blue-200 text-blue-900';
+                      let badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
                       let prefixText = "رد الموظف:";
                       
                       if (isMotlaq) {
-                        textClass = 'text-purple-900';
+                        bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
+                        badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
                       } else if (isConsultant) {
-                        textClass = 'text-yellow-900';
+                        bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
+                        badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
                         prefixText = "تعقيب الاستشاري:";
                       }
                       

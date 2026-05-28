@@ -24,7 +24,7 @@ function Extracts({ user, onLogout }) {
   const isRtl = i18n.language === 'ar';
   
   const [extracts, setExtracts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
   const [activeTab, setActiveTab] = useState('incoming');
   const [showModal, setShowModal] = useState(false);
@@ -161,7 +161,7 @@ function Extracts({ user, onLogout }) {
   // جلب مستخلصات الأدمن
   const fetchExtracts = useCallback(async () => {
     if (!isAdmin) return;
-    setLoading(true);
+    // setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedProject) params.append('project', selectedProject);

@@ -30,7 +30,7 @@ function Invoices({ user, onLogout }) {
   const platformName = localStorage.getItem('platformName') || 'بيت الخبرة';
   const [invoices, setInvoices] = useState([]);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -120,7 +120,7 @@ function Invoices({ user, onLogout }) {
   // دالة جلب الفواتير
   const fetchInvoices = async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const params = new URLSearchParams();
       if (projectFilter) params.append('project', projectFilter);
       if (statusFilter !== 'all') params.append('status', statusFilter);

@@ -39,7 +39,7 @@ function QualityReports({ user, onLogout }) {
     return Object.values(pp).some(perms => (perms || []).includes(permKey));
   };
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -159,7 +159,7 @@ function QualityReports({ user, onLogout }) {
   }
 
   const fetchReports = useCallback(async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/quality-reports`, { headers: { Authorization: `Bearer ${token}` } });

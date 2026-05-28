@@ -113,7 +113,7 @@ function TeamManagement({ user, onLogout }) {
   }, [selectedProject]);
 
   const fetchTeams = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const url = isAdmin && selectedProject 
         ? `${API}/team-members?project=${encodeURIComponent(selectedProject)}`
@@ -129,7 +129,7 @@ function TeamManagement({ user, onLogout }) {
 
   const handleAddMember = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    // setLoading(true);
     try {
       if (editingMember) {
         // تحديث عضو موجود

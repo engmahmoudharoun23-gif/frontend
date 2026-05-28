@@ -58,7 +58,7 @@ function EmployeeRequests({ user, onLogout }) {
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [lockType, setLockType] = useState(false);
@@ -200,7 +200,7 @@ function EmployeeRequests({ user, onLogout }) {
 
   const fetchRequests = async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (typeFilter) params.append('request_type', typeFilter);

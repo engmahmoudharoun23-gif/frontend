@@ -579,7 +579,7 @@ function NewDashboard({ user, onLogout }) {
     return new Intl.DateTimeFormat(isRtl ? 'ar-EG' : 'en-US', { weekday: 'long' }).format(date);
   };
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [projectsStats, setProjectsStats] = useState({});
   const [allProjects, setAllProjects] = useState([]); // جميع المشاريع المتاحة
   const [projectCardLabels, setProjectCardLabels] = useState({}); // مسميات البطاقات لكل مشروع
@@ -739,7 +739,7 @@ function NewDashboard({ user, onLogout }) {
   useEffect(() => {
     // تحميل البيانات الأساسية التي تعتمد على الشهر - مع عرض شاشة التحميل الكاملة
     const loadMainData = async () => {
-      setLoading(true);
+      // setLoading(true);
       try {
         await Promise.all([
           fetchConnectionsStats(),
@@ -942,7 +942,7 @@ function NewDashboard({ user, onLogout }) {
     }
   };
   const fetchProjectsData = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
+    if (showLoading) // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const monthParam = selectedMonth ? `?month=${selectedMonth}` : '';

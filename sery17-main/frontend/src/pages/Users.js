@@ -25,7 +25,7 @@ function Users({ user, onLogout }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get('limit')) || 10);
 
@@ -383,7 +383,7 @@ function Users({ user, onLogout }) {
   useEffect(() => {
     // تحميل البيانات بالتوازي لتسريع الصفحة
     const loadData = async () => {
-      setLoading(true);
+      // setLoading(true);
       try {
         const [usersRes, projectsRes, connProjectsRes, govsRes, permsRes] = await Promise.all([
           axios.get(`${API}/users`).catch(e => ({ data: [] })),

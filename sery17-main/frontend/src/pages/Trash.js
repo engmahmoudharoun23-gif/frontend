@@ -13,7 +13,7 @@ function Trash({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('water_connections'); // 'water_connections' or 'sewage_connections'
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get('limit')) || 15);
@@ -39,7 +39,7 @@ function Trash({ user, onLogout }) {
   }, [activeTab]);
 
   const fetchDeletedItems = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) return;

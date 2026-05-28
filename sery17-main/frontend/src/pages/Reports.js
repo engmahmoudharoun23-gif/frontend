@@ -398,7 +398,7 @@ function Reports({ user, onLogout }) {
       setIsNewReportsFilter(true);
       const fetchNewReports = async () => {
         try {
-          setLoading(true);
+          // setLoading(true);
           const token = localStorage.getItem('token');
           const response = await axios.get(`${API}/reports/notifications/unseen`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -439,7 +439,7 @@ function Reports({ user, onLogout }) {
       // تنفيذ البحث مباشرة
       const fetchWithSearch = async () => {
         try {
-          setLoading(true);
+          // setLoading(true);
           const params = new URLSearchParams();
           params.append('search', searchQuery);
           params.append('page', pageFromUrl);
@@ -967,7 +967,7 @@ const fetchReports = async () => {
     // لا تجلب البلاغات العادية إذا كان فلتر البلاغات الجديدة مفعّل
     if (isNewReportsFilter) return;
     
-    setLoading(true);
+    // setLoading(true);
     
     // إعادة تعيين التحديد عند جلب بلاغات جديدة
     setSelectedReports([]);
@@ -1054,7 +1054,7 @@ const fetchReports = async () => {
     setExportCount(null);
     setCurrentPage(1);
     
-    setLoading(true);
+    // setLoading(true);
     const params = new URLSearchParams();
     if (defaultProj) params.append('project', defaultProj);
     if (defaultGov) params.append('governorate', defaultGov);
@@ -1109,7 +1109,7 @@ const fetchReports = async () => {
     handlePageChange(1);
     
     // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً" (مثل handleQuickSearch)
-    setLoading(true);
+    // setLoading(true);
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, val]) => { 
       if (val && typeof val === 'string' && val.trim()) {
@@ -1375,7 +1375,7 @@ const fetchReports = async () => {
   
   // البحث السريع عن البلاغات حسب جميع الفلاتر
   const handleSearchExportCount = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const params = new URLSearchParams();
       
@@ -1477,7 +1477,7 @@ const fetchReports = async () => {
       return;
     }
     
-    setLoading(true);
+    // setLoading(true);
     try {
       // إذا تم تحديد "الكل"، استخدم التصدير بالفلاتر (أسرع وأكثر موثوقية)
       if (isAllSelected) {
@@ -3110,8 +3110,8 @@ const fetchReports = async () => {
                   
                   if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
                     return (
-                      <div className="text-indigo-900 text-sm mt-3 p-1">
-                        <div className="font-bold mb-1 text-[13px]">
+                      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 mt-3 shadow-sm">
+                        <div className="font-bold mb-2 opacity-90 text-[12px]">
                           {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })}
                         </div>
                         <div className="whitespace-pre-wrap break-words leading-relaxed">
@@ -3156,22 +3156,25 @@ const fetchReports = async () => {
                     const isMotlaq = bubbleName.includes('مطلق');
                     const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
                     
-                    let textClass = 'text-indigo-900';
+                    let bgClass = 'bg-indigo-50 border-indigo-200 text-indigo-900';
+                    let badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
                     let prefixText = t('consultantNoteModal.replyPrefix', { defaultValue: 'رد الموظف:' });
                     
                     if (isMotlaq) {
-                      textClass = 'text-purple-900';
+                      bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
+                      badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
                     } else if (isConsultant) {
-                      textClass = 'text-yellow-900';
+                      bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
+                      badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
                       prefixText = "تعقيب الاستشاري:";
                     }
                     
                     return (
-                      <div key={i} className={`text-sm mt-2 p-1 ${textClass}`}>
-                        <div className="font-bold mb-1 text-[13px] border-b border-gray-100 pb-1">
+                      <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
+                        <div className="font-bold mb-2 opacity-90 text-[12px]">
                           {prefixText} {bubbleName}
                         </div>
-                        <div className="whitespace-pre-wrap break-words leading-relaxed pt-1">
+                        <div className="whitespace-pre-wrap break-words leading-relaxed">
                           {b.text}
                         </div>
                       </div>

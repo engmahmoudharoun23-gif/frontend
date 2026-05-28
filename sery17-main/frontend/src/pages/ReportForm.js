@@ -567,7 +567,7 @@ function ReportForm({ user, onLogout }) {
 
   useEffect(() => {
     if (id) {
-      setLoading(true);
+      // setLoading(true);
       fetchReport().finally(() => setLoading(false));
     }
   }, [id]);
@@ -1051,7 +1051,7 @@ function ReportForm({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    // setLoading(true);
     setErrorMessage('');
 
     try {

@@ -137,7 +137,7 @@ function HRManagement({ user, onLogout }) {
 
   const fetchEmployees = async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const res = await axios.get(`${API}/hr/employees`, authHeaders);
       setEmployees(res.data || []);
     } catch (e) { console.error('Failed to fetch employees:', e); }

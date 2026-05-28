@@ -14,7 +14,7 @@ function Cars({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const [cars, setCars] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -73,7 +73,7 @@ function Cars({ user, onLogout }) {
 
   const fetchCars = useCallback(async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const params = new URLSearchParams();
       if (selectedProject) params.append('project', selectedProject);
       // Fetch all for client-side pagination

@@ -39,7 +39,7 @@ function SupportMessages({ user, onLogout }) {
   }, [filter]);
 
   const fetchMessages = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const url = filter ? `${API}/support/messages?status=${filter}` : `${API}/support/messages`;
