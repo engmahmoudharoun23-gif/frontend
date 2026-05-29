@@ -1725,10 +1725,19 @@
     "saving": "Saving...",
     "saveAndSend": "Save and Send",
     "saveSuccess": "Consultant note saved successfully and notification sent",
-    "saveError": "An error occurred while saving the note"
+    "saveError": "An error occurred while saving the note",
+    "writeNoteLabel": "Write note here:",
+    "previousReplies": "Previous Replies:",
+    "consultantFollowUp": "Consultant Follow-up:",
+    "employeeReply": "Employee Reply:",
+    "shazlyHamed": "Eng. Shazly Hamed",
+    "motlaqAlGhamdi": "Eng. Motlaq Al-Ghamdi",
+    "defaultConsultantName": "Eng. Medhat Hussein",
+    "consultantNoteBy": "Consultant Note:"
   },
   "consultantNotesPage": {
     "title": "Consultant Notes",
+    "consultantNoteBy": "Consultant Note:",
     "reportCount": "Reports",
     "noNotes": "No consultant notes available currently",
     "reportNumber": "Report Number",
@@ -1764,7 +1773,15 @@
     "processTooltip": "Consultant note processing status by Level 3",
     "prev": "Previous",
     "next": "Next",
-    "pageInfo": "Page {{current}} of {{total}}"
+    "pageInfo": "Page {{current}} of {{total}}",
+    "conversationClosed": "Conversation Closed",
+    "consultantFollowUp": "Consultant Follow-up:",
+    "employeeReply": "Employee Reply:",
+    "previousReplies": "Previous Replies:",
+    "defaultConsultantName": "Eng. Medhat Hussein",
+    "shazlyHamed": "Eng. Shazly Hamed",
+    "motlaqAlGhamdi": "Eng. Motlaq Al-Ghamdi",
+    "noSearchResults": "No results found matching search"
   },
   "workPermits": {
     "title": "Work Permits",

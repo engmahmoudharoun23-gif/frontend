@@ -1698,10 +1698,19 @@
     "saving": "جاري الحفظ...",
     "saveAndSend": "حفظ وإرسال",
     "saveSuccess": "تم حفظ ملاحظة الاستشاري بنجاح وإرسال إشعار لصاحب البلاغ",
-    "saveError": "حدث خطأ أثناء حفظ الملاحظة"
+    "saveError": "حدث خطأ أثناء حفظ الملاحظة",
+    "writeNoteLabel": "اكتب الملاحظة هنا:",
+    "previousReplies": "الردود السابقة:",
+    "consultantFollowUp": "تعقيب الاستشاري:",
+    "employeeReply": "رد الموظف:",
+    "shazlyHamed": "المهندس الشاذلي حامد",
+    "motlaqAlGhamdi": "المهندس مطلق الغامدي",
+    "defaultConsultantName": "م/ مدحت حسين",
+    "consultantNoteBy": "ملاحظة الاستشاري:"
   },
   "consultantNotesPage": {
     "title": "ملاحظات الاستشاري",
+    "consultantNoteBy": "ملاحظة الاستشاري:",
     "reportCount": "بلاغ",
     "noNotes": "لا توجد ملاحظات من الاستشاري حالياً",
     "reportNumber": "رقم البلاغ",
@@ -1737,7 +1746,15 @@
     "processTooltip": "حالة معالجة الملاحظة من قبل المستوى الثالث",
     "prev": "السابق",
     "next": "التالي",
-    "pageInfo": "صفحة {{current}} من {{total}}"
+    "pageInfo": "صفحة {{current}} من {{total}}",
+    "conversationClosed": "المحادثة مغلقة",
+    "consultantFollowUp": "تعقيب الاستشاري:",
+    "employeeReply": "رد الموظف:",
+    "previousReplies": "الردود السابقة:",
+    "defaultConsultantName": "م/ مدحت حسين",
+    "shazlyHamed": "المهندس الشاذلي حامد",
+    "motlaqAlGhamdi": "المهندس مطلق الغامدي",
+    "noSearchResults": "لا توجد نتائج مطابقة للبحث"
   },
   "workPermits": {
     "title": "تصاريح العمل",

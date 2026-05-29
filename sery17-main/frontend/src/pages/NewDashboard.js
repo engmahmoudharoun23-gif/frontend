@@ -91,40 +91,94 @@ const DEFAULT_CARD_LABELS = {
   terrestrial_unlicensed: 'عدد الرخص الغير صادرة لبلاغات التراب'
 };
 
-const PROJECT_NAMES_EN = {
-  'مشروع المحافظات الغربية - القطاع الأوسط': 'Western Governorates Project - Middle Sector',
-  'مشروع المحافظات الغربية -القطاع الأوسط': 'Western Governorates Project - Middle Sector',
-  'مشروع المحافظات الشمالية -القطاع الأوسط': 'Northern Governorates Project - Middle Sector',
-  'مشروع المحافظات الجنوبية -القطاع الأوسط': 'Southern Governorates Project - Middle Sector',
-  'مشروع كشف التسربات وإصلاحها': 'Leak Detection and Repair Project',
+// Helper: normalize Arabic text for fuzzy matching
+const normAr = (t) => !t ? '' : t.toString().trim()
+  .replace(/\s+/g, ' ')
+  .replace(/[أإآ]/g, 'ا')
+  .replace(/ة/g, 'ه')
+  .replace(/ى/g, 'ي');
+
+// All known project name variants → English (full name)
+const PROJECT_NAMES_EN_RAW = {
+  'مشروع المحافظات الغربية - القطاع الأوسط': 'Western Governorates Project',
+  'مشروع المحافظات الغربية -القطاع الأوسط': 'Western Governorates Project',
+  'مشروع المحافظات الغربيه - القطاع الاوسط': 'Western Governorates Project',
+  'مشروع المحافظات الغربيه -القطاع الاوسط': 'Western Governorates Project',
+  'المحافظات الغربية': 'Western Governorates Project',
+  'المحافظات الغربيه': 'Western Governorates Project',
+  'مشروع المحافظات الشمالية -القطاع الأوسط': 'Northern Governorates Project',
+  'مشروع المحافظات الشمالية - القطاع الأوسط': 'Northern Governorates Project',
+  'مشروع المحافظات الشماليه -القطاع الاوسط': 'Northern Governorates Project',
+  'مشروع المحافظات الشماليه - القطاع الاوسط': 'Northern Governorates Project',
+  'المحافظات الشمالية': 'Northern Governorates Project',
+  'المحافظات الشماليه': 'Northern Governorates Project',
+  'مشروع المحافظات الجنوبية -القطاع الأوسط': 'Southern Governorates Project',
+  'مشروع المحافظات الجنوبية - القطاع الأوسط': 'Southern Governorates Project',
+  'مشروع المحافظات الجنوبيه -القطاع الاوسط': 'Southern Governorates Project',
+  'المحافظات الجنوبية': 'Southern Governorates Project',
+  'المحافظات الجنوبيه': 'Southern Governorates Project',
+  'مشروع كشف التسربات وإصلاحها': 'Leak Detection & Repair Project',
+  'مشروع كشف التسربات واصلاحها': 'Leak Detection & Repair Project',
+  'كشف التسربات وإصلاحها': 'Leak Detection & Repair',
   'ايصال': 'Eisal Project',
-  'ايصال الرياض': 'Eisal Riyadh Project',
+  'إيصال': 'Eisal Project',
   'مشروع ايصال': 'Eisal Project',
-  'إيصال': 'Eisal',
-  'التشوه البصري': 'Visual Distortion',
-  'التشوة البصري': 'Visual Distortion',
+  'مشروع إيصال': 'Eisal Project',
+  'ايصال الرياض': 'Eisal Riyadh Project',
+  'إيصال الرياض': 'Eisal Riyadh Project',
+  'مشروع ايصال الرياض': 'Eisal Riyadh Project',
+  'ايصال مكة': 'Eisal Mecca Project',
+  'إيصال مكة': 'Eisal Mecca Project',
+  'مشروع ايصال مكة': 'Eisal Mecca Project',
+  'مشروع إيصال مكة': 'Eisal Mecca Project',
+  'التشوه البصري': 'Visual Distortion Project',
+  'التشوة البصري': 'Visual Distortion Project',
   'مشروع التشوه البصري': 'Visual Distortion Project',
   'مشروع التشوة البصري': 'Visual Distortion Project',
   'مشروع معالجة التشوه البصري': 'Visual Distortion Remedy Project',
   'مشروع معالجة التشوة البصري': 'Visual Distortion Remedy Project',
   'معالجة التشوه البصري': 'Visual Distortion Remedy',
   'معالجة التشوة البصري': 'Visual Distortion Remedy',
-  'ايصال مكة': 'Eisal Mecca Project',
-  'إيصال مكة': 'Eisal Mecca Project',
-  'مشروع ايصال مكة': 'Eisal Mecca Project',
-  'مشروع إيصال مكة': 'Eisal Mecca Project'
 };
 
-const CLEAN_PROJECT_NAMES_EN = {
+// Build normalized lookup map once
+const PROJECT_NAMES_EN_NORM = {};
+Object.entries(PROJECT_NAMES_EN_RAW).forEach(([k, v]) => { PROJECT_NAMES_EN_NORM[normAr(k)] = v; });
+const PROJECT_NAMES_EN = PROJECT_NAMES_EN_RAW;
+
+// Short display names for charts/cards
+const CLEAN_PROJECT_NAMES_EN_RAW = {
   'مشروع المحافظات الغربية - القطاع الأوسط': 'Western Governorates',
   'مشروع المحافظات الغربية -القطاع الأوسط': 'Western Governorates',
+  'مشروع المحافظات الغربيه - القطاع الاوسط': 'Western Governorates',
+  'مشروع المحافظات الغربيه -القطاع الاوسط': 'Western Governorates',
+  'المحافظات الغربية': 'Western Governorates',
+  'المحافظات الغربيه': 'Western Governorates',
   'مشروع المحافظات الشمالية -القطاع الأوسط': 'Northern Governorates',
+  'مشروع المحافظات الشمالية - القطاع الأوسط': 'Northern Governorates',
+  'مشروع المحافظات الشماليه -القطاع الاوسط': 'Northern Governorates',
+  'مشروع المحافظات الشماليه - القطاع الاوسط': 'Northern Governorates',
+  'المحافظات الشمالية': 'Northern Governorates',
+  'المحافظات الشماليه': 'Northern Governorates',
   'مشروع المحافظات الجنوبية -القطاع الأوسط': 'Southern Governorates',
+  'مشروع المحافظات الجنوبية - القطاع الأوسط': 'Southern Governorates',
+  'مشروع المحافظات الجنوبيه -القطاع الاوسط': 'Southern Governorates',
+  'المحافظات الجنوبية': 'Southern Governorates',
+  'المحافظات الجنوبيه': 'Southern Governorates',
   'مشروع كشف التسربات وإصلاحها': 'Leak Detection & Repair',
+  'مشروع كشف التسربات واصلاحها': 'Leak Detection & Repair',
+  'كشف التسربات وإصلاحها': 'Leak Detection & Repair',
   'ايصال': 'Eisal',
-  'ايصال الرياض': 'Eisal Riyadh',
-  'مشروع ايصال': 'Eisal',
   'إيصال': 'Eisal',
+  'مشروع ايصال': 'Eisal',
+  'مشروع إيصال': 'Eisal',
+  'ايصال الرياض': 'Eisal Riyadh',
+  'إيصال الرياض': 'Eisal Riyadh',
+  'مشروع ايصال الرياض': 'Eisal Riyadh',
+  'ايصال مكة': 'Eisal Mecca',
+  'إيصال مكة': 'Eisal Mecca',
+  'مشروع ايصال مكة': 'Eisal Mecca',
+  'مشروع إيصال مكة': 'Eisal Mecca',
   'التشوه البصري': 'Visual Distortion',
   'التشوة البصري': 'Visual Distortion',
   'مشروع التشوه البصري': 'Visual Distortion',
@@ -133,10 +187,25 @@ const CLEAN_PROJECT_NAMES_EN = {
   'مشروع معالجة التشوة البصري': 'Visual Distortion',
   'معالجة التشوه البصري': 'Visual Distortion',
   'معالجة التشوة البصري': 'Visual Distortion',
-  'ايصال مكة': 'Eisal Mecca',
-  'إيصال مكة': 'Eisal Mecca',
-  'مشروع ايصال مكة': 'Eisal Mecca',
-  'مشروع إيصال مكة': 'Eisal Mecca'
+};
+
+// Build normalized lookup for clean names
+const CLEAN_PROJECT_NAMES_EN_NORM = {};
+Object.entries(CLEAN_PROJECT_NAMES_EN_RAW).forEach(([k, v]) => { CLEAN_PROJECT_NAMES_EN_NORM[normAr(k)] = v; });
+const CLEAN_PROJECT_NAMES_EN = CLEAN_PROJECT_NAMES_EN_RAW;
+
+// Normalization-aware project lookup (full name)
+const lookupProjectEn = (name) => {
+  if (!name) return null;
+  if (PROJECT_NAMES_EN[name]) return PROJECT_NAMES_EN[name];
+  return PROJECT_NAMES_EN_NORM[normAr(name)] || null;
+};
+
+// Normalization-aware clean project name lookup (short for charts)
+const lookupCleanProjectEn = (name) => {
+  if (!name) return null;
+  if (CLEAN_PROJECT_NAMES_EN[name]) return CLEAN_PROJECT_NAMES_EN[name];
+  return CLEAN_PROJECT_NAMES_EN_NORM[normAr(name)] || null;
 };
 
 const DEFAULT_CARD_LABELS_EN = {
@@ -229,7 +298,15 @@ const BRANDING_TRANSLATIONS_EN = {
 const translateProject = (name, isRtl) => {
   if (!name) return "";
   if (isRtl) return name;
-  return PROJECT_NAMES_EN[name] || name.replace('مشروع إصلاح أعمال ', 'Repair Works Project ').replace('مشروع ', 'Project ');
+  const clean = name.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '');
+  return lookupProjectEn(name) || lookupCleanProjectEn(name) || lookupProjectEn(clean) || lookupCleanProjectEn(clean) || name.replace('مشروع إصلاح أعمال ', 'Repair Works Project ').replace('مشروع ', 'Project ');
+};
+
+const smartTranslateProjectName = (proj, isRtl) => {
+  if (!proj) return '';
+  const clean = proj.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '');
+  if (isRtl) return clean;
+  return lookupCleanProjectEn(proj) || lookupProjectEn(proj) || lookupCleanProjectEn(clean) || lookupProjectEn(clean) || clean;
 };
 
 const translateStatus = (status, isRtl) => {
@@ -459,84 +536,80 @@ const ProjectCard = ({ title, stats, projectKey, cardLabels = [] }) => {
   );
 };
 
-const GOVERNORATES_EN = {
-  'الغربية': 'Gharbia',
-  'المنوفية': 'Menofia',
-  'الشرقية': 'Sharqia',
-  'الدقهلية': 'Dakahlia',
-  'كفر الشيخ': 'Kafr El-Sheikh',
-  'دمياط': 'Damietta',
-  'البحيرة': 'Beheira',
-  'الاسكندرية': 'Alexandria',
-  'الإسكندرية': 'Alexandria',
-  'القليوبية': 'Qalyubia',
-  'الجيزة': 'Giza',
-  'القاهرة': 'Cairo',
-  'الفيوم': 'Fayoum',
-  'بني سويف': 'Beni Suef',
-  'المنيا': 'Minya',
-  'أسيوط': 'Asyut',
-  'سوهاج': 'Sohag',
-  'قنا': 'Qena',
-  'الأقصر': 'Luxor',
-  'الاقصر': 'Luxor',
-  'أسوان': 'Aswan',
-  'اسوان': 'Aswan',
-  'البحر الأحمر': 'Red Sea',
-  'الوادي الجديد': 'New Valley',
-  'مطروح': 'Matrouh',
-  'شمال سيناء': 'North Sinai',
-  'جنوب سيناء': 'South Sinai',
-  'بورسعيد': 'Port Said',
-  'الإسماعيلية': 'Ismailia',
-  'الاسماعيلية': 'Ismailia',
-  'السويس': 'Suez',
-  // Saudi Arabia Governorates & Cities
-  'الطائف': 'Taif',
+const GOVERNORATES_EN_RAW = {
+  // Saudi Arabia - Western Governorates Project
   'الدوادمي': 'Dawadmi',
-  'مرات': 'Marat',
   'شقراء': 'Shaqra',
-  'القويعية': 'Quwayiyah',
-  'عفيف': 'Afif',
-  'القصب': 'Al-Qasab',
-  'ساجر': 'Sajir',
-  'الرياض': 'Riyadh',
-  'جدة': 'Jeddah',
   'المزاحمية': 'Al-Muzahmiyah',
   'ضرماء': 'Dhurma',
   'ضرما': 'Dhurma',
-  'المنفوحة': 'Manfouha',
+  'مرات': 'Marat',
+  'ساجر': 'Sajir',
+  'القصب': 'Al-Qasab',
+  'عفيف': 'Afif',
+  'القويعية': 'Al-Quwayiyah',
+  'الطائف': 'Taif',
+  // Saudi Arabia - Northern Governorates Project
+  'المجمعة': 'Al-Majmaah',
+  'الزلفي': 'Al-Zulfi',
+  'الذلفي': 'Al-Zulfi',
+  'حوطة بني تميم': 'Hawtat Bani Tamim',
+  'الحريق': 'Al-Hariq',
+  'رنية': 'Ranyah',
+  'وادي الدواسر': 'Wadi Al-Dawasir',
+  // Saudi Arabia - Other
+  'الرياض': 'Riyadh',
+  'جدة': 'Jeddah',
   'مكة': 'Mecca',
   'مكة المكرمة': 'Mecca',
   'المدينة': 'Medina',
   'المدينة المنورة': 'Medina',
+  'الخرج': 'Al-Kharj',
+  'المنفوحة': 'Manfouha',
   'القصيم': 'Qassim',
-  'عسير': 'Asir',
-  'تبوك': 'Tabuk',
+  'بريدة': 'Buraydah',
+  'عنيزة': 'Unayzah',
+  'الرس': 'Al-Rass',
   'حائل': 'Hail',
-  'الحدود الشمالية': 'Northern Borders',
+  'تبوك': 'Tabuk',
+  'الوجه': 'Al-Wajh',
+  'عسير': 'Asir',
+  'أبها': 'Abha',
   'جازان': 'Jazan',
   'نجران': 'Najran',
   'الباحة': 'Al-Baha',
-  'تاروت': 'Tarout',
-  'القطيف': 'Al-Qatif',
-  'الجبيل': 'Al-Jubail',
-  'الخبر': 'Al-Khobar',
+  'الحدود الشمالية': 'Northern Borders',
+  'عرعر': 'Arar',
+  'رفحاء': 'Rafha',
+  'طريف': 'Turaif',
+  'سكاكا': 'Sakaka',
+  'القريات': 'Al-Qurayyat',
+  'دومة الجندل': 'Dumat Al-Jandal',
+  'الدمام': 'Dammam',
   'الظهران': 'Dhahran',
-  'الخفجي': 'Al-Khafji',
-  'حفر الباطن': 'Hafar Al-Batin',
+  'الخبر': 'Al-Khobar',
+  'الجبيل': 'Al-Jubail',
   'الأحساء': 'Al-Ahsa',
-  'قرية العليا': 'Qaryat Al-Ulya',
-  'النعيرية': 'Al-Nairyah',
+  'القطيف': 'Al-Qatif',
+  'حفر الباطن': 'Hafar Al-Batin',
+  'الخفجي': 'Al-Khafji',
   'رأس تنورة': 'Ras Tanura',
   'أبقيق': 'Abqaiq',
   'ابقيق': 'Abqaiq',
-  'الدمام': 'Dammam'
+  'النعيرية': 'Al-Nairyah',
+  'قرية العليا': 'Qaryat Al-Ulya',
+  'تاروت': 'Tarout',
 };
+
+// Build normalized lookup for governorates
+const GOVERNORATES_EN_NORM = {};
+Object.entries(GOVERNORATES_EN_RAW).forEach(([k, v]) => { GOVERNORATES_EN_NORM[normAr(k)] = v; });
+const GOVERNORATES_EN = GOVERNORATES_EN_RAW;
 
 const translateGovernorate = (gov, isRtl) => {
   if (isRtl || !gov) return gov;
-  return GOVERNORATES_EN[gov] || gov;
+  if (GOVERNORATES_EN[gov]) return GOVERNORATES_EN[gov];
+  return GOVERNORATES_EN_NORM[normAr(gov)] || gov;
 };
 
 function NewDashboard({ user, onLogout }) {
@@ -881,12 +954,9 @@ function NewDashboard({ user, onLogout }) {
     }
   };
   
-  // Get available projects based on user role
   const getAvailableProjects = () => {
     const formatLabel = (proj) => {
-      const clean = proj.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '');
-      if (isRtl) return clean;
-      return PROJECT_NAMES_EN[proj] || clean;
+      return smartTranslateProjectName(proj, isRtl);
     };
 
     // استخدام allProjects التي تم جلبها من API
@@ -1191,9 +1261,7 @@ function NewDashboard({ user, onLogout }) {
   const getProjectChartData = () => {
     return getSortedProjects().map(([key, stats]) => {
       const connStats = connectionsStatsByProject[stats.name];
-      const cleanLabelAr = stats.name ? stats.name.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '') : key;
-      const cleanLabelEn = CLEAN_PROJECT_NAMES_EN[stats.name] || cleanLabelAr;
-      const displayName = isRtl ? cleanLabelAr : cleanLabelEn;
+      const displayName = smartTranslateProjectName(stats.name || key, isRtl);
       return {
         name: displayName,
         total: stats.total || 0,
@@ -1695,8 +1763,7 @@ function NewDashboard({ user, onLogout }) {
             {governorate72hBadges.filter(b => b.count > 0).length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {governorate72hBadges.filter(b => b.count > 0).slice(0, 15).map((badge, index) => {
-                  const cleanedProject = badge.project ? badge.project.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').split(' -')[0] : '';
-                  const translatedProj = isRtl ? cleanedProject : (CLEAN_PROJECT_NAMES_EN[badge.project] || cleanedProject);
+                  const translatedProj = smartTranslateProjectName(badge.project, isRtl);
                   return (
                     <div 
                       key={`${badge.governorate}-${index}`}
@@ -1769,8 +1836,7 @@ function NewDashboard({ user, onLogout }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {getSortedProjects().map(([key, stats], index) => {
-            const shortLabelName = stats.name ? stats.name.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '') : key;
-            const shortName = isRtl ? shortLabelName : (CLEAN_PROJECT_NAMES_EN[stats.name] || shortLabelName);
+            const shortName = smartTranslateProjectName(stats.name || key, isRtl);
             const connStats = connectionsStatsByProject[stats.name];
             
             const explicitlyHasWater = checkExplicitPerm(stats.name, 'water_connections');
@@ -1968,8 +2034,7 @@ function NewDashboard({ user, onLogout }) {
                   .filter(item => item.count > 0)
                   .sort((a, b) => b.count - a.count)
                   .map((item, idx) => {
-                    const cleanItemProj = item.project ? item.project.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '') : '';
-                    const translatedItemProj = isRtl ? cleanItemProj : (CLEAN_PROJECT_NAMES_EN[item.project] || cleanItemProj);
+                    const translatedItemProj = smartTranslateProjectName(item.project, isRtl);
                     return (
                       <div 
                         key={`${item.governorate}-${idx}`} 

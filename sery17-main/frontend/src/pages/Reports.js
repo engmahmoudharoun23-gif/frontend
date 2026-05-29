@@ -3160,7 +3160,7 @@ const fetchReports = async () => {
             </div>
             
             <div className="mb-4">
-              <label className="block text-sm font-bold text-gray-700 mb-2">اكتب الملاحظة هنا:</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.writeNoteLabel', { defaultValue: 'اكتب الملاحظة هنا:' })}</label>
               <textarea
                 value={currentConsultantNote}
                 onChange={(e) => setCurrentConsultantNote(e.target.value)}
@@ -3174,7 +3174,7 @@ const fetchReports = async () => {
             
             {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
               <div className="mb-5 flex flex-col gap-4">
-                <div className="text-sm font-bold text-gray-700 border-b pb-1">الردود السابقة:</div>
+                <div className="text-sm font-bold text-gray-700 border-b pb-1">{t('consultantNoteModal.previousReplies', { defaultValue: 'الردود السابقة:' })}</div>
                 {(() => {
                   const r = reports.find(rep => rep.id === selectedConsultantReportId);
                   const replyText = r.consultant_note_reply;
@@ -3183,10 +3183,24 @@ const fetchReports = async () => {
                     return (
                       <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 mt-3 shadow-sm">
                         <div className="font-bold mb-2 opacity-90 text-[12px]">
-                          {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })}
+                          {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {(() => {
+                            const name = r.consultant_note_replied_by;
+                            if (!name) return t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' });
+                            const lowerName = name.toLowerCase();
+                            if (lowerName.includes('shazly') || lowerName.includes('شاذلي')) {
+                              return t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                            }
+                            if (lowerName.includes('motlaq') || lowerName.includes('مطلق')) {
+                              return t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                            }
+                            if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
+                              return t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                            }
+                            return translateBrandingText(name, isRtl);
+                          })()}
                         </div>
                         <div className="whitespace-pre-wrap break-words leading-relaxed">
-                          {replyText}
+                          {translateBrandingText(replyText, isRtl)}
                         </div>
                       </div>
                     );
@@ -3198,7 +3212,7 @@ const fetchReports = async () => {
                     const lastIndex = legacyParts.length - 1;
                     currentText = legacyParts.map((part, index) => {
                       if (index === 0) return part;
-                      const author = index === lastIndex ? (r.consultant_note_replied_by || 'المستوى الثالث') : 'مطلق الغامدي';
+                      const author = index === lastIndex ? (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })) : t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' });
                       return `---رد: ${author}---${part}`;
                     }).join('');
                   }
@@ -3208,8 +3222,8 @@ const fetchReports = async () => {
                   
                   if (parts[0].trim()) {
                     const firstAuthor = parts.length > 1 && replyText.includes('--- إضافة جديدة ---') 
-                      ? 'مطلق الغامدي' 
-                      : (r.consultant_note_replied_by || 'المستوى الثالث');
+                      ? t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' }) 
+                      : (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' }));
                     bubbles.push({ name: firstAuthor, text: parts[0].trim() });
                   }
                   
@@ -3220,24 +3234,33 @@ const fetchReports = async () => {
                   }
                   
                   return bubbles.map((b, i) => {
-                    // Translate old English names that were saved before the fix
                     let bubbleName = b.name;
-                    if (bubbleName.toLowerCase().includes('shazly')) bubbleName = 'م / الشاذلي حامد';
+                    const lowerName = bubbleName.toLowerCase();
+                    const isShazly = lowerName.includes('shazly') || lowerName.includes('شاذلي');
+                    const isMotlaq = lowerName.includes('motlaq') || lowerName.includes('مطلق');
+                    const isConsultant = lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('الاستشاري');
                     
-                    const isMotlaq = bubbleName.includes('مطلق');
-                    const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
+                    if (isShazly) {
+                      bubbleName = t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                    } else if (isMotlaq) {
+                      bubbleName = t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                    } else if (isConsultant) {
+                      bubbleName = t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                    } else {
+                      bubbleName = translateBrandingText(bubbleName, isRtl);
+                    }
                     
                     let bgClass = 'bg-indigo-50 border-indigo-200 text-indigo-900';
                     let badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
-                    let prefixText = t('consultantNoteModal.replyPrefix', { defaultValue: 'رد الموظف:' });
+                    let prefixText = t('consultantNoteModal.employeeReply', { defaultValue: 'رد الموظف:' });
                     
                     if (isMotlaq) {
                       bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
                       badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                    } else if (isConsultant) {
+                    } else if (isConsultant || isShazly) {
                       bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
                       badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                      prefixText = "تعقيب الاستشاري:";
+                      prefixText = t('consultantNoteModal.consultantFollowUp', { defaultValue: 'تعقيب الاستشاري:' });
                     }
                     
                     return (
@@ -3246,7 +3269,7 @@ const fetchReports = async () => {
                           {prefixText} {bubbleName}
                         </div>
                         <div className="whitespace-pre-wrap break-words leading-relaxed">
-                          {b.text}
+                          {translateBrandingText(b.text, isRtl)}
                         </div>
                       </div>
                     );
