@@ -13,8 +13,15 @@ const API = `${BACKEND_URL}/api`;
 const ConsultantNotes = ({ user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialReports = () => {
+    try {
+      const cached = localStorage.getItem('cache_ConsultantNotes.js_reports');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [reports, setReports] = useState(getInitialReports);
+  const [loading, setLoading] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -41,6 +48,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setReports(response.data.reports || []);
+      try { localStorage.setItem('cache_ConsultantNotes.js_reports', JSON.stringify(response.data.reports || [])); } catch(e) {}
     } catch (error) {
       console.error('Error fetching consultant notes:', error);
     } finally {

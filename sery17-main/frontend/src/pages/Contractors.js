@@ -231,8 +231,15 @@ function Contractors({ user, onLogout }) {
     return () => window.removeEventListener('wfm_translation_updated', handleTranslationUpdated);
   }, []);
   
-  const [contractors, setContractors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialContractors = () => {
+    try {
+      const cached = localStorage.getItem('cache_Contractors.js_contractors');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [contractors, setContractors] = useState(getInitialContractors);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [filterProject, setFilterProject] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -263,11 +270,9 @@ function Contractors({ user, onLogout }) {
   }, []);
 
   useEffect(() => {
-    if (projects.length > 0) {
-      fetchContractors();
-      setCurrentPage(1);
-    }
-  }, [projects, filterProject]);
+    fetchContractors();
+    setCurrentPage(1);
+  }, [filterProject]);
 
   const fetchProjects = async () => {
     try {
@@ -295,6 +300,7 @@ function Contractors({ user, onLogout }) {
         : `${API}/contractors?all_contractors=true`;
       const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
       setContractors(res.data);
+      try { localStorage.setItem('cache_Contractors.js_contractors', JSON.stringify(res.data)); } catch(e) {}
     } catch (e) {
       console.error(e);
     } finally {

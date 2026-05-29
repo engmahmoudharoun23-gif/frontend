@@ -647,7 +647,7 @@ function NewDashboard({ user, onLogout }) {
   // States for 72-hour reports filter
   const [selectedProject72h, setSelectedProject72h] = useState('');
   const [selectedGovernorate72h, setSelectedGovernorate72h] = useState('');
-  const [selectedDate72h, setSelectedDate72h] = useState(''); // New State
+  const [selectedDate72h, setSelectedDate72h] = useState(() => new Date().toISOString().split('T')[0]); // New State
   const [reports72hCount, setReports72hCount] = useState(0);
   const [reports72hList, setReports72hList] = useState([]);
   const [loading72h, setLoading72h] = useState(false);
@@ -659,9 +659,11 @@ function NewDashboard({ user, onLogout }) {
   const [last72HoursCounts, setLast72HoursCounts] = useState({});
   const [governorate72hBadges, setGovernorate72hBadges] = useState([]);
 
+  const [is72hInitialized, setIs72hInitialized] = useState(false);
+
   // تعيين القيم الافتراضية لفلتر 72 ساعة بناءً على نوع المستخدم
   useEffect(() => {
-    if (user && !selectedDate72h) {
+    if (user && !is72hInitialized) {
       // 1. تعيين التاريخ الافتراضي لليوم ليظهر سجل 72 ساعة مباشرة عند الفتح
       const today = new Date().toISOString().split('T')[0];
       setSelectedDate72h(today);
@@ -678,8 +680,9 @@ function NewDashboard({ user, onLogout }) {
       } else {
         setSelectedCategory72h('reports');
       }
+      setIs72hInitialized(true);
     }
-  }, [user]);
+  }, [user, is72hInitialized]);
 
   // جلب إحصائيات التوصيلات
   const fetchConnectionsStats = async () => {
@@ -867,7 +870,7 @@ function NewDashboard({ user, onLogout }) {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `بلاغات_72 ساعة_${selectedGovernorate72h}_${new Date().toLocaleDateString('en-GB')}.xlsx`);
+      link.setAttribute('download', `بلاغات_24 ساعة_${selectedGovernorate72h}_${new Date().toLocaleDateString('en-GB')}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -1424,7 +1427,7 @@ function NewDashboard({ user, onLogout }) {
               <h3 className="text-sm sm:text-base font-bold text-orange-800 mb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span>🕐</span>
-                  <span>{d('سجل الـ 72 ساعة الأخيرة', 'Last 72 Hours Log')}</span>
+                  <span>{d('سجل الـ 24 ساعة الأخيرة', 'Last 24 Hours Log')}</span>
                 </div>
                 <div className="flex gap-1">
                   <button 
@@ -1681,10 +1684,10 @@ function NewDashboard({ user, onLogout }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span>{d('المحافظات', 'Governorates')} - {selectedCategory72h === 'reports' ? d('بلاغات الإصلاح', 'Repair Reports') : selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} ({d('72 ساعة', '72 Hours')})</span>
+              <span>{d('المحافظات', 'Governorates')} - {selectedCategory72h === 'reports' ? d('بلاغات الإصلاح', 'Repair Reports') : selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} ({d('24 ساعة', '24 Hours')})</span>
             </h3>
             <p className="text-xs text-gray-600 mb-3">
-              ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : d('التوصيلات', 'connections')} {d(' من تاريخ المباشرة ', ' from start date ')} <strong>{selectedDate72h ? new Date(selectedDate72h).toLocaleString(isRtl ? 'ar-EG' : 'en-GB') : new Date(Date.now() - 72*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', {
+              ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : d('التوصيلات', 'connections')} {d(' من تاريخ المباشرة ', ' from start date ')} <strong>{selectedDate72h ? new Date(selectedDate72h).toLocaleString(isRtl ? 'ar-EG' : 'en-GB') : new Date(Date.now() - 24*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', {
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
               })}</strong> {d('حتى الآن', 'until now')}
             </p>
@@ -1932,7 +1935,7 @@ function NewDashboard({ user, onLogout }) {
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <span className="text-red-600">🔴</span>
                 {selectedCategory72h === 'reports' ? d('البلاغات', 'Reports') : 
-                 selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} {d('المضافة خلال 72 ساعة لكل محافظة', 'Added in Last 72 Hours by Governorate')}
+                 selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} {d('المضافة خلال 24 ساعة لكل محافظة', 'Added in Last 24 Hours by Governorate')}
               </h3>
               <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
                 📅 {new Date().toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB', { 
@@ -1946,7 +1949,7 @@ function NewDashboard({ user, onLogout }) {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-blue-800">
                 ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : 
-                         selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'water connections') : d('توصيلات الصرف', 'sewage connections')} {d('من تاريخ المباشرة ', ' from start date ')} <strong>{new Date(Date.now() - 72*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', { 
+                         selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'water connections') : d('توصيلات الصرف', 'sewage connections')} {d('من تاريخ المباشرة ', ' from start date ')} <strong>{new Date(Date.now() - 24*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', { 
                   year: 'numeric', 
                   month: 'numeric', 
                   day: 'numeric',
@@ -1958,7 +1961,7 @@ function NewDashboard({ user, onLogout }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
               {!last72HoursCounts || last72HoursCounts.length === 0 ? (
                 <div className="col-span-full text-center py-8 text-gray-500">
-                  {d('لا توجد بلاغات جديدة خلال آخر 72 ساعة', 'No new reports during the last 72 hours')}
+                  {d('لا توجد بلاغات جديدة خلال آخر 24 ساعة', 'No new reports during the last 24 hours')}
                 </div>
               ) : (
                 [...last72HoursCounts]
@@ -1995,7 +1998,7 @@ function NewDashboard({ user, onLogout }) {
                           </div>
                         </div>
                         <div className="text-xs text-red-600 mt-1 font-medium">
-                          {selectedCategory72h === 'reports' ? d('جديد خلال 72 ساعة', 'New in 72 hours') : d('جديدة خلال 72 ساعة', 'New in 72 hours')}
+                          {selectedCategory72h === 'reports' ? d('جديد خلال 24 ساعة', 'New in 24 hours') : d('جديدة خلال 24 ساعة', 'New in 24 hours')}
                         </div>
                       </div>
                     );

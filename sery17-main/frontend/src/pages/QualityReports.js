@@ -31,7 +31,14 @@ function QualityReports({ user, onLogout }) {
     return () => window.removeEventListener('wfm_translation_updated', handleTranslationUpdated);
   }, []);
 
-  const [reports, setReports] = useState([]);
+  const getInitialReports = () => {
+    try {
+      const cached = localStorage.getItem('cache_QualityReports.js_reports');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [reports, setReports] = useState(getInitialReports);
   const hasPermission = (permKey) => {
     if (user?.role === 'admin') return true;
     if ((user?.permissions || []).includes(permKey)) return true;
@@ -39,7 +46,7 @@ function QualityReports({ user, onLogout }) {
     return Object.values(pp).some(perms => (perms || []).includes(permKey));
   };
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -164,6 +171,7 @@ function QualityReports({ user, onLogout }) {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/quality-reports`, { headers: { Authorization: `Bearer ${token}` } });
       setReports(res.data || []);
+      try { localStorage.setItem('cache_QualityReports.js_reports', JSON.stringify(res.data || [])); } catch(e) {}
     } catch { toast.error(t('qualityReports.downloadError')); }
     finally { setLoading(false); }
   }, [t]);

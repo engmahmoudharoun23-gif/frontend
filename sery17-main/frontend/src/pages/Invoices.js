@@ -28,9 +28,16 @@ function Invoices({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const platformName = localStorage.getItem('platformName') || 'بيت الخبرة';
-  const [invoices, setInvoices] = useState([]);
-  const [filteredInvoices, setFilteredInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialInvoices = () => {
+    try {
+      const cached = localStorage.getItem('cache_Invoices.js_invoices');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [invoices, setInvoices] = useState(getInitialInvoices);
+  const [filteredInvoices, setFilteredInvoices] = useState(getInitialInvoices);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -134,11 +141,13 @@ function Invoices({ user, onLogout }) {
       
       if (Array.isArray(data)) {
         setInvoices(data);
+      try { localStorage.setItem('cache_Invoices.js_invoices', JSON.stringify(data)); } catch(e) {}
         setFilteredInvoices(data);
         setTotalCount(data.length);
         setTotalPages(1);
       } else {
         setInvoices(data.invoices || []);
+      try { localStorage.setItem('cache_Invoices.js_invoices', JSON.stringify(data.invoices || [])); } catch(e) {}
         setFilteredInvoices(data.invoices || []);
         setTotalCount(data.total_count || 0);
         setTotalPages(data.total_pages || 1);

@@ -285,9 +285,20 @@ function Reports({ user, onLogout }) {
     }
     return (user.permissions || []).includes(permKey);
   };
-  
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialReports = () => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const project = searchParams.get('project') || '';
+      if (project) {
+        const cached = localStorage.getItem(`reports_cache_${project}`);
+        if (cached) return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return [];
+  };
+
+  const [reports, setReports] = useState(getInitialReports);
+  const [loading, setLoading] = useState(false);
   const [PROJECT_GOVERNORATES, setProjectGovernorates] = useState(BASE_PROJECT_GOVERNORATES);
   
   // URL Params & Pagination state
@@ -403,7 +414,8 @@ function Reports({ user, onLogout }) {
           const response = await axios.get(`${API}/reports/notifications/unseen`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          setReports(response.data.reports || []);
+          const fetchedReports = response.data.reports || [];
+          setReports(fetchedReports);
           setTotalReports(response.data.total || 0);
           setTotalPages(1);
           setUrlFiltersApplied(true);
@@ -458,7 +470,8 @@ function Reports({ user, onLogout }) {
           if (lic) params.append('license_status', lic);
           
           const response = await axios.get(`${API}/reports?${params}`);
-          setReports(response.data.reports || []);
+          const fetchedReports = response.data.reports || [];
+          setReports(fetchedReports);
           setTotalReports(response.data.total_count || 0);
           setTotalPages(response.data.total_pages || 0);
           if (searchParams.get('scroll') === 'true') {
@@ -546,6 +559,18 @@ function Reports({ user, onLogout }) {
       });
       
       if (projectChanged) {
+        if (projectFromUrl) {
+          try {
+            const cached = localStorage.getItem(`reports_cache_${projectFromUrl}`);
+            if (cached) {
+              setReports(JSON.parse(cached));
+              setLoading(false);
+            } else {
+              setReports([]);
+              // setLoading(true);
+            }
+          } catch (e) {}
+        }
         setExportCount(null);
       }
       
@@ -562,7 +587,15 @@ function Reports({ user, onLogout }) {
           params.append('limit', reportsPerPage);
           
           const response = await axios.get(`${API}/reports?${params}`);
-          setReports(response.data.reports || []);
+          const fetchedReports = response.data.reports || [];
+          setReports(fetchedReports);
+          
+          if (pageFromUrl === 1 && projectFromUrl) {
+            try {
+              localStorage.setItem(`reports_cache_${projectFromUrl}`, JSON.stringify(fetchedReports));
+            } catch (e) {}
+          }
+          
           setTotalReports(response.data.total_count || 0);
           setTotalPages(response.data.total_pages || 0);
           if (searchParams.get('scroll') === 'true') {
@@ -576,13 +609,15 @@ function Reports({ user, onLogout }) {
           }
         } catch (error) {
           console.error('Failed to fetch reports with URL filters:', error);
+        } finally {
+          setLoading(false);
         }
       };
       fetchWithUrlFilters();
     } else {
       setUrlFiltersApplied(true);
     }
-  }, [location.search, location.key]);
+  }, [location.search]);
   
   // جلب المحافظات من الـ API
   useEffect(() => {
@@ -991,8 +1026,16 @@ const fetchReports = async () => {
       
       const response = await axios.get(`${API}/reports?${params}`);
       
+      const fetchedReports = response.data.reports || [];
       // تحديث البيانات من الاستجابة
-      setReports(response.data.reports || []);
+      setReports(fetchedReports);
+      
+      if (currentPage === 1 && filters.project) {
+        try {
+          localStorage.setItem(`reports_cache_${filters.project}`, JSON.stringify(fetchedReports));
+        } catch (e) {}
+      }
+      
       setTotalReports(response.data.total_count || 0);
       setTotalPages(response.data.total_pages || 0);
     } catch (error) {
@@ -1066,7 +1109,15 @@ const fetchReports = async () => {
     
     axios.get(`${API}/reports?${params}`)
       .then(response => {
-        setReports(response.data.reports || []);
+        const fetchedReports = response.data.reports || [];
+        setReports(fetchedReports);
+        
+        if (defaultProj) {
+          try {
+            localStorage.setItem(`reports_cache_${defaultProj}`, JSON.stringify(fetchedReports));
+          } catch (e) {}
+        }
+        
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
         setLoading(false);
@@ -1132,7 +1183,15 @@ const fetchReports = async () => {
     
     axios.get(`${API}/reports?${params}`)
       .then(response => {
-        setReports(response.data.reports || []);
+        const fetchedReports = response.data.reports || [];
+        setReports(fetchedReports);
+        
+        if (newFilters.project) {
+          try {
+            localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
+          } catch (e) {}
+        }
+        
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
         setLoading(false);
@@ -1172,7 +1231,15 @@ const fetchReports = async () => {
     
     axios.get(`${API}/reports?${params}`)
       .then(response => {
-        setReports(response.data.reports || []);
+        const fetchedReports = response.data.reports || [];
+        setReports(fetchedReports);
+        
+        if (newFilters.project) {
+          try {
+            localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
+          } catch (e) {}
+        }
+        
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
       })
@@ -2752,7 +2819,11 @@ const fetchReports = async () => {
                                   <button 
                                     onClick={() => {
                                       navigate(`/reports/edit/${report.id}`, { 
-                                        state: { from: location.pathname + location.search } 
+                                        state: { 
+                                          from: location.pathname + location.search,
+                                          project: report.project || '',
+                                          governorate: report.governorate || ''
+                                        } 
                                       });
                                       setActiveDropdown(null);
                                     }} 

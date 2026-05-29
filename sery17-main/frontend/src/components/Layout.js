@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
@@ -648,7 +648,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   }, []);
 
   // الحصول على المشاريع المتاحة للمستخدم مرتبة
-  const getUserProjects = () => {
+  const getUserProjects = useCallback(() => {
     // ترتيب المشاريع الأساسية
     const defaultOrder = [
       'مشروع المحافظات الغربية -القطاع الأوسط',
@@ -697,7 +697,48 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       // كلاهما مشاريع مضافة - رتب أبجدياً
       return a.name.localeCompare(b.name, 'ar');
     });
-  };
+  }, [allProjects, user]);
+
+  const authorizedProjectsLinks = useMemo(() => {
+    return getUserProjects().map((project) => {
+      const hasReportsInProject = hasProjectPermission(project.name, 'reports_view') ||
+                                   hasProjectPermission(project.name, 'reports_add') ||
+                                   hasProjectPermission(project.name, 'reports_review');
+      const hasConnInProject = hasProjectPermission(project.name, 'water_connections') ||
+                                hasProjectPermission(project.name, 'sewage_connections');
+      const hasUsersManage = hasProjectPermission(project.name, 'users_manage');
+      const hasSettings = hasProjectPermission(project.name, 'settings') || hasProjectPermission(project.name, 'project_settings');
+      
+      if (user.role !== 'admin' && !hasReportsInProject && !hasConnInProject && !hasUsersManage && !hasSettings) {
+        return null;
+      }
+      
+      let linkTo;
+      let mobileLinkTo;
+      if (user.role === 'admin') {
+        const isConn = projectTypes[project.name] === 'connections';
+        linkTo = isConn ? `/connections-hub?project=${encodeURIComponent(project.name)}` : `/reports?project=${encodeURIComponent(project.name)}`;
+        mobileLinkTo = isConn ? linkTo : `/reports?project=${encodeURIComponent(project.name)}&reset=true`;
+      } else {
+        if (hasReportsInProject) {
+          linkTo = `/reports?project=${encodeURIComponent(project.name)}`;
+          mobileLinkTo = `/reports?project=${encodeURIComponent(project.name)}&reset=true`;
+        } else if (hasConnInProject) {
+          linkTo = `/connections-hub?project=${encodeURIComponent(project.name)}`;
+          mobileLinkTo = linkTo;
+        } else if (hasUsersManage) {
+          linkTo = `/users`;
+          mobileLinkTo = linkTo;
+        } else {
+          const isConn = projectTypes[project.name] === 'connections';
+          linkTo = isConn ? `/connections-hub?project=${encodeURIComponent(project.name)}` : `/reports?project=${encodeURIComponent(project.name)}`;
+          mobileLinkTo = isConn ? linkTo : `/reports?project=${encodeURIComponent(project.name)}&reset=true`;
+        }
+      }
+      return { project, linkTo, mobileLinkTo };
+    }).filter(Boolean);
+  }, [getUserProjects, user, projectTypes]);
+
 
   // التحقق من صلاحيات عرض المستخلصات
   // تظهر للجميع ما عدا المستوى الأخير (الذين لا يمكنهم إنشاء مستخدمين ولديهم محافظات محددة)
@@ -1574,48 +1615,23 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </button>
                   {projectsOpen && (
                     <div className="mr-3 mt-1 space-y-1">
-                      {getUserProjects().map((project) => {
-                        // فحص الصلاحيات لكل مشروع على حدة (يدمج العامة + الخاصة بالمشروع)
-                        const hasReportsInProject = hasProjectPermission(project.name, 'reports_view') ||
-                                                     hasProjectPermission(project.name, 'reports_add') ||
-                                                     hasProjectPermission(project.name, 'reports_review');
-                        const hasConnInProject = hasProjectPermission(project.name, 'water_connections') ||
-                                                  hasProjectPermission(project.name, 'sewage_connections');
-                        const hasUsersManage = hasProjectPermission(project.name, 'users_manage');
-                        const hasSettings = hasProjectPermission(project.name, 'settings') || hasProjectPermission(project.name, 'project_settings');
-                        
-                        // إذا لم يكن للمستخدم أي صلاحية على هذا المشروع، لا تُعرض
-                        if (user.role !== 'admin' && !hasReportsInProject && !hasConnInProject && !hasUsersManage && !hasSettings) {
-                          return null;
-                        }
-                        
-                        let linkTo;
-                        if (user.role === 'admin') {
-                          linkTo = projectTypes[project.name] === 'connections'
-                            ? `/connections-hub?project=${encodeURIComponent(project.name)}`
-                            : `/reports?project=${encodeURIComponent(project.name)}&reset=true&t=${Date.now()}`;
-                        } else {
-                          if (hasReportsInProject) {
-                            linkTo = `/reports?project=${encodeURIComponent(project.name)}&reset=true&t=${Date.now()}`;
-                          } else if (hasConnInProject) {
-                            linkTo = `/connections-hub?project=${encodeURIComponent(project.name)}`;
-                          } else if (hasUsersManage) {
-                            linkTo = `/users`;
-                          } else {
-                            linkTo = projectTypes[project.name] === 'connections'
-                              ? `/connections-hub?project=${encodeURIComponent(project.name)}`
-                              : `/reports?project=${encodeURIComponent(project.name)}&reset=true&t=${Date.now()}`;
-                          }
-                        }
-                        
+                      {authorizedProjectsLinks.map(({ project, mobileLinkTo, linkTo }) => {
+                        const targetUrl = mobileLinkTo || linkTo || `/reports?project=${encodeURIComponent(project.name)}&reset=true`;
+                        // إزالة &t= التي تسبب إعادة تحميل كاملة وذبذبة
+                        const cleanUrl = targetUrl.replace(/[&?]t=\d+/g, '');
                         return (
                           <Link 
                             key={project.id || project.name} 
-                            to={linkTo}
-                            onClick={() => setSidebarOpen(false)} 
+                            to={cleanUrl}
+                            onClick={() => {
+                              // في الموبايل نغلق السايدبار فقط وليس الدروبداون
+                              setSidebarOpen(false);
+                              // الدروبداون يبقى مفتوحاً لتسهيل التنقل بين المشاريع
+                              // setProjectsOpen stays true
+                            }} 
                             className={`block px-3 py-2 rounded-lg text-xs transition-colors ${
                               location.search.includes(encodeURIComponent(project.name))
-                                ? 'bg-bg-light text-primary' 
+                                ? 'bg-bg-light text-primary font-bold' 
                                 : 'text-gray-600 hover:bg-gray-50'
                             }`}
                           >
@@ -1891,43 +1907,15 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 
                 {projectsOpen && (
                   <div className="mr-3 sm:mr-4 mt-1 space-y-1">
-                      {getUserProjects().map((project) => {
-                        // فحص الصلاحيات لكل مشروع على حدة (يدمج العامة + الخاصة بالمشروع)
-                        const hasReportsInProject = hasProjectPermission(project.name, 'reports_view') ||
-                                                     hasProjectPermission(project.name, 'reports_add') ||
-                                                     hasProjectPermission(project.name, 'reports_review');
-                        const hasConnInProject = hasProjectPermission(project.name, 'water_connections') ||
-                                                  hasProjectPermission(project.name, 'sewage_connections');
-                        const hasUsersManage = hasProjectPermission(project.name, 'users_manage');
-                        const hasSettings = hasProjectPermission(project.name, 'settings') || hasProjectPermission(project.name, 'project_settings');
-                        
-                        // إذا لم يكن للمستخدم أي صلاحية على هذا المشروع، لا تُعرض
-                        if (user.role !== 'admin' && !hasReportsInProject && !hasConnInProject && !hasUsersManage && !hasSettings) {
-                          return null;
-                        }
-                        
-                        let linkTo;
-                        if (user.role === 'admin') {
-                          linkTo = projectTypes[project.name] === 'connections'
-                            ? `/connections-hub?project=${encodeURIComponent(project.name)}`
-                            : `/reports?project=${encodeURIComponent(project.name)}`;
-                        } else {
-                          // تحديد الوجهة المفضلة للمستخدم حسب صلاحياته
-                          if (hasReportsInProject) {
-                            linkTo = `/reports?project=${encodeURIComponent(project.name)}`;
-                          } else if (hasConnInProject) {
-                            linkTo = `/connections-hub?project=${encodeURIComponent(project.name)}`;
-                          } else if (hasUsersManage) {
-                            linkTo = `/users`; // إذا كانت صلاحيته هي إدارة المستخدمين فقط
-                          } else {
-                            linkTo = projectTypes[project.name] === 'connections'
-                              ? `/connections-hub?project=${encodeURIComponent(project.name)}`
-                              : `/reports?project=${encodeURIComponent(project.name)}`;
-                          }
-                        }
+                      {authorizedProjectsLinks.map(({ project, linkTo }) => {
+                      const cleanUrl = (linkTo || `/reports?project=${encodeURIComponent(project.name)}`).replace(/[&?]t=\d+/g, '');
                       return (
-                        <Link key={project.id || project.name} to={linkTo} onClick={() => setSidebarOpen(false)}
-                          className={`block px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors ${location.search.includes(encodeURIComponent(project.name)) ? 'bg-bg-light text-primary' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <Link key={project.id || project.name} to={cleanUrl}
+                          onClick={() => {
+                            // الدروبداون يظل مفتوحاً عند التنقل بين المشاريع (لا نغلقه)
+                            setSidebarOpen(false);
+                          }}
+                          className={`block px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors ${location.search.includes(encodeURIComponent(project.name)) ? 'bg-bg-light text-primary font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                           <svg className="inline-block w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                           {translateBrandingText(project.name, isRtl)}
                         </Link>

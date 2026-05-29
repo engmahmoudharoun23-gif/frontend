@@ -24,8 +24,12 @@ function Users({ user, onLogout }) {
   const isRtl = i18n.dir() === 'rtl';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getCached = (key, fallback) => {
+    try { const c = localStorage.getItem(key); if (c) return JSON.parse(c); } catch (e) {}
+    return fallback;
+  };
+  const [users, setUsers] = useState(() => getCached('cache_Users.js_users', []));
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get('limit')) || 10);
 
@@ -62,21 +66,21 @@ function Users({ user, onLogout }) {
   const [selectedProjects, setSelectedProjects] = useState([]);
   
   // الصلاحيات
-  const [allPermissions, setAllPermissions] = useState([]);
+  const [allPermissions, setAllPermissions] = useState(() => getCached('cache_Users.js_perms', []));
   const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [editSelectedPermissions, setEditSelectedPermissions] = useState([]);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [permissionsUser, setPermissionsUser] = useState(null);
   
   // إدارة المشاريع - جلب من قاعدة البيانات
-  const [availableProjects, setAvailableProjects] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState(() => getCached('cache_Users.js_projects', []));
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
   const [editingProjectName, setEditingProjectName] = useState('');
   
   // إدارة المحافظات الديناميكية
-  const [projectGovernorates, setProjectGovernorates] = useState(BASE_PROJECT_GOVERNORATES);
+  const [projectGovernorates, setProjectGovernorates] = useState(() => getCached('cache_Users.js_govs', BASE_PROJECT_GOVERNORATES));
   const [showGovernorateManager, setShowGovernorateManager] = useState(false);
   const [newGovernorateName, setNewGovernorateName] = useState('');
   const [selectedProjectForGov, setSelectedProjectForGov] = useState('');
@@ -381,9 +385,8 @@ function Users({ user, onLogout }) {
   };
 
   useEffect(() => {
-    // تحميل البيانات بالتوازي لتسريع الصفحة
+    // تحميل البيانات بالتوازي — البيانات المحفوظة في cache تظهر فوراً، ثم يتم التحديث في الخلفية
     const loadData = async () => {
-      // setLoading(true);
       try {
         const [usersRes, projectsRes, connProjectsRes, govsRes, permsRes] = await Promise.all([
           axios.get(`${API}/users`).catch(e => ({ data: [] })),
@@ -394,29 +397,30 @@ function Users({ user, onLogout }) {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           }).catch(e => ({ data: [] }))
         ]);
-        
-        setUsers(usersRes.data || []);
-        
-        // ترتيب المشاريع (دمج المشاريع العامة مع مشاريع الإيصال)
+
+        // ── المستخدمون ──
+        const freshUsers = usersRes.data || [];
+        setUsers(freshUsers);
+        try { localStorage.setItem('cache_Users.js_users', JSON.stringify(freshUsers)); } catch(e) {}
+
+        // ── المشاريع ──
         const allProjects = [...(projectsRes.data || []), ...(connProjectsRes.data || [])];
         const uniqueProjects = Array.from(new Set(allProjects.map(p => p.name)));
-        
-        const defaultOrder = [];
-        const projects = uniqueProjects.sort((a, b) => {
-          const indexA = defaultOrder.indexOf(a);
-          const indexB = defaultOrder.indexOf(b);
-          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-          if (indexA !== -1) return -1;
-          if (indexB !== -1) return 1;
-          return a.localeCompare(b, 'ar');
-        });
-        setAvailableProjects(projects.length > 0 ? projects : defaultOrder);
-        
-        // حفظ مشاريع الإيصال للرجوع إليها في الصلاحيات
+        const projects = uniqueProjects.sort((a, b) => a.localeCompare(b, 'ar'));
+        const finalProjects = projects.length > 0 ? projects : [];
+        setAvailableProjects(finalProjects);
+        try { localStorage.setItem('cache_Users.js_projects', JSON.stringify(finalProjects)); } catch(e) {}
         window.all_connection_projects = connProjectsRes.data || [];
-        
-        setProjectGovernorates(govsRes.data || BASE_PROJECT_GOVERNORATES);
-        setAllPermissions(permsRes.data || []);
+
+        // ── المحافظات ──
+        const freshGovs = govsRes.data || BASE_PROJECT_GOVERNORATES;
+        setProjectGovernorates(freshGovs);
+        try { localStorage.setItem('cache_Users.js_govs', JSON.stringify(freshGovs)); } catch(e) {}
+
+        // ── الصلاحيات ──
+        const freshPerms = permsRes.data || [];
+        setAllPermissions(freshPerms);
+        try { localStorage.setItem('cache_Users.js_perms', JSON.stringify(freshPerms)); } catch(e) {}
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -526,6 +530,7 @@ function Users({ user, onLogout }) {
     try {
       const response = await axios.get(`${API}/users`);
       setUsers(response.data || []);
+      try { localStorage.setItem('cache_Users.js_users', JSON.stringify(response.data || [])); } catch(e) {}
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }

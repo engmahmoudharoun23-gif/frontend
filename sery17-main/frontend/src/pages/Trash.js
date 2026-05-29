@@ -134,19 +134,17 @@ function Trash({ user, onLogout }) {
   };
 
   const handleDeleteAll = async () => {
-    if (activeTab !== 'reports') return; // حالياً الحذف الكل للبلاغات فقط
-    if (data.length === 0) return;
-    if (!window.confirm(`⚠️ سيتم حذف ${data.length} بلاغ نهائياً!\nهذا الإجراء لا يمكن التراجع عنه. هل أنت متأكد؟`)) return;
+    if (!window.confirm(`⚠️ سيتم إفراغ سلة المحذوفات بالكامل (جميع البلاغات، الفواتير، التقارير، إلخ)!\nهذا الإجراء لا يمكن التراجع عنه. هل أنت متأكد؟`)) return;
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API}/reports-trash/all`, {
+      await axios.delete(`${API}/trash/empty-all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      alert(`✅ تم حذف ${data.length} بلاغ نهائياً`);
+      alert(`✅ تم إفراغ سلة المحذوفات بالكامل بنجاح`);
       fetchDeletedItems();
     } catch (error) {
-      alert('❌ فشل حذف الكل');
+      alert('❌ فشل إفراغ سلة المحذوفات');
     }
   };
 
@@ -184,6 +182,15 @@ function Trash({ user, onLogout }) {
               <span className="text-sm font-bold text-slate-500">{t('trash.total')}: </span>
               <span className="text-xl font-black text-red-600">{data.length}</span>
             </div>
+            
+            {(user.role === 'admin' || user.username === 'Eng Mahmoud Haroun') && (
+              <button
+                onClick={handleDeleteAll}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center gap-2 text-sm font-bold transition-all cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" /> {isRtl ? 'إفراغ سلة المحذوفات' : 'Empty Trash'}
+              </button>
+            )}
           </div>
         </div>
 

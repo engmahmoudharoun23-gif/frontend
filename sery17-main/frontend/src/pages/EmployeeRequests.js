@@ -55,10 +55,17 @@ function EmployeeRequests({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const platformName = localStorage.getItem('platformName') || 'بيت الخبرة';
-  const [requests, setRequests] = useState([]);
-  const [filteredRequests, setFilteredRequests] = useState([]);
+  const getInitialRequests = () => {
+    try {
+      const cached = localStorage.getItem('cache_EmployeeRequests.js_requests');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [requests, setRequests] = useState(getInitialRequests);
+  const [filteredRequests, setFilteredRequests] = useState(getInitialRequests);
   const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [lockType, setLockType] = useState(false);
@@ -213,11 +220,13 @@ function EmployeeRequests({ user, onLogout }) {
       
       if (Array.isArray(data)) {
         setRequests(data);
+      try { localStorage.setItem('cache_EmployeeRequests.js_requests', JSON.stringify(data)); } catch(e) {}
         setFilteredRequests(data);
         setTotalCount(data.length);
         setTotalPages(1);
       } else {
         setRequests(data.requests || []);
+      try { localStorage.setItem('cache_EmployeeRequests.js_requests', JSON.stringify(data.requests || [])); } catch(e) {}
         setFilteredRequests(data.requests || []);
         setTotalCount(data.total_count || 0);
         setTotalPages(data.total_pages || 1);

@@ -23,8 +23,15 @@ function Extracts({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   
-  const [extracts, setExtracts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialExtracts = () => {
+    try {
+      const cached = localStorage.getItem('cache_Extracts.js_extracts');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [extracts, setExtracts] = useState(getInitialExtracts);
+  const [loading, setLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
   const [activeTab, setActiveTab] = useState('incoming');
   const [showModal, setShowModal] = useState(false);
@@ -183,10 +190,12 @@ function Extracts({ user, onLogout }) {
       // Handle both old and new response format
       if (Array.isArray(data)) {
         setExtracts(data);
+      try { localStorage.setItem('cache_Extracts.js_extracts', JSON.stringify(data)); } catch(e) {}
         setTotalCount(data.length);
         setTotalPages(1);
       } else {
         setExtracts(data.extracts || []);
+      try { localStorage.setItem('cache_Extracts.js_extracts', JSON.stringify(data.extracts || [])); } catch(e) {}
         setTotalCount(data.total_count || 0);
         setTotalPages(data.total_pages || 1);
       }

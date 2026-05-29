@@ -22,8 +22,15 @@ function TeamManagement({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
 
-  const [teams, setTeams] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialTeams = () => {
+    try {
+      const cached = localStorage.getItem('cache_TeamManagement.js_teams');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [teams, setTeams] = useState(getInitialTeams);
+  const [loading, setLoading] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [selectedProject, setSelectedProject] = useState('');
@@ -120,6 +127,7 @@ function TeamManagement({ user, onLogout }) {
         : `${API}/team-members`;
       const response = await axios.get(url);
       setTeams(response.data);
+      try { localStorage.setItem('cache_TeamManagement.js_teams', JSON.stringify(response.data)); } catch(e) {}
     } catch (error) {
       console.error('Failed to fetch teams:', error);
     } finally {

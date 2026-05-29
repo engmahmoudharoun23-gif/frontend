@@ -13,8 +13,15 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 function Cars({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
-  const [cars, setCars] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialCars = () => {
+    try {
+      const cached = localStorage.getItem('cache_Cars.js_cars');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [cars, setCars] = useState(getInitialCars);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -84,6 +91,7 @@ function Cars({ user, onLogout }) {
       
       if (Array.isArray(data)) {
         setCars(data);
+      try { localStorage.setItem('cache_Cars.js_cars', JSON.stringify(data)); } catch(e) {}
         const count = data.length;
         setTotalCount(count);
         setTotalPages(Math.ceil(count / itemsPerPage));
@@ -91,6 +99,7 @@ function Cars({ user, onLogout }) {
         const carsList = data.cars || [];
         const count = data.total_count || carsList.length;
         setCars(carsList);
+      try { localStorage.setItem('cache_Cars.js_cars', JSON.stringify(carsList)); } catch(e) {}
         setTotalCount(count);
         setTotalPages(Math.ceil(count / itemsPerPage));
       }
