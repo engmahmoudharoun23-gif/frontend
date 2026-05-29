@@ -638,7 +638,8 @@ function NewDashboard({ user, onLogout }) {
 
   const formatHijriDate = (date) => {
     try {
-      return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
+      const localeStr = isRtl ? 'ar-SA-u-ca-islamic' : 'en-US-u-ca-islamic';
+      return new Intl.DateTimeFormat(localeStr, {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
