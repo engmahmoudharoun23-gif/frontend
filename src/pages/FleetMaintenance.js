@@ -16,7 +16,7 @@ function FleetMaintenance({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const [cars, setCars] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showCarModal, setShowCarModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -125,7 +125,7 @@ function FleetMaintenance({ user, onLogout }) {
   }, [t]);
 
   const fetchCars = useCallback(async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const res = await axios.get(`${API}/fleet-cars`);
       const data = res.data;

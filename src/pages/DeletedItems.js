@@ -11,7 +11,7 @@ console.log('Trash Bin API URL:', API);
 function DeletedItems({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('');
   const [selectedItems, setSelectedItems] = useState([]); // format: "type-id"
   const [page, setPage] = useState(1);
@@ -25,7 +25,7 @@ function DeletedItems({ user, onLogout }) {
 
   const fetchItems = async (p = 1, f = filter, limit = perPage) => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const res = await axios.get(`${API}/deleted-items?page=${p}&item_type=${f}&limit=${limit}`, authHeaders);
       setItems(res.data?.items || []);
       setPages(res.data?.pages || 1);

@@ -13,8 +13,15 @@ const API = `${BACKEND_URL}/api`;
 const ConsultantNotes = ({ user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialReports = () => {
+    try {
+      const cached = localStorage.getItem('cache_ConsultantNotes.js_reports');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [reports, setReports] = useState(getInitialReports);
+  const [loading, setLoading] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,12 +42,13 @@ const ConsultantNotes = ({ user, onLogout }) => {
 
   const fetchNotes = async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/reports/consultant-notes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setReports(response.data.reports || []);
+      try { localStorage.setItem('cache_ConsultantNotes.js_reports', JSON.stringify(response.data.reports || [])); } catch(e) {}
     } catch (error) {
       console.error('Error fetching consultant notes:', error);
     } finally {
@@ -180,7 +188,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
         <div className="p-0">
           {loading ? (
             <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              <div className="flex flex-col items-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div>
             </div>
           ) : reports.length === 0 ? (
             <div className="text-center py-20">
@@ -231,11 +239,27 @@ const ConsultantNotes = ({ user, onLogout }) => {
                       <td className="px-6 py-4 text-gray-700">{translateBrandingText(report.governorate, isRtl)}</td>
                       <td className="px-6 py-4 text-gray-700">{translateBrandingText(report.contractor || '-', isRtl)}</td>
                       <td className="px-6 py-4 text-gray-800">
-                        <div className="relative bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-sm whitespace-pre-wrap mt-3">
-                          <span className="absolute -top-3 right-3 bg-yellow-100 text-yellow-800 text-[11px] font-bold px-2 py-0.5 rounded border border-yellow-200 shadow-sm">
-                            {t("consultantNotesPage.consultantNoteBy", { defaultValue: "ملاحظة الاستشاري:" })} {report.consultant_note_by || 'م/ مدحت حسين'}
-                          </span>
-                          {report.consultant_note}
+                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-900 text-sm mt-4 p-3 shadow-sm">
+                          <div className="font-bold mb-2 opacity-90 text-[13px]">
+                            {t("consultantNotesPage.consultantNoteBy", { defaultValue: "ملاحظة الاستشاري:" })} {(() => {
+                              const name = report.consultant_note_by;
+                              if (!name) return t('consultantNotesPage.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                              const lowerName = name.toLowerCase();
+                              if (lowerName.includes('shazly') || lowerName.includes('شاذلي')) {
+                                return t('consultantNotesPage.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                              }
+                              if (lowerName.includes('motlaq') || lowerName.includes('مطلق')) {
+                                return t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                              }
+                              if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
+                                return t('consultantNotesPage.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                              }
+                              return translateBrandingText(name, isRtl);
+                            })()}
+                          </div>
+                          <div className="whitespace-pre-wrap break-words leading-relaxed">
+                            {translateBrandingText(report.consultant_note, isRtl)}
+                          </div>
                         </div>
                         {report.consultant_note_reply && (
                           <div className="mt-5 flex flex-col gap-4">
@@ -243,11 +267,27 @@ const ConsultantNotes = ({ user, onLogout }) => {
                               const replyText = report.consultant_note_reply;
                               if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
                                 return (
-                                  <div className="relative bg-blue-50 border border-blue-200 p-3 rounded-lg text-sm whitespace-pre-wrap mt-2">
-                                    <span className="absolute -top-3 right-3 bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded border border-blue-200 shadow-sm">
-                                      {t("consultantNotesPage.replyPrefix", { defaultValue: "رد:" })} {report.consultant_note_replied_by || t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' })}
-                                    </span>
-                                    {replyText}
+                                  <div className="rounded-xl border border-blue-200 bg-blue-50 text-blue-900 text-sm mt-3 p-3 shadow-sm">
+                                    <div className="font-bold mb-2 opacity-90 text-[12px]">
+                                      {t("consultantNotesPage.replyPrefix", { defaultValue: "رد:" })} {(() => {
+                                        const name = report.consultant_note_replied_by;
+                                        if (!name) return t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' });
+                                        const lowerName = name.toLowerCase();
+                                        if (lowerName.includes('shazly') || lowerName.includes('شاذلي')) {
+                                          return t('consultantNotesPage.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                                        }
+                                        if (lowerName.includes('motlaq') || lowerName.includes('مطلق')) {
+                                          return t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                                        }
+                                        if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
+                                          return t('consultantNotesPage.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                                        }
+                                        return translateBrandingText(name, isRtl);
+                                      })()}
+                                    </div>
+                                    <div className="whitespace-pre-wrap break-words leading-relaxed">
+                                      {translateBrandingText(replyText, isRtl)}
+                                    </div>
                                   </div>
                                 );
                               }
@@ -259,7 +299,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
                                 const lastIndex = legacyParts.length - 1;
                                 currentText = legacyParts.map((part, index) => {
                                   if (index === 0) return part;
-                                  const author = index === lastIndex ? (report.consultant_note_replied_by || 'المستوى الثالث') : 'مطلق الغامدي';
+                                  const author = index === lastIndex ? (report.consultant_note_replied_by || t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' })) : t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' });
                                   return `---رد: ${author}---${part}`;
                                 }).join('');
                               }
@@ -269,8 +309,8 @@ const ConsultantNotes = ({ user, onLogout }) => {
                               
                               if (parts[0].trim()) {
                                 const firstAuthor = parts.length > 1 && replyText.includes('--- إضافة جديدة ---') 
-                                  ? 'مطلق الغامدي' 
-                                  : (report.consultant_note_replied_by || 'المستوى الثالث');
+                                  ? t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' }) 
+                                  : (report.consultant_note_replied_by || t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' }));
                                 bubbles.push({ name: firstAuthor, text: parts[0].trim() });
                               }
                               
@@ -281,32 +321,43 @@ const ConsultantNotes = ({ user, onLogout }) => {
                               }
                               
                               return bubbles.map((b, i) => {
-                                // Translate old English names that were saved before the fix
                                 let bubbleName = b.name;
-                                if (bubbleName.toLowerCase().includes('shazly')) bubbleName = 'م / الشاذلي حامد';
+                                const lowerName = bubbleName.toLowerCase();
+                                const isShazly = lowerName.includes('shazly') || lowerName.includes('شاذلي');
+                                const isMotlaq = lowerName.includes('motlaq') || lowerName.includes('مطلق');
+                                const isConsultant = lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('الاستشاري');
                                 
-                                const isMotlaq = bubbleName.includes('مطلق');
-                                const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
+                                if (isShazly) {
+                                  bubbleName = t('consultantNotesPage.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                                } else if (isMotlaq) {
+                                  bubbleName = t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                                } else if (isConsultant) {
+                                  bubbleName = t('consultantNotesPage.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                                } else {
+                                  bubbleName = translateBrandingText(bubbleName, isRtl);
+                                }
                                 
                                 let bgClass = 'bg-blue-50 border-blue-200 text-blue-900';
                                 let badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
-                                let prefixText = t("consultantNotesPage.replyPrefix", { defaultValue: "رد الموظف:" });
+                                let prefixText = t("consultantNotesPage.employeeReply", { defaultValue: "رد الموظف:" });
                                 
                                 if (isMotlaq) {
                                   bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
                                   badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                                } else if (isConsultant) {
+                                } else if (isConsultant || isShazly) {
                                   bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
                                   badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                                  prefixText = "تعقيب الاستشاري:";
+                                  prefixText = t("consultantNotesPage.consultantFollowUp", { defaultValue: "تعقيب الاستشاري:" });
                                 }
                                 
                                 return (
-                                  <div key={i} className={`relative p-3 rounded-lg text-sm whitespace-pre-wrap mt-3 border ${bgClass}`}>
-                                    <span className={`absolute -top-3 right-3 text-[11px] font-bold px-2 py-0.5 rounded border shadow-sm ${badgeClass}`}>
+                                  <div key={i} className={`rounded-xl border text-sm mt-3 p-3 shadow-sm ${bgClass}`}>
+                                    <div className="font-bold mb-2 opacity-90 text-[12px]">
                                       {prefixText} {bubbleName}
-                                    </span>
-                                    {b.text}
+                                    </div>
+                                    <div className="whitespace-pre-wrap break-words leading-relaxed">
+                                      {translateBrandingText(b.text, isRtl)}
+                                    </div>
                                   </div>
                                 );
                               });
@@ -351,7 +402,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                               </svg>
-                              المحادثة مغلقة
+                              {t("consultantNotesPage.conversationClosed", { defaultValue: "المحادثة مغلقة" })}
                             </span>
                           )}
                           
@@ -447,18 +498,34 @@ const ConsultantNotes = ({ user, onLogout }) => {
             <div className="mb-4">
               {reports.find(r => r.id === selectedReplyReportId)?.consultant_note_reply && (
                 <div className="mb-6 flex flex-col gap-4">
-                  <div className="text-sm font-bold text-gray-700 mb-1 border-b pb-1">الردود السابقة:</div>
+                  <div className="text-sm font-bold text-gray-700 mb-1 border-b pb-1">{t("consultantNotesPage.previousReplies", { defaultValue: "الردود السابقة:" })}</div>
                   {(() => {
                     const r = reports.find(rep => rep.id === selectedReplyReportId);
                     const replyText = r.consultant_note_reply;
                     
                     if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
                       return (
-                        <div className="relative bg-blue-50 border border-blue-200 p-3 rounded-lg text-sm whitespace-pre-wrap mt-2">
-                          <span className="absolute -top-3 right-3 bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded border border-blue-200 shadow-sm">
-                            رد: {r.consultant_note_replied_by || 'المستوى الثالث'}
-                          </span>
-                          {replyText}
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 text-blue-900 text-sm mt-3 p-3 shadow-sm">
+                          <div className="font-bold mb-2 opacity-90 text-[12px]">
+                            {t("consultantNotesPage.replyPrefix", { defaultValue: "رد:" })} {(() => {
+                              const name = r.consultant_note_replied_by;
+                              if (!name) return t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' });
+                              const lowerName = name.toLowerCase();
+                              if (lowerName.includes('shazly') || lowerName.includes('شاذلي')) {
+                                return t('consultantNotesPage.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                              }
+                              if (lowerName.includes('motlaq') || lowerName.includes('مطلق')) {
+                                return t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                              }
+                              if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
+                                return t('consultantNotesPage.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                              }
+                              return translateBrandingText(name, isRtl);
+                            })()}
+                          </div>
+                          <div className="whitespace-pre-wrap break-words leading-relaxed">
+                            {translateBrandingText(replyText, isRtl)}
+                          </div>
                         </div>
                       );
                     }
@@ -470,7 +537,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
                       const lastIndex = legacyParts.length - 1;
                       currentText = legacyParts.map((part, index) => {
                         if (index === 0) return part;
-                        const author = index === lastIndex ? (r.consultant_note_replied_by || 'المستوى الثالث') : 'مطلق الغامدي';
+                        const author = index === lastIndex ? (r.consultant_note_replied_by || t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' })) : t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' });
                         return `---رد: ${author}---${part}`;
                       }).join('');
                     }
@@ -480,8 +547,8 @@ const ConsultantNotes = ({ user, onLogout }) => {
                     
                     if (parts[0].trim()) {
                       const firstAuthor = parts.length > 1 && replyText.includes('--- إضافة جديدة ---') 
-                        ? 'مطلق الغامدي' 
-                        : (r.consultant_note_replied_by || 'المستوى الثالث');
+                        ? t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' }) 
+                        : (r.consultant_note_replied_by || t('consultantNotesPage.level3', { defaultValue: 'المستوى الثالث' }));
                       bubbles.push({ name: firstAuthor, text: parts[0].trim() });
                     }
                     
@@ -492,32 +559,43 @@ const ConsultantNotes = ({ user, onLogout }) => {
                     }
                     
                     return bubbles.map((b, i) => {
-                      // Translate old English names that were saved before the fix
                       let bubbleName = b.name;
-                      if (bubbleName.toLowerCase().includes('shazly')) bubbleName = 'م / الشاذلي حامد';
+                      const lowerName = bubbleName.toLowerCase();
+                      const isShazly = lowerName.includes('shazly') || lowerName.includes('شاذلي');
+                      const isMotlaq = lowerName.includes('motlaq') || lowerName.includes('مطلق');
+                      const isConsultant = lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('الاستشاري');
                       
-                      const isMotlaq = bubbleName.includes('مطلق');
-                      const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
+                      if (isShazly) {
+                        bubbleName = t('consultantNotesPage.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                      } else if (isMotlaq) {
+                        bubbleName = t('consultantNotesPage.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                      } else if (isConsultant) {
+                        bubbleName = t('consultantNotesPage.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                      } else {
+                        bubbleName = translateBrandingText(bubbleName, isRtl);
+                      }
                       
                       let bgClass = 'bg-blue-50 border-blue-200 text-blue-900';
                       let badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
-                      let prefixText = "رد الموظف:";
+                      let prefixText = t("consultantNotesPage.employeeReply", { defaultValue: "رد الموظف:" });
                       
                       if (isMotlaq) {
                         bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
                         badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                      } else if (isConsultant) {
+                      } else if (isConsultant || isShazly) {
                         bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
                         badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                        prefixText = "تعقيب الاستشاري:";
+                        prefixText = t("consultantNotesPage.consultantFollowUp", { defaultValue: "تعقيب الاستشاري:" });
                       }
                       
                       return (
-                        <div key={i} className={`relative p-3 rounded-lg text-sm whitespace-pre-wrap mt-2 border ${bgClass}`}>
-                          <span className={`absolute -top-3 right-3 text-[11px] font-bold px-2 py-0.5 rounded border shadow-sm ${badgeClass}`}>
+                        <div key={i} className={`rounded-xl border text-sm mt-3 p-3 shadow-sm ${bgClass}`}>
+                          <div className="font-bold mb-2 opacity-90 text-[12px]">
                             {prefixText} {bubbleName}
-                          </span>
-                          {b.text}
+                          </div>
+                          <div className="whitespace-pre-wrap break-words leading-relaxed">
+                            {translateBrandingText(b.text, isRtl)}
+                          </div>
                         </div>
                       );
                     });

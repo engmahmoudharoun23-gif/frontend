@@ -31,10 +31,38 @@ function HRManagement({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('employees');
   const [loading, setLoading] = useState(false);
   
-  const [employees, setEmployees] = useState([]);
-  const [contracts, setContracts] = useState([]);
-  const [salaries, setSalaries] = useState([]);
-  const [advancesCustodies, setAdvancesCustodies] = useState([]);
+  const getInitialEmployees = () => {
+    try {
+      const cached = localStorage.getItem('cache_HRManagement.js_employees');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [employees, setEmployees] = useState(getInitialEmployees);
+  const getInitialContracts = () => {
+    try {
+      const cached = localStorage.getItem('cache_HRManagement.js_contracts');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [contracts, setContracts] = useState(getInitialContracts);
+  const getInitialSalaries = () => {
+    try {
+      const cached = localStorage.getItem('cache_HRManagement.js_salaries');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [salaries, setSalaries] = useState(getInitialSalaries);
+  const getInitialAdvancesCustodies = () => {
+    try {
+      const cached = localStorage.getItem('cache_HRManagement.js_advancesCustodies');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [advancesCustodies, setAdvancesCustodies] = useState(getInitialAdvancesCustodies);
   const [hrAlerts, setHrAlerts] = useState([]);
   
   const [searchFilter, setSearchFilter] = useState('');
@@ -137,9 +165,10 @@ function HRManagement({ user, onLogout }) {
 
   const fetchEmployees = async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const res = await axios.get(`${API}/hr/employees`, authHeaders);
       setEmployees(res.data || []);
+      try { localStorage.setItem('cache_HRManagement.js_employees', JSON.stringify(res.data || [])); } catch(e) {}
     } catch (e) { console.error('Failed to fetch employees:', e); }
     finally { setLoading(false); }
   };
@@ -148,6 +177,7 @@ function HRManagement({ user, onLogout }) {
     try {
       const res = await axios.get(`${API}/hr/contracts`, authHeaders);
       setContracts(res.data || []);
+      try { localStorage.setItem('cache_HRManagement.js_contracts', JSON.stringify(res.data || [])); } catch(e) {}
     } catch (e) { console.error('Failed to fetch contracts:', e); }
   };
 
@@ -155,6 +185,7 @@ function HRManagement({ user, onLogout }) {
     try {
       const res = await axios.get(`${API}/hr/salaries`, authHeaders);
       setSalaries(res.data || []);
+      try { localStorage.setItem('cache_HRManagement.js_salaries', JSON.stringify(res.data || [])); } catch(e) {}
     } catch (e) { console.error('Failed to fetch salaries:', e); }
   };
 
@@ -162,6 +193,7 @@ function HRManagement({ user, onLogout }) {
     try {
       const res = await axios.get(`${API}/hr/advances-custodies`, authHeaders);
       setAdvancesCustodies(res.data || []);
+      try { localStorage.setItem('cache_HRManagement.js_advancesCustodies', JSON.stringify(res.data || [])); } catch(e) {}
     } catch (e) { console.error('Failed to fetch advances and custodies:', e); }
   };
 
@@ -860,7 +892,7 @@ function HRManagement({ user, onLogout }) {
           {/* Content */}
           <div className="p-4 overflow-x-auto min-h-[500px] pb-40">
             {loading ? (
-              <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div>
+              <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div>
             ) : (
               <>
                 {/* Employees Table */}

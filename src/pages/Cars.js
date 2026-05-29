@@ -13,8 +13,15 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 function Cars({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
-  const [cars, setCars] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialCars = () => {
+    try {
+      const cached = localStorage.getItem('cache_Cars.js_cars');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [cars, setCars] = useState(getInitialCars);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -73,7 +80,7 @@ function Cars({ user, onLogout }) {
 
   const fetchCars = useCallback(async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const params = new URLSearchParams();
       if (selectedProject) params.append('project', selectedProject);
       // Fetch all for client-side pagination
@@ -84,6 +91,7 @@ function Cars({ user, onLogout }) {
       
       if (Array.isArray(data)) {
         setCars(data);
+      try { localStorage.setItem('cache_Cars.js_cars', JSON.stringify(data)); } catch(e) {}
         const count = data.length;
         setTotalCount(count);
         setTotalPages(Math.ceil(count / itemsPerPage));
@@ -91,6 +99,7 @@ function Cars({ user, onLogout }) {
         const carsList = data.cars || [];
         const count = data.total_count || carsList.length;
         setCars(carsList);
+      try { localStorage.setItem('cache_Cars.js_cars', JSON.stringify(carsList)); } catch(e) {}
         setTotalCount(count);
         setTotalPages(Math.ceil(count / itemsPerPage));
       }
@@ -342,7 +351,7 @@ function Cars({ user, onLogout }) {
 
         {/* Cars Table */}
         {loading ? (
-          <div className="text-center py-10">{t('carsPage.loading')}</div>
+          <div className="text-center py-10"><div className="flex flex-col items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div></div>
         ) : cars.length === 0 ? (
           <div className="text-center py-10 text-gray-500">{t('carsPage.noCars')}</div>
         ) : (

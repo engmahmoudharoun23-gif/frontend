@@ -10,7 +10,14 @@ const API = `${BACKEND_URL}/api`;
 
 function SupportMessages({ user, onLogout }) {
   const { t, i18n } = useTranslation();
-  const [messages, setMessages] = useState([]);
+  const getInitialMessages = () => {
+    try {
+      const cached = localStorage.getItem('cache_SupportMessages.js_messages');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [messages, setMessages] = useState(getInitialMessages);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,7 +46,7 @@ function SupportMessages({ user, onLogout }) {
   }, [filter]);
 
   const fetchMessages = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const url = filter ? `${API}/support/messages?status=${filter}` : `${API}/support/messages`;
@@ -47,6 +54,7 @@ function SupportMessages({ user, onLogout }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessages(response.data);
+      try { localStorage.setItem('cache_SupportMessages.js_messages', JSON.stringify(response.data)); } catch(e) {}
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {

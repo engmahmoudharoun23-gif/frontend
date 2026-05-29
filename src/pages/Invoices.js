@@ -28,9 +28,16 @@ function Invoices({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const platformName = localStorage.getItem('platformName') || 'بيت الخبرة';
-  const [invoices, setInvoices] = useState([]);
-  const [filteredInvoices, setFilteredInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialInvoices = () => {
+    try {
+      const cached = localStorage.getItem('cache_Invoices.js_invoices');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [invoices, setInvoices] = useState(getInitialInvoices);
+  const [filteredInvoices, setFilteredInvoices] = useState(getInitialInvoices);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -120,7 +127,7 @@ function Invoices({ user, onLogout }) {
   // دالة جلب الفواتير
   const fetchInvoices = async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const params = new URLSearchParams();
       if (projectFilter) params.append('project', projectFilter);
       if (statusFilter !== 'all') params.append('status', statusFilter);
@@ -134,11 +141,13 @@ function Invoices({ user, onLogout }) {
       
       if (Array.isArray(data)) {
         setInvoices(data);
+      try { localStorage.setItem('cache_Invoices.js_invoices', JSON.stringify(data)); } catch(e) {}
         setFilteredInvoices(data);
         setTotalCount(data.length);
         setTotalPages(1);
       } else {
         setInvoices(data.invoices || []);
+      try { localStorage.setItem('cache_Invoices.js_invoices', JSON.stringify(data.invoices || [])); } catch(e) {}
         setFilteredInvoices(data.invoices || []);
         setTotalCount(data.total_count || 0);
         setTotalPages(data.total_pages || 1);
@@ -642,7 +651,7 @@ function Invoices({ user, onLogout }) {
         {/* Content */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin h-8 w-8 mx-auto border-4 border-blue-600 border-t-transparent rounded-full"></div>
+            <div className="flex flex-col items-center"><div className="animate-spin h-8 w-8 mx-auto border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div>
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">

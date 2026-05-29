@@ -11,7 +11,7 @@ function Dashboard({ user, onLogout }) {
   const [stats, setStats] = useState({ total: 0, byStatus: {}, byType: {}, byGovernorate: {} });
   const [analysis, setAnalysis] = useState(null);
   const [analyzingLoading, setAnalyzingLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedGov, setSelectedGov] = useState('');
   const [govStats, setGovStats] = useState({ total: 0, fixed: 0, fixedPending: 0 });
   const [allReports, setAllReports] = useState([]);

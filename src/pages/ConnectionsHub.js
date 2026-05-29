@@ -41,7 +41,7 @@ function ConnectionsHub({ user, onLogout }) {
   const projectName = searchParams.get('project') || '';
   
   const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ water: { total: 0 }, sewage: { total: 0 } });
   
   useEffect(() => {

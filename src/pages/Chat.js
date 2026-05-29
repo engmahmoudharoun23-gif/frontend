@@ -124,7 +124,7 @@ function Chat({ user, onLogout }) {
   const sendMessage = async () => {
     if (!newMessage.trim() || loading) return;
     
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API}/chat/simple/send`, {

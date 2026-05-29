@@ -24,8 +24,12 @@ function Users({ user, onLogout }) {
   const isRtl = i18n.dir() === 'rtl';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getCached = (key, fallback) => {
+    try { const c = localStorage.getItem(key); if (c) return JSON.parse(c); } catch (e) {}
+    return fallback;
+  };
+  const [users, setUsers] = useState(() => getCached('cache_Users.js_users', []));
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get('limit')) || 10);
 
@@ -62,21 +66,21 @@ function Users({ user, onLogout }) {
   const [selectedProjects, setSelectedProjects] = useState([]);
   
   // الصلاحيات
-  const [allPermissions, setAllPermissions] = useState([]);
+  const [allPermissions, setAllPermissions] = useState(() => getCached('cache_Users.js_perms', []));
   const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [editSelectedPermissions, setEditSelectedPermissions] = useState([]);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [permissionsUser, setPermissionsUser] = useState(null);
   
   // إدارة المشاريع - جلب من قاعدة البيانات
-  const [availableProjects, setAvailableProjects] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState(() => getCached('cache_Users.js_projects', []));
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
   const [editingProjectName, setEditingProjectName] = useState('');
   
   // إدارة المحافظات الديناميكية
-  const [projectGovernorates, setProjectGovernorates] = useState(BASE_PROJECT_GOVERNORATES);
+  const [projectGovernorates, setProjectGovernorates] = useState(() => getCached('cache_Users.js_govs', BASE_PROJECT_GOVERNORATES));
   const [showGovernorateManager, setShowGovernorateManager] = useState(false);
   const [newGovernorateName, setNewGovernorateName] = useState('');
   const [selectedProjectForGov, setSelectedProjectForGov] = useState('');
@@ -381,9 +385,8 @@ function Users({ user, onLogout }) {
   };
 
   useEffect(() => {
-    // تحميل البيانات بالتوازي لتسريع الصفحة
+    // تحميل البيانات بالتوازي — البيانات المحفوظة في cache تظهر فوراً، ثم يتم التحديث في الخلفية
     const loadData = async () => {
-      setLoading(true);
       try {
         const [usersRes, projectsRes, connProjectsRes, govsRes, permsRes] = await Promise.all([
           axios.get(`${API}/users`).catch(e => ({ data: [] })),
@@ -394,29 +397,30 @@ function Users({ user, onLogout }) {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           }).catch(e => ({ data: [] }))
         ]);
-        
-        setUsers(usersRes.data || []);
-        
-        // ترتيب المشاريع (دمج المشاريع العامة مع مشاريع الإيصال)
+
+        // ── المستخدمون ──
+        const freshUsers = usersRes.data || [];
+        setUsers(freshUsers);
+        try { localStorage.setItem('cache_Users.js_users', JSON.stringify(freshUsers)); } catch(e) {}
+
+        // ── المشاريع ──
         const allProjects = [...(projectsRes.data || []), ...(connProjectsRes.data || [])];
         const uniqueProjects = Array.from(new Set(allProjects.map(p => p.name)));
-        
-        const defaultOrder = [];
-        const projects = uniqueProjects.sort((a, b) => {
-          const indexA = defaultOrder.indexOf(a);
-          const indexB = defaultOrder.indexOf(b);
-          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-          if (indexA !== -1) return -1;
-          if (indexB !== -1) return 1;
-          return a.localeCompare(b, 'ar');
-        });
-        setAvailableProjects(projects.length > 0 ? projects : defaultOrder);
-        
-        // حفظ مشاريع الإيصال للرجوع إليها في الصلاحيات
+        const projects = uniqueProjects.sort((a, b) => a.localeCompare(b, 'ar'));
+        const finalProjects = projects.length > 0 ? projects : [];
+        setAvailableProjects(finalProjects);
+        try { localStorage.setItem('cache_Users.js_projects', JSON.stringify(finalProjects)); } catch(e) {}
         window.all_connection_projects = connProjectsRes.data || [];
-        
-        setProjectGovernorates(govsRes.data || BASE_PROJECT_GOVERNORATES);
-        setAllPermissions(permsRes.data || []);
+
+        // ── المحافظات ──
+        const freshGovs = govsRes.data || BASE_PROJECT_GOVERNORATES;
+        setProjectGovernorates(freshGovs);
+        try { localStorage.setItem('cache_Users.js_govs', JSON.stringify(freshGovs)); } catch(e) {}
+
+        // ── الصلاحيات ──
+        const freshPerms = permsRes.data || [];
+        setAllPermissions(freshPerms);
+        try { localStorage.setItem('cache_Users.js_perms', JSON.stringify(freshPerms)); } catch(e) {}
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -526,6 +530,7 @@ function Users({ user, onLogout }) {
     try {
       const response = await axios.get(`${API}/users`);
       setUsers(response.data || []);
+      try { localStorage.setItem('cache_Users.js_users', JSON.stringify(response.data || [])); } catch(e) {}
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
@@ -1405,7 +1410,7 @@ function Users({ user, onLogout }) {
             {settingsLoading ? (
               <div className="flex flex-col items-center py-12 gap-4">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
-                <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div>
+                <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div>
               </div>
             ) : (
               <div className="animate-in fade-in duration-300">
@@ -1906,7 +1911,7 @@ function Users({ user, onLogout }) {
                         <td colSpan="8" className="px-6 py-12 text-center">
                           <div className="flex flex-col items-center gap-3">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                            <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div>
+                            <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div>
                           </div>
                         </td>
                       </tr>

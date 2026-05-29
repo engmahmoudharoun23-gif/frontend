@@ -57,7 +57,7 @@ function ProjectSettings({ user, onLogout }) {
 
   // ===== أنواع البلاغ =====
   const fetchTypes = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/report-types?project=${encodeURIComponent(selectedProject)}`, {
@@ -107,7 +107,7 @@ function ProjectSettings({ user, onLogout }) {
 
   // ===== حالات البلاغ =====
   const fetchStatuses = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/report-statuses?project=${encodeURIComponent(selectedProject)}`, {
@@ -157,7 +157,7 @@ function ProjectSettings({ user, onLogout }) {
 
   // ===== بطاقات المشروع =====
   const fetchCards = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/project-cards/${encodeURIComponent(selectedProject)}`, {

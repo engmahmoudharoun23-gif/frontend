@@ -255,25 +255,28 @@ function ReportForm({ user, onLogout }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [locationSuccess, setLocationSuccess] = useState(false);
   const [PROJECT_GOVERNORATES, setProjectGovernorates] = useState(BASE_PROJECT_GOVERNORATES);
-  // تحديد المشروع الافتراضي: أولاً من URL ثم من مشاريع المستخدم
+  // تحديد المشروع الافتراضي
+  // ⚡ في وضع التعديل (id موجود): نبدأ بمشروع فارغ ونتركه لـ fetchReport() كي لا يحدث وميض
+  // في وضع الإنشاء: نستخدم المشروع من URL أو مشاريع المستخدم
   const getDefaultProject = () => {
-    // أولاً: من URL query params (مثلاً ?project=X)
+    // ⚡ في وضع التعديل: نأخذ المشروع من location.state إن وُجد لتجنب الوميض
+    if (id) {
+      return location.state?.project || '';
+    }
     const projectFromUrl = searchParams.get('project');
     if (projectFromUrl && (user.role === 'admin' || user.projects?.includes(projectFromUrl))) {
       return projectFromUrl;
     }
-    // ثانياً: من أول مشروع في قائمة المستخدم
-    if (user.projects && user.projects.length > 0) {
-      return user.projects[0];
-    }
-    // للـ Admin بدون مشاريع محددة، استخدم المشروع الغربي كافتراضي
+    if (user.projects && user.projects.length > 0) return user.projects[0];
     return 'مشروع إصلاح أعمال المحافظات الغربية - القطاع الأوسط';
   };
 
   const [formData, setFormData] = useState({
     report_number: '', license_number: '', report_type: '',
-    status: 'تم الإصلاح', governorate: '', project: getDefaultProject(), 
-    depth_meters: '', diameter_mm: '', contractor: '', 
+    status: 'تم الإصلاح', 
+    governorate: id ? (location.state?.governorate || '') : '', 
+    project: getDefaultProject(),
+    depth_meters: '', diameter_mm: '', contractor: '',
     latitude: '', longitude: '', asphalt_license_issued: false,
     notes: '',
     created_at: '', closed_at: '', start_date: ''
@@ -428,49 +431,50 @@ function ReportForm({ user, onLogout }) {
     fetchGovernorates();
   }, []);
   
-  // المحافظات المتاحة حسب صلاحيات المستخدم
-  const availableGovernorates = user.governorates && user.governorates.length > 0 
-    ? user.governorates // المحافظات المحددة للمستخدم
-    : Object.values(PROJECT_GOVERNORATES).flat(); // إذا لم يكن له محافظات محددة (admin أو جميع المحافظات)، يرى كل المحافظات
-  
+  // ✅ المحافظات المتاحة حسب صلاحيات المستخدم
+  // الأدمن يرى جميع المحافظات دائماً + دائماً نُضمِّن محافظة البلاغ الحالي
+  const availableGovernorates = (() => {
+    let govs;
+    if (user.role === 'admin') {
+      // الأدمن يرى كل المحافظات بدون قيود
+      govs = Object.values(PROJECT_GOVERNORATES).flat();
+    } else if (user.governorates && user.governorates.length > 0) {
+      govs = [...user.governorates];
+    } else {
+      govs = Object.values(PROJECT_GOVERNORATES).flat();
+    }
+    // ✅ دائماً نُضمِّن محافظة البلاغ الحالي (حتى لو لم تكن في القائمة)
+    if (formData.governorate && !govs.includes(formData.governorate)) {
+      govs = [formData.governorate, ...govs];
+    }
+    return [...new Set(govs)];
+  })();
+
   // دالة جلب المقاولين
   const fetchContractors = async (project) => {
     try {
       const token = localStorage.getItem('token');
       let url;
-      
-      // إذا تم تحديد مشروع، فلترة المقاولين حسب المشروع (للجميع بما فيهم الأدمن)
       if (project) {
         url = `${API}/contractors?project=${encodeURIComponent(project)}`;
       } else if (user.role === 'admin') {
-        // الأدمن يرى الجميع فقط إذا لم يتم اختيار مشروع
         url = `${API}/contractors?all_contractors=true`;
       } else {
-        // للمستخدمين العاديين، استخدام أول مشروع لديهم كافتراضي إذا لم يتم تحديد مشروع
         const userProject = user.projects && user.projects.length > 0 ? user.projects[0] : '';
         url = `${API}/contractors?project=${encodeURIComponent(userProject)}`;
       }
-      
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(url, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setContractors(response.data);
-      console.log(`📋 تم جلب ${response.data.length} مقاول`);
     } catch (error) {
       console.error('Failed to fetch contractors:', error);
       setContractors([]);
     }
   };
 
-  // جلب المقاولين عند تحميل الصفحة
+  // ✅ useEffect موحَّد: يجلب البيانات فقط عندما يتغير المشروع وليس فارغاً
+  // هذا يمنع الاستدعاء المزدوج والوميض
   useEffect(() => {
-    fetchContractors(formData.project);
-    fetchReportStatuses(formData.project);
-    fetchReportTypes(formData.project);
-  }, []);
-  
-  // جلب المقاولين وحالات البلاغ عند تغيير المشروع
-  useEffect(() => {
+    if (!formData.project) return; // لا نجلب إذا كان المشروع فارغاً (وضع التعديل قبل تحميل البلاغ)
     fetchContractors(formData.project);
     fetchReportStatuses(formData.project);
     fetchReportTypes(formData.project);
@@ -556,7 +560,7 @@ function ReportForm({ user, onLogout }) {
     
     if (window.confirm(t('reportForm.confirmDeleteImage'))) {
       try {
-        await axios.delete(`${API}/reports/${id}/images/${index}`);
+        await axios.delete(`${API}/reports/${id}/images/${index}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
         setExistingImages(existingImages.filter((_, i) => i !== index));
       } catch (error) {
         console.error('Failed to delete image:', error);
@@ -567,7 +571,7 @@ function ReportForm({ user, onLogout }) {
 
   useEffect(() => {
     if (id) {
-      setLoading(true);
+      // setLoading(true);
       fetchReport().finally(() => setLoading(false));
     }
   }, [id]);
@@ -663,7 +667,7 @@ function ReportForm({ user, onLogout }) {
   const fetchReport = async () => {
     try {
       // ⚡ جلب البيانات الأساسية فقط (بدون الصور)
-      const response = await axios.get(`${API}/reports/${id}?exclude_images=true`);
+      const response = await axios.get(`${API}/reports/${id}?exclude_images=true`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
       const report = response.data;
       setFormData({
         report_number: report.report_number,
@@ -695,7 +699,7 @@ function ReportForm({ user, onLogout }) {
   // ⚡ جلب الصور بشكل منفصل في الخلفية
   const fetchReportImages = async () => {
     try {
-      const response = await axios.get(`${API}/reports/${id}/images`);
+      const response = await axios.get(`${API}/reports/${id}/images`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
       setExistingImages(response.data.images || []);
     } catch (error) {
       console.error('Failed to fetch images:', error);
@@ -1051,7 +1055,7 @@ function ReportForm({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    // setLoading(true);
     setErrorMessage('');
 
     try {
@@ -1095,7 +1099,10 @@ function ReportForm({ user, onLogout }) {
       }
 
       const config = {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem("token")}`
+        },
         timeout: 30000,
       };
 
@@ -1403,16 +1410,28 @@ function ReportForm({ user, onLogout }) {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">{t('reportForm.selectGovernorate')}</option>
-                  {(formData.project && PROJECT_GOVERNORATES[formData.project] 
-                    ? PROJECT_GOVERNORATES[formData.project].filter(gov => {
+                  {(() => {
+                    let govs = [];
+                    if (formData.project && PROJECT_GOVERNORATES[formData.project]) {
+                      govs = PROJECT_GOVERNORATES[formData.project].filter(gov => {
+                        if (user.role === 'admin') return true;
                         if (!user.governorates || user.governorates.length === 0) return true;
                         if (user.governorates.some(g => ['الكل', 'جميع المحافظات', 'كل المحافظات'].includes(g))) return true;
                         return user.governorates.includes(gov);
-                      })
-                    : availableGovernorates
-                  ).map(gov => (
-                    <option key={gov} value={gov}>{translateBrandingText(gov, isRtl)}</option>
-                  ))}
+                      });
+                    } else {
+                      govs = availableGovernorates;
+                    }
+                    
+                    // دائماً أضف المحافظة الحالية إذا لم تكن موجودة لتجنب اختفائها
+                    if (formData.governorate && !govs.includes(formData.governorate)) {
+                      govs = [formData.governorate, ...govs];
+                    }
+                    
+                    return [...new Set(govs)].map(gov => (
+                      <option key={gov} value={gov}>{translateBrandingText(gov, isRtl)}</option>
+                    ));
+                  })()}
                 </select>
                 
                 <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">

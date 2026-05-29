@@ -285,8 +285,19 @@ function Reports({ user, onLogout }) {
     }
     return (user.permissions || []).includes(permKey);
   };
-  
-  const [reports, setReports] = useState([]);
+  const getInitialReports = () => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const project = searchParams.get('project') || '';
+      if (project) {
+        const cached = localStorage.getItem(`reports_cache_${project}`);
+        if (cached) return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return [];
+  };
+
+  const [reports, setReports] = useState(getInitialReports);
   const [loading, setLoading] = useState(false);
   const [PROJECT_GOVERNORATES, setProjectGovernorates] = useState(BASE_PROJECT_GOVERNORATES);
   
@@ -398,12 +409,13 @@ function Reports({ user, onLogout }) {
       setIsNewReportsFilter(true);
       const fetchNewReports = async () => {
         try {
-          setLoading(true);
+          // setLoading(true);
           const token = localStorage.getItem('token');
           const response = await axios.get(`${API}/reports/notifications/unseen`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          setReports(response.data.reports || []);
+          const fetchedReports = response.data.reports || [];
+          setReports(fetchedReports);
           setTotalReports(response.data.total || 0);
           setTotalPages(1);
           setUrlFiltersApplied(true);
@@ -439,7 +451,7 @@ function Reports({ user, onLogout }) {
       // تنفيذ البحث مباشرة
       const fetchWithSearch = async () => {
         try {
-          setLoading(true);
+          // setLoading(true);
           const params = new URLSearchParams();
           params.append('search', searchQuery);
           params.append('page', pageFromUrl);
@@ -458,7 +470,8 @@ function Reports({ user, onLogout }) {
           if (lic) params.append('license_status', lic);
           
           const response = await axios.get(`${API}/reports?${params}`);
-          setReports(response.data.reports || []);
+          const fetchedReports = response.data.reports || [];
+          setReports(fetchedReports);
           setTotalReports(response.data.total_count || 0);
           setTotalPages(response.data.total_pages || 0);
           if (searchParams.get('scroll') === 'true') {
@@ -546,6 +559,18 @@ function Reports({ user, onLogout }) {
       });
       
       if (projectChanged) {
+        if (projectFromUrl) {
+          try {
+            const cached = localStorage.getItem(`reports_cache_${projectFromUrl}`);
+            if (cached) {
+              setReports(JSON.parse(cached));
+              setLoading(false);
+            } else {
+              setReports([]);
+              // setLoading(true);
+            }
+          } catch (e) {}
+        }
         setExportCount(null);
       }
       
@@ -562,7 +587,15 @@ function Reports({ user, onLogout }) {
           params.append('limit', reportsPerPage);
           
           const response = await axios.get(`${API}/reports?${params}`);
-          setReports(response.data.reports || []);
+          const fetchedReports = response.data.reports || [];
+          setReports(fetchedReports);
+          
+          if (pageFromUrl === 1 && projectFromUrl) {
+            try {
+              localStorage.setItem(`reports_cache_${projectFromUrl}`, JSON.stringify(fetchedReports));
+            } catch (e) {}
+          }
+          
           setTotalReports(response.data.total_count || 0);
           setTotalPages(response.data.total_pages || 0);
           if (searchParams.get('scroll') === 'true') {
@@ -576,13 +609,15 @@ function Reports({ user, onLogout }) {
           }
         } catch (error) {
           console.error('Failed to fetch reports with URL filters:', error);
+        } finally {
+          setLoading(false);
         }
       };
       fetchWithUrlFilters();
     } else {
       setUrlFiltersApplied(true);
     }
-  }, [location.search, location.key]);
+  }, [location.search]);
   
   // جلب المحافظات من الـ API
   useEffect(() => {
@@ -967,7 +1002,7 @@ const fetchReports = async () => {
     // لا تجلب البلاغات العادية إذا كان فلتر البلاغات الجديدة مفعّل
     if (isNewReportsFilter) return;
     
-    setLoading(true);
+    // setLoading(true);
     
     // إعادة تعيين التحديد عند جلب بلاغات جديدة
     setSelectedReports([]);
@@ -991,8 +1026,16 @@ const fetchReports = async () => {
       
       const response = await axios.get(`${API}/reports?${params}`);
       
+      const fetchedReports = response.data.reports || [];
       // تحديث البيانات من الاستجابة
-      setReports(response.data.reports || []);
+      setReports(fetchedReports);
+      
+      if (currentPage === 1 && filters.project) {
+        try {
+          localStorage.setItem(`reports_cache_${filters.project}`, JSON.stringify(fetchedReports));
+        } catch (e) {}
+      }
+      
       setTotalReports(response.data.total_count || 0);
       setTotalPages(response.data.total_pages || 0);
     } catch (error) {
@@ -1054,7 +1097,7 @@ const fetchReports = async () => {
     setExportCount(null);
     setCurrentPage(1);
     
-    setLoading(true);
+    // setLoading(true);
     const params = new URLSearchParams();
     if (defaultProj) params.append('project', defaultProj);
     if (defaultGov) params.append('governorate', defaultGov);
@@ -1066,7 +1109,15 @@ const fetchReports = async () => {
     
     axios.get(`${API}/reports?${params}`)
       .then(response => {
-        setReports(response.data.reports || []);
+        const fetchedReports = response.data.reports || [];
+        setReports(fetchedReports);
+        
+        if (defaultProj) {
+          try {
+            localStorage.setItem(`reports_cache_${defaultProj}`, JSON.stringify(fetchedReports));
+          } catch (e) {}
+        }
+        
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
         setLoading(false);
@@ -1109,7 +1160,7 @@ const fetchReports = async () => {
     handlePageChange(1);
     
     // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً" (مثل handleQuickSearch)
-    setLoading(true);
+    // setLoading(true);
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, val]) => { 
       if (val && typeof val === 'string' && val.trim()) {
@@ -1132,7 +1183,15 @@ const fetchReports = async () => {
     
     axios.get(`${API}/reports?${params}`)
       .then(response => {
-        setReports(response.data.reports || []);
+        const fetchedReports = response.data.reports || [];
+        setReports(fetchedReports);
+        
+        if (newFilters.project) {
+          try {
+            localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
+          } catch (e) {}
+        }
+        
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
         setLoading(false);
@@ -1172,7 +1231,15 @@ const fetchReports = async () => {
     
     axios.get(`${API}/reports?${params}`)
       .then(response => {
-        setReports(response.data.reports || []);
+        const fetchedReports = response.data.reports || [];
+        setReports(fetchedReports);
+        
+        if (newFilters.project) {
+          try {
+            localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
+          } catch (e) {}
+        }
+        
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
       })
@@ -1375,7 +1442,7 @@ const fetchReports = async () => {
   
   // البحث السريع عن البلاغات حسب جميع الفلاتر
   const handleSearchExportCount = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const params = new URLSearchParams();
       
@@ -1477,7 +1544,7 @@ const fetchReports = async () => {
       return;
     }
     
-    setLoading(true);
+    // setLoading(true);
     try {
       // إذا تم تحديد "الكل"، استخدم التصدير بالفلاتر (أسرع وأكثر موثوقية)
       if (isAllSelected) {
@@ -2492,7 +2559,7 @@ const fetchReports = async () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                  <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div></td></tr>
+                  <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
                 ) : reports.length === 0 ? (
                   <tr>
                     <td colSpan="14" className="px-6 py-8 text-center">
@@ -2752,7 +2819,11 @@ const fetchReports = async () => {
                                   <button 
                                     onClick={() => {
                                       navigate(`/reports/edit/${report.id}`, { 
-                                        state: { from: location.pathname + location.search } 
+                                        state: { 
+                                          from: location.pathname + location.search,
+                                          project: report.project || '',
+                                          governorate: report.governorate || ''
+                                        } 
                                       });
                                       setActiveDropdown(null);
                                     }} 
@@ -3089,7 +3160,7 @@ const fetchReports = async () => {
             </div>
             
             <div className="mb-4">
-              <label className="block text-sm font-bold text-gray-700 mb-2">اكتب الملاحظة هنا:</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.writeNoteLabel', { defaultValue: 'اكتب الملاحظة هنا:' })}</label>
               <textarea
                 value={currentConsultantNote}
                 onChange={(e) => setCurrentConsultantNote(e.target.value)}
@@ -3103,18 +3174,34 @@ const fetchReports = async () => {
             
             {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
               <div className="mb-5 flex flex-col gap-4">
-                <div className="text-sm font-bold text-gray-700 border-b pb-1">الردود السابقة:</div>
+                <div className="text-sm font-bold text-gray-700 border-b pb-1">{t('consultantNoteModal.previousReplies', { defaultValue: 'الردود السابقة:' })}</div>
                 {(() => {
                   const r = reports.find(rep => rep.id === selectedConsultantReportId);
                   const replyText = r.consultant_note_reply;
                   
                   if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
                     return (
-                      <div className="relative bg-indigo-50 border border-indigo-200 p-4 rounded-xl text-sm whitespace-pre-wrap text-indigo-900 mt-2">
-                        <span className="absolute -top-3 right-4 bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded border border-indigo-200 shadow-sm">
-                          {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })}
-                        </span>
-                        {replyText}
+                      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 mt-3 shadow-sm">
+                        <div className="font-bold mb-2 opacity-90 text-[12px]">
+                          {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {(() => {
+                            const name = r.consultant_note_replied_by;
+                            if (!name) return t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' });
+                            const lowerName = name.toLowerCase();
+                            if (lowerName.includes('shazly') || lowerName.includes('شاذلي')) {
+                              return t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                            }
+                            if (lowerName.includes('motlaq') || lowerName.includes('مطلق')) {
+                              return t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                            }
+                            if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
+                              return t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                            }
+                            return translateBrandingText(name, isRtl);
+                          })()}
+                        </div>
+                        <div className="whitespace-pre-wrap break-words leading-relaxed">
+                          {translateBrandingText(replyText, isRtl)}
+                        </div>
                       </div>
                     );
                   }
@@ -3125,7 +3212,7 @@ const fetchReports = async () => {
                     const lastIndex = legacyParts.length - 1;
                     currentText = legacyParts.map((part, index) => {
                       if (index === 0) return part;
-                      const author = index === lastIndex ? (r.consultant_note_replied_by || 'المستوى الثالث') : 'مطلق الغامدي';
+                      const author = index === lastIndex ? (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })) : t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' });
                       return `---رد: ${author}---${part}`;
                     }).join('');
                   }
@@ -3135,8 +3222,8 @@ const fetchReports = async () => {
                   
                   if (parts[0].trim()) {
                     const firstAuthor = parts.length > 1 && replyText.includes('--- إضافة جديدة ---') 
-                      ? 'مطلق الغامدي' 
-                      : (r.consultant_note_replied_by || 'المستوى الثالث');
+                      ? t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' }) 
+                      : (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' }));
                     bubbles.push({ name: firstAuthor, text: parts[0].trim() });
                   }
                   
@@ -3147,32 +3234,43 @@ const fetchReports = async () => {
                   }
                   
                   return bubbles.map((b, i) => {
-                    // Translate old English names that were saved before the fix
                     let bubbleName = b.name;
-                    if (bubbleName.toLowerCase().includes('shazly')) bubbleName = 'م / الشاذلي حامد';
+                    const lowerName = bubbleName.toLowerCase();
+                    const isShazly = lowerName.includes('shazly') || lowerName.includes('شاذلي');
+                    const isMotlaq = lowerName.includes('motlaq') || lowerName.includes('مطلق');
+                    const isConsultant = lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('الاستشاري');
                     
-                    const isMotlaq = bubbleName.includes('مطلق');
-                    const isConsultant = bubbleName.includes('مدحت') || bubbleName.includes('الاستشاري');
+                    if (isShazly) {
+                      bubbleName = t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+                    } else if (isMotlaq) {
+                      bubbleName = t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+                    } else if (isConsultant) {
+                      bubbleName = t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+                    } else {
+                      bubbleName = translateBrandingText(bubbleName, isRtl);
+                    }
                     
                     let bgClass = 'bg-indigo-50 border-indigo-200 text-indigo-900';
                     let badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
-                    let prefixText = t('consultantNoteModal.replyPrefix', { defaultValue: 'رد الموظف:' });
+                    let prefixText = t('consultantNoteModal.employeeReply', { defaultValue: 'رد الموظف:' });
                     
                     if (isMotlaq) {
                       bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
                       badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                    } else if (isConsultant) {
+                    } else if (isConsultant || isShazly) {
                       bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
                       badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                      prefixText = "تعقيب الاستشاري:";
+                      prefixText = t('consultantNoteModal.consultantFollowUp', { defaultValue: 'تعقيب الاستشاري:' });
                     }
                     
                     return (
-                      <div key={i} className={`relative p-4 rounded-xl text-sm whitespace-pre-wrap mt-3 border ${bgClass}`}>
-                        <span className={`absolute -top-3 right-4 text-xs font-bold px-2 py-0.5 rounded border shadow-sm ${badgeClass}`}>
+                      <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
+                        <div className="font-bold mb-2 opacity-90 text-[12px]">
                           {prefixText} {bubbleName}
-                        </span>
-                        {b.text}
+                        </div>
+                        <div className="whitespace-pre-wrap break-words leading-relaxed">
+                          {translateBrandingText(b.text, isRtl)}
+                        </div>
                       </div>
                     );
                   });

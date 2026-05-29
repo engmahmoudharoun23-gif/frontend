@@ -83,7 +83,7 @@ function ExtractForm({ user, onLogout }) {
   }, [id]);
 
   const fetchExtract = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const response = await axios.get(`${API}/extracts/${id}`);
       const extract = response.data;

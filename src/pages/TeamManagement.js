@@ -22,7 +22,14 @@ function TeamManagement({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
 
-  const [teams, setTeams] = useState([]);
+  const getInitialTeams = () => {
+    try {
+      const cached = localStorage.getItem('cache_TeamManagement.js_teams');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [teams, setTeams] = useState(getInitialTeams);
   const [loading, setLoading] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -113,13 +120,14 @@ function TeamManagement({ user, onLogout }) {
   }, [selectedProject]);
 
   const fetchTeams = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const url = isAdmin && selectedProject 
         ? `${API}/team-members?project=${encodeURIComponent(selectedProject)}`
         : `${API}/team-members`;
       const response = await axios.get(url);
       setTeams(response.data);
+      try { localStorage.setItem('cache_TeamManagement.js_teams', JSON.stringify(response.data)); } catch(e) {}
     } catch (error) {
       console.error('Failed to fetch teams:', error);
     } finally {
@@ -129,7 +137,7 @@ function TeamManagement({ user, onLogout }) {
 
   const handleAddMember = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    // setLoading(true);
     try {
       if (editingMember) {
         // تحديث عضو موجود
@@ -307,7 +315,7 @@ function TeamManagement({ user, onLogout }) {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
-                <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div></td></tr>
+                <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
               ) : teams.length === 0 ? (
                 <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500">{isRtl ? 'لا يوجد أعضاء فريق' : 'No team members found'}</td></tr>
               ) : (

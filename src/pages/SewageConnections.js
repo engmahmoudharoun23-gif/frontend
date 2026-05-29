@@ -422,7 +422,7 @@ function SewageConnections({ user, onLogout }) {
 
   const [connections, setConnections] = useState([]);
   const [filteredConnections, setFilteredConnections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [contractors, setContractors] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -486,7 +486,7 @@ function SewageConnections({ user, onLogout }) {
 
   const fetchConnections = useCallback(async () => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const params = new URLSearchParams();
       if (filters.project) params.append('project', filters.project);
       if (filters.governorate) params.append('governorate', filters.governorate);

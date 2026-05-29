@@ -91,40 +91,94 @@ const DEFAULT_CARD_LABELS = {
   terrestrial_unlicensed: 'عدد الرخص الغير صادرة لبلاغات التراب'
 };
 
-const PROJECT_NAMES_EN = {
-  'مشروع المحافظات الغربية - القطاع الأوسط': 'Western Governorates Project - Middle Sector',
-  'مشروع المحافظات الغربية -القطاع الأوسط': 'Western Governorates Project - Middle Sector',
-  'مشروع المحافظات الشمالية -القطاع الأوسط': 'Northern Governorates Project - Middle Sector',
-  'مشروع المحافظات الجنوبية -القطاع الأوسط': 'Southern Governorates Project - Middle Sector',
-  'مشروع كشف التسربات وإصلاحها': 'Leak Detection and Repair Project',
+// Helper: normalize Arabic text for fuzzy matching
+const normAr = (t) => !t ? '' : t.toString().trim()
+  .replace(/\s+/g, ' ')
+  .replace(/[أإآ]/g, 'ا')
+  .replace(/ة/g, 'ه')
+  .replace(/ى/g, 'ي');
+
+// All known project name variants → English (full name)
+const PROJECT_NAMES_EN_RAW = {
+  'مشروع المحافظات الغربية - القطاع الأوسط': 'Western Governorates Project',
+  'مشروع المحافظات الغربية -القطاع الأوسط': 'Western Governorates Project',
+  'مشروع المحافظات الغربيه - القطاع الاوسط': 'Western Governorates Project',
+  'مشروع المحافظات الغربيه -القطاع الاوسط': 'Western Governorates Project',
+  'المحافظات الغربية': 'Western Governorates Project',
+  'المحافظات الغربيه': 'Western Governorates Project',
+  'مشروع المحافظات الشمالية -القطاع الأوسط': 'Northern Governorates Project',
+  'مشروع المحافظات الشمالية - القطاع الأوسط': 'Northern Governorates Project',
+  'مشروع المحافظات الشماليه -القطاع الاوسط': 'Northern Governorates Project',
+  'مشروع المحافظات الشماليه - القطاع الاوسط': 'Northern Governorates Project',
+  'المحافظات الشمالية': 'Northern Governorates Project',
+  'المحافظات الشماليه': 'Northern Governorates Project',
+  'مشروع المحافظات الجنوبية -القطاع الأوسط': 'Southern Governorates Project',
+  'مشروع المحافظات الجنوبية - القطاع الأوسط': 'Southern Governorates Project',
+  'مشروع المحافظات الجنوبيه -القطاع الاوسط': 'Southern Governorates Project',
+  'المحافظات الجنوبية': 'Southern Governorates Project',
+  'المحافظات الجنوبيه': 'Southern Governorates Project',
+  'مشروع كشف التسربات وإصلاحها': 'Leak Detection & Repair Project',
+  'مشروع كشف التسربات واصلاحها': 'Leak Detection & Repair Project',
+  'كشف التسربات وإصلاحها': 'Leak Detection & Repair',
   'ايصال': 'Eisal Project',
-  'ايصال الرياض': 'Eisal Riyadh Project',
+  'إيصال': 'Eisal Project',
   'مشروع ايصال': 'Eisal Project',
-  'إيصال': 'Eisal',
-  'التشوه البصري': 'Visual Distortion',
-  'التشوة البصري': 'Visual Distortion',
+  'مشروع إيصال': 'Eisal Project',
+  'ايصال الرياض': 'Eisal Riyadh Project',
+  'إيصال الرياض': 'Eisal Riyadh Project',
+  'مشروع ايصال الرياض': 'Eisal Riyadh Project',
+  'ايصال مكة': 'Eisal Mecca Project',
+  'إيصال مكة': 'Eisal Mecca Project',
+  'مشروع ايصال مكة': 'Eisal Mecca Project',
+  'مشروع إيصال مكة': 'Eisal Mecca Project',
+  'التشوه البصري': 'Visual Distortion Project',
+  'التشوة البصري': 'Visual Distortion Project',
   'مشروع التشوه البصري': 'Visual Distortion Project',
   'مشروع التشوة البصري': 'Visual Distortion Project',
   'مشروع معالجة التشوه البصري': 'Visual Distortion Remedy Project',
   'مشروع معالجة التشوة البصري': 'Visual Distortion Remedy Project',
   'معالجة التشوه البصري': 'Visual Distortion Remedy',
   'معالجة التشوة البصري': 'Visual Distortion Remedy',
-  'ايصال مكة': 'Eisal Mecca Project',
-  'إيصال مكة': 'Eisal Mecca Project',
-  'مشروع ايصال مكة': 'Eisal Mecca Project',
-  'مشروع إيصال مكة': 'Eisal Mecca Project'
 };
 
-const CLEAN_PROJECT_NAMES_EN = {
+// Build normalized lookup map once
+const PROJECT_NAMES_EN_NORM = {};
+Object.entries(PROJECT_NAMES_EN_RAW).forEach(([k, v]) => { PROJECT_NAMES_EN_NORM[normAr(k)] = v; });
+const PROJECT_NAMES_EN = PROJECT_NAMES_EN_RAW;
+
+// Short display names for charts/cards
+const CLEAN_PROJECT_NAMES_EN_RAW = {
   'مشروع المحافظات الغربية - القطاع الأوسط': 'Western Governorates',
   'مشروع المحافظات الغربية -القطاع الأوسط': 'Western Governorates',
+  'مشروع المحافظات الغربيه - القطاع الاوسط': 'Western Governorates',
+  'مشروع المحافظات الغربيه -القطاع الاوسط': 'Western Governorates',
+  'المحافظات الغربية': 'Western Governorates',
+  'المحافظات الغربيه': 'Western Governorates',
   'مشروع المحافظات الشمالية -القطاع الأوسط': 'Northern Governorates',
+  'مشروع المحافظات الشمالية - القطاع الأوسط': 'Northern Governorates',
+  'مشروع المحافظات الشماليه -القطاع الاوسط': 'Northern Governorates',
+  'مشروع المحافظات الشماليه - القطاع الاوسط': 'Northern Governorates',
+  'المحافظات الشمالية': 'Northern Governorates',
+  'المحافظات الشماليه': 'Northern Governorates',
   'مشروع المحافظات الجنوبية -القطاع الأوسط': 'Southern Governorates',
+  'مشروع المحافظات الجنوبية - القطاع الأوسط': 'Southern Governorates',
+  'مشروع المحافظات الجنوبيه -القطاع الاوسط': 'Southern Governorates',
+  'المحافظات الجنوبية': 'Southern Governorates',
+  'المحافظات الجنوبيه': 'Southern Governorates',
   'مشروع كشف التسربات وإصلاحها': 'Leak Detection & Repair',
+  'مشروع كشف التسربات واصلاحها': 'Leak Detection & Repair',
+  'كشف التسربات وإصلاحها': 'Leak Detection & Repair',
   'ايصال': 'Eisal',
-  'ايصال الرياض': 'Eisal Riyadh',
-  'مشروع ايصال': 'Eisal',
   'إيصال': 'Eisal',
+  'مشروع ايصال': 'Eisal',
+  'مشروع إيصال': 'Eisal',
+  'ايصال الرياض': 'Eisal Riyadh',
+  'إيصال الرياض': 'Eisal Riyadh',
+  'مشروع ايصال الرياض': 'Eisal Riyadh',
+  'ايصال مكة': 'Eisal Mecca',
+  'إيصال مكة': 'Eisal Mecca',
+  'مشروع ايصال مكة': 'Eisal Mecca',
+  'مشروع إيصال مكة': 'Eisal Mecca',
   'التشوه البصري': 'Visual Distortion',
   'التشوة البصري': 'Visual Distortion',
   'مشروع التشوه البصري': 'Visual Distortion',
@@ -133,10 +187,25 @@ const CLEAN_PROJECT_NAMES_EN = {
   'مشروع معالجة التشوة البصري': 'Visual Distortion',
   'معالجة التشوه البصري': 'Visual Distortion',
   'معالجة التشوة البصري': 'Visual Distortion',
-  'ايصال مكة': 'Eisal Mecca',
-  'إيصال مكة': 'Eisal Mecca',
-  'مشروع ايصال مكة': 'Eisal Mecca',
-  'مشروع إيصال مكة': 'Eisal Mecca'
+};
+
+// Build normalized lookup for clean names
+const CLEAN_PROJECT_NAMES_EN_NORM = {};
+Object.entries(CLEAN_PROJECT_NAMES_EN_RAW).forEach(([k, v]) => { CLEAN_PROJECT_NAMES_EN_NORM[normAr(k)] = v; });
+const CLEAN_PROJECT_NAMES_EN = CLEAN_PROJECT_NAMES_EN_RAW;
+
+// Normalization-aware project lookup (full name)
+const lookupProjectEn = (name) => {
+  if (!name) return null;
+  if (PROJECT_NAMES_EN[name]) return PROJECT_NAMES_EN[name];
+  return PROJECT_NAMES_EN_NORM[normAr(name)] || null;
+};
+
+// Normalization-aware clean project name lookup (short for charts)
+const lookupCleanProjectEn = (name) => {
+  if (!name) return null;
+  if (CLEAN_PROJECT_NAMES_EN[name]) return CLEAN_PROJECT_NAMES_EN[name];
+  return CLEAN_PROJECT_NAMES_EN_NORM[normAr(name)] || null;
 };
 
 const DEFAULT_CARD_LABELS_EN = {
@@ -229,7 +298,15 @@ const BRANDING_TRANSLATIONS_EN = {
 const translateProject = (name, isRtl) => {
   if (!name) return "";
   if (isRtl) return name;
-  return PROJECT_NAMES_EN[name] || name.replace('مشروع إصلاح أعمال ', 'Repair Works Project ').replace('مشروع ', 'Project ');
+  const clean = name.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '');
+  return lookupProjectEn(name) || lookupCleanProjectEn(name) || lookupProjectEn(clean) || lookupCleanProjectEn(clean) || name.replace('مشروع إصلاح أعمال ', 'Repair Works Project ').replace('مشروع ', 'Project ');
+};
+
+const smartTranslateProjectName = (proj, isRtl) => {
+  if (!proj) return '';
+  const clean = proj.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '');
+  if (isRtl) return clean;
+  return lookupCleanProjectEn(proj) || lookupProjectEn(proj) || lookupCleanProjectEn(clean) || lookupProjectEn(clean) || clean;
 };
 
 const translateStatus = (status, isRtl) => {
@@ -459,84 +536,80 @@ const ProjectCard = ({ title, stats, projectKey, cardLabels = [] }) => {
   );
 };
 
-const GOVERNORATES_EN = {
-  'الغربية': 'Gharbia',
-  'المنوفية': 'Menofia',
-  'الشرقية': 'Sharqia',
-  'الدقهلية': 'Dakahlia',
-  'كفر الشيخ': 'Kafr El-Sheikh',
-  'دمياط': 'Damietta',
-  'البحيرة': 'Beheira',
-  'الاسكندرية': 'Alexandria',
-  'الإسكندرية': 'Alexandria',
-  'القليوبية': 'Qalyubia',
-  'الجيزة': 'Giza',
-  'القاهرة': 'Cairo',
-  'الفيوم': 'Fayoum',
-  'بني سويف': 'Beni Suef',
-  'المنيا': 'Minya',
-  'أسيوط': 'Asyut',
-  'سوهاج': 'Sohag',
-  'قنا': 'Qena',
-  'الأقصر': 'Luxor',
-  'الاقصر': 'Luxor',
-  'أسوان': 'Aswan',
-  'اسوان': 'Aswan',
-  'البحر الأحمر': 'Red Sea',
-  'الوادي الجديد': 'New Valley',
-  'مطروح': 'Matrouh',
-  'شمال سيناء': 'North Sinai',
-  'جنوب سيناء': 'South Sinai',
-  'بورسعيد': 'Port Said',
-  'الإسماعيلية': 'Ismailia',
-  'الاسماعيلية': 'Ismailia',
-  'السويس': 'Suez',
-  // Saudi Arabia Governorates & Cities
-  'الطائف': 'Taif',
+const GOVERNORATES_EN_RAW = {
+  // Saudi Arabia - Western Governorates Project
   'الدوادمي': 'Dawadmi',
-  'مرات': 'Marat',
   'شقراء': 'Shaqra',
-  'القويعية': 'Quwayiyah',
-  'عفيف': 'Afif',
-  'القصب': 'Al-Qasab',
-  'ساجر': 'Sajir',
-  'الرياض': 'Riyadh',
-  'جدة': 'Jeddah',
   'المزاحمية': 'Al-Muzahmiyah',
   'ضرماء': 'Dhurma',
   'ضرما': 'Dhurma',
-  'المنفوحة': 'Manfouha',
+  'مرات': 'Marat',
+  'ساجر': 'Sajir',
+  'القصب': 'Al-Qasab',
+  'عفيف': 'Afif',
+  'القويعية': 'Al-Quwayiyah',
+  'الطائف': 'Taif',
+  // Saudi Arabia - Northern Governorates Project
+  'المجمعة': 'Al-Majmaah',
+  'الزلفي': 'Al-Zulfi',
+  'الذلفي': 'Al-Zulfi',
+  'حوطة بني تميم': 'Hawtat Bani Tamim',
+  'الحريق': 'Al-Hariq',
+  'رنية': 'Ranyah',
+  'وادي الدواسر': 'Wadi Al-Dawasir',
+  // Saudi Arabia - Other
+  'الرياض': 'Riyadh',
+  'جدة': 'Jeddah',
   'مكة': 'Mecca',
   'مكة المكرمة': 'Mecca',
   'المدينة': 'Medina',
   'المدينة المنورة': 'Medina',
+  'الخرج': 'Al-Kharj',
+  'المنفوحة': 'Manfouha',
   'القصيم': 'Qassim',
-  'عسير': 'Asir',
-  'تبوك': 'Tabuk',
+  'بريدة': 'Buraydah',
+  'عنيزة': 'Unayzah',
+  'الرس': 'Al-Rass',
   'حائل': 'Hail',
-  'الحدود الشمالية': 'Northern Borders',
+  'تبوك': 'Tabuk',
+  'الوجه': 'Al-Wajh',
+  'عسير': 'Asir',
+  'أبها': 'Abha',
   'جازان': 'Jazan',
   'نجران': 'Najran',
   'الباحة': 'Al-Baha',
-  'تاروت': 'Tarout',
-  'القطيف': 'Al-Qatif',
-  'الجبيل': 'Al-Jubail',
-  'الخبر': 'Al-Khobar',
+  'الحدود الشمالية': 'Northern Borders',
+  'عرعر': 'Arar',
+  'رفحاء': 'Rafha',
+  'طريف': 'Turaif',
+  'سكاكا': 'Sakaka',
+  'القريات': 'Al-Qurayyat',
+  'دومة الجندل': 'Dumat Al-Jandal',
+  'الدمام': 'Dammam',
   'الظهران': 'Dhahran',
-  'الخفجي': 'Al-Khafji',
-  'حفر الباطن': 'Hafar Al-Batin',
+  'الخبر': 'Al-Khobar',
+  'الجبيل': 'Al-Jubail',
   'الأحساء': 'Al-Ahsa',
-  'قرية العليا': 'Qaryat Al-Ulya',
-  'النعيرية': 'Al-Nairyah',
+  'القطيف': 'Al-Qatif',
+  'حفر الباطن': 'Hafar Al-Batin',
+  'الخفجي': 'Al-Khafji',
   'رأس تنورة': 'Ras Tanura',
   'أبقيق': 'Abqaiq',
   'ابقيق': 'Abqaiq',
-  'الدمام': 'Dammam'
+  'النعيرية': 'Al-Nairyah',
+  'قرية العليا': 'Qaryat Al-Ulya',
+  'تاروت': 'Tarout',
 };
+
+// Build normalized lookup for governorates
+const GOVERNORATES_EN_NORM = {};
+Object.entries(GOVERNORATES_EN_RAW).forEach(([k, v]) => { GOVERNORATES_EN_NORM[normAr(k)] = v; });
+const GOVERNORATES_EN = GOVERNORATES_EN_RAW;
 
 const translateGovernorate = (gov, isRtl) => {
   if (isRtl || !gov) return gov;
-  return GOVERNORATES_EN[gov] || gov;
+  if (GOVERNORATES_EN[gov]) return GOVERNORATES_EN[gov];
+  return GOVERNORATES_EN_NORM[normAr(gov)] || gov;
 };
 
 function NewDashboard({ user, onLogout }) {
@@ -565,7 +638,8 @@ function NewDashboard({ user, onLogout }) {
 
   const formatHijriDate = (date) => {
     try {
-      return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
+      const localeStr = isRtl ? 'ar-SA-u-ca-islamic' : 'en-US-u-ca-islamic';
+      return new Intl.DateTimeFormat(localeStr, {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
@@ -580,11 +654,12 @@ function NewDashboard({ user, onLogout }) {
   };
 
   const [loading, setLoading] = useState(true);
-  const [projectsStats, setProjectsStats] = useState({});
-  const [allProjects, setAllProjects] = useState([]); // جميع المشاريع المتاحة
-  const [projectCardLabels, setProjectCardLabels] = useState({}); // مسميات البطاقات لكل مشروع
+  const safeParse = (key, fallback) => { try { const item = sessionStorage.getItem(key); return item ? JSON.parse(item) : fallback; } catch { return fallback; } };
+  const [projectsStats, setProjectsStats] = useState(() => safeParse('dashboard_projectsStats', {}));
+  const [allProjects, setAllProjects] = useState(() => safeParse('dashboard_allProjects', []));
+  const [projectCardLabels, setProjectCardLabels] = useState(() => safeParse('dashboard_projectCardLabels', {}));
   const [connectionsStats, setConnectionsStats] = useState(null); // إحصائيات التوصيلات
-  const [connectionsStatsByProject, setConnectionsStatsByProject] = useState({}); // إحصائيات التوصيلات لكل مشروع
+  const [connectionsStatsByProject, setConnectionsStatsByProject] = useState(() => safeParse('dashboard_connectionsStatsByProject', {}));
   const [currentUser, setCurrentUser] = useState(user); // نسخة محلية من المستخدم لضمان التحديث الديناميكي
   
   // ثيم المنصة
@@ -646,7 +721,7 @@ function NewDashboard({ user, onLogout }) {
   // States for 72-hour reports filter
   const [selectedProject72h, setSelectedProject72h] = useState('');
   const [selectedGovernorate72h, setSelectedGovernorate72h] = useState('');
-  const [selectedDate72h, setSelectedDate72h] = useState(''); // New State
+  const [selectedDate72h, setSelectedDate72h] = useState(() => new Date().toISOString().split('T')[0]); // New State
   const [reports72hCount, setReports72hCount] = useState(0);
   const [reports72hList, setReports72hList] = useState([]);
   const [loading72h, setLoading72h] = useState(false);
@@ -654,13 +729,15 @@ function NewDashboard({ user, onLogout }) {
   const [availableGovernorates, setAvailableGovernorates] = useState([]);
   const [showReports72h, setShowReports72h] = useState(false);
   
-  const [monthlyStats, setMonthlyStats] = useState({});
+  const [monthlyStats, setMonthlyStats] = useState(() => safeParse('dashboard_monthlyStats', {}));
   const [last72HoursCounts, setLast72HoursCounts] = useState({});
   const [governorate72hBadges, setGovernorate72hBadges] = useState([]);
 
+  const [is72hInitialized, setIs72hInitialized] = useState(false);
+
   // تعيين القيم الافتراضية لفلتر 72 ساعة بناءً على نوع المستخدم
   useEffect(() => {
-    if (user && !selectedDate72h) {
+    if (user && !is72hInitialized) {
       // 1. تعيين التاريخ الافتراضي لليوم ليظهر سجل 72 ساعة مباشرة عند الفتح
       const today = new Date().toISOString().split('T')[0];
       setSelectedDate72h(today);
@@ -677,8 +754,9 @@ function NewDashboard({ user, onLogout }) {
       } else {
         setSelectedCategory72h('reports');
       }
+      setIs72hInitialized(true);
     }
-  }, [user]);
+  }, [user, is72hInitialized]);
 
   // جلب إحصائيات التوصيلات
   const fetchConnectionsStats = async () => {
@@ -866,7 +944,7 @@ function NewDashboard({ user, onLogout }) {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `بلاغات_72 ساعة_${selectedGovernorate72h}_${new Date().toLocaleDateString('en-GB')}.xlsx`);
+      link.setAttribute('download', `بلاغات_24 ساعة_${selectedGovernorate72h}_${new Date().toLocaleDateString('en-GB')}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -877,12 +955,9 @@ function NewDashboard({ user, onLogout }) {
     }
   };
   
-  // Get available projects based on user role
   const getAvailableProjects = () => {
     const formatLabel = (proj) => {
-      const clean = proj.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '');
-      if (isRtl) return clean;
-      return PROJECT_NAMES_EN[proj] || clean;
+      return smartTranslateProjectName(proj, isRtl);
     };
 
     // استخدام allProjects التي تم جلبها من API
@@ -942,6 +1017,12 @@ function NewDashboard({ user, onLogout }) {
     }
   };
   const fetchProjectsData = async (showLoading = true) => {
+    const lastFetch = sessionStorage.getItem('dashboard_lastFetchTime');
+    const now = Date.now();
+    if (lastFetch && now - parseInt(lastFetch) < 15000) {
+      if (showLoading) setLoading(false);
+      return;
+    }
     if (showLoading) setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -971,11 +1052,90 @@ function NewDashboard({ user, onLogout }) {
       }
       
       setAllProjects(projectsToFetch);
+            sessionStorage.setItem('dashboard_allProjects', JSON.stringify(projectsToFetch));
       
-      // استخدام endpoint الإحصائيات الجديد - أسرع بكثير!
-      const monthParam = selectedMonth ? `&month=${selectedMonth}` : '';
+      const monthParam = selectedMonth ? `?month=${selectedMonth}` : '';
+      const fallbackMonthParam = selectedMonth ? `&month=${selectedMonth}` : '';
+      
+      // Try the ultra-fast unified batch endpoint first
+      try {
+        const batchResponse = await axios.get(`${API}/dashboard/init-all${monthParam}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (batchResponse.data && batchResponse.data.projects) {
+          const data = batchResponse.data;
+          const allowedProjs = data.allowed_projects && data.allowed_projects.length > 0 ? data.allowed_projects : projectsToFetch;
+          
+          if (allowedProjs.length > 0) {
+            projectsToFetch = allowedProjs;
+            setAllProjects(projectsToFetch);
+            sessionStorage.setItem('dashboard_allProjects', JSON.stringify(projectsToFetch));
+            
+            const results = {};
+            const monthlyResults = {};
+            const labelsMap = {};
+            
+            projectsToFetch.forEach(project => {
+              const key = getProjectKey(project);
+              const pData = data.projects[project] || {};
+              
+              results[key] = {
+                name: project,
+                total: pData.total || 0,
+                fixed: pData.fixed || 0,
+                asphaltRemaining: pData.asphalt_remaining || 0,
+                licensed: pData.licensed || 0,
+                unlicensed: pData.unlicensed || 0,
+                tile_licensed: pData.tile_licensed || 0,
+                tile_unlicensed: pData.tile_unlicensed || 0,
+                terrestrial_licensed: pData.terrestrial_licensed || 0,
+                terrestrial_unlicensed: pData.terrestrial_unlicensed || 0,
+                terrestrial: pData.terrestrial || 0,
+                tile: pData.tile || 0,
+                asphalt: pData.asphalt || 0,
+                by_type: pData.by_type || {}
+              };
+              
+              monthlyResults[key] = {
+                terrestrial: pData.terrestrial || 0,
+                tile: pData.tile || 0,
+                asphalt: pData.asphalt || 0
+              };
+              
+              labelsMap[project] = pData.cards || [];
+              
+              if (!connectionsStatsByProject[project] || connectionsStatsByProject[project].grand_total === undefined) {
+                setConnectionsStatsByProject(prev => ({
+                  ...prev,
+                  [project]: { 
+                    grand_total: pData.connections || 0, 
+                    water: {total: pData.connections || 0}, 
+                    sewage: {total: 0} 
+                  }
+                }));
+              }
+            });
+            
+            setProjectsStats(results);
+      sessionStorage.setItem('dashboard_projectsStats', JSON.stringify(results));
+      sessionStorage.setItem('dashboard_lastFetchTime', Date.now().toString());
+            setMonthlyStats(monthlyResults);
+      sessionStorage.setItem('dashboard_monthlyStats', JSON.stringify(monthlyResults));
+            setProjectCardLabels(labelsMap);
+      sessionStorage.setItem('dashboard_projectCardLabels', JSON.stringify(labelsMap));
+            
+            if (showLoading) setLoading(false);
+            return; // Exit early, we got the data fast!
+          }
+        }
+      } catch (batchErr) {
+        console.warn("Batch API failed, falling back to sequential fetching:", batchErr);
+      }
+      
+      // Fallback: استخدام endpoint الإحصائيات الفردي
       const promises = projectsToFetch.map(project => 
-        axios.get(`${API}/reports/stats?project=${encodeURIComponent(project)}${monthParam}`, {
+        axios.get(`${API}/reports/stats?project=${encodeURIComponent(project)}${fallbackMonthParam}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         .then(res => res.data)
@@ -986,6 +1146,7 @@ function NewDashboard({ user, onLogout }) {
       );
 
       const responses = await Promise.all(promises);
+
       
       // جلب إحصائيات التوصيلات لكل مشروع
       await fetchConnectionsStatsByProject(projectsToFetch);
@@ -1034,8 +1195,12 @@ function NewDashboard({ user, onLogout }) {
       });
       
       setProjectsStats(results);
+      sessionStorage.setItem('dashboard_projectsStats', JSON.stringify(results));
+      sessionStorage.setItem('dashboard_lastFetchTime', Date.now().toString());
       setMonthlyStats(monthlyResults);
+      sessionStorage.setItem('dashboard_monthlyStats', JSON.stringify(monthlyResults));
       setProjectCardLabels(labelsMap);
+      sessionStorage.setItem('dashboard_projectCardLabels', JSON.stringify(labelsMap));
     } catch (error) {
       console.error('Failed to fetch projects data:', error);
     } finally {
@@ -1070,15 +1235,7 @@ function NewDashboard({ user, onLogout }) {
     return (currentUser.permissions || []).includes(permKey);
   };
 
-  if (loading) {
-    return (
-      <Layout user={user} onLogout={onLogout}>
-        <div className="flex items-center justify-center h-96">
-          <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div>
-        </div>
-      </Layout>
-    );
-  }
+  // Removed blocking loader to allow instant page render
 
   // تحضير بيانات الرسوم البيانية
   // Admin يرى جميع المشاريع، باقي المستخدمين يرون مشاريعهم فقط
@@ -1105,9 +1262,7 @@ function NewDashboard({ user, onLogout }) {
   const getProjectChartData = () => {
     return getSortedProjects().map(([key, stats]) => {
       const connStats = connectionsStatsByProject[stats.name];
-      const cleanLabelAr = stats.name ? stats.name.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '') : key;
-      const cleanLabelEn = CLEAN_PROJECT_NAMES_EN[stats.name] || cleanLabelAr;
-      const displayName = isRtl ? cleanLabelAr : cleanLabelEn;
+      const displayName = smartTranslateProjectName(stats.name || key, isRtl);
       return {
         name: displayName,
         total: stats.total || 0,
@@ -1341,7 +1496,7 @@ function NewDashboard({ user, onLogout }) {
               <h3 className="text-sm sm:text-base font-bold text-orange-800 mb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span>🕐</span>
-                  <span>{d('سجل الـ 72 ساعة الأخيرة', 'Last 72 Hours Log')}</span>
+                  <span>{d('سجل الـ 24 ساعة الأخيرة', 'Last 24 Hours Log')}</span>
                 </div>
                 <div className="flex gap-1">
                   <button 
@@ -1598,10 +1753,10 @@ function NewDashboard({ user, onLogout }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span>{d('المحافظات', 'Governorates')} - {selectedCategory72h === 'reports' ? d('بلاغات الإصلاح', 'Repair Reports') : selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} ({d('72 ساعة', '72 Hours')})</span>
+              <span>{d('المحافظات', 'Governorates')} - {selectedCategory72h === 'reports' ? d('بلاغات الإصلاح', 'Repair Reports') : selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} ({d('24 ساعة', '24 Hours')})</span>
             </h3>
             <p className="text-xs text-gray-600 mb-3">
-              ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : d('التوصيلات', 'connections')} {d(' من تاريخ المباشرة ', ' from start date ')} <strong>{selectedDate72h ? new Date(selectedDate72h).toLocaleString(isRtl ? 'ar-EG' : 'en-GB') : new Date(Date.now() - 72*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', {
+              ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : d('التوصيلات', 'connections')} {d(' من تاريخ المباشرة ', ' from start date ')} <strong>{selectedDate72h ? new Date(selectedDate72h).toLocaleString(isRtl ? 'ar-EG' : 'en-GB') : new Date(Date.now() - 24*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', {
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
               })}</strong> {d('حتى الآن', 'until now')}
             </p>
@@ -1609,8 +1764,7 @@ function NewDashboard({ user, onLogout }) {
             {governorate72hBadges.filter(b => b.count > 0).length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {governorate72hBadges.filter(b => b.count > 0).slice(0, 15).map((badge, index) => {
-                  const cleanedProject = badge.project ? badge.project.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').split(' -')[0] : '';
-                  const translatedProj = isRtl ? cleanedProject : (CLEAN_PROJECT_NAMES_EN[badge.project] || cleanedProject);
+                  const translatedProj = smartTranslateProjectName(badge.project, isRtl);
                   return (
                     <div 
                       key={`${badge.governorate}-${index}`}
@@ -1683,8 +1837,7 @@ function NewDashboard({ user, onLogout }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {getSortedProjects().map(([key, stats], index) => {
-            const shortLabelName = stats.name ? stats.name.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '') : key;
-            const shortName = isRtl ? shortLabelName : (CLEAN_PROJECT_NAMES_EN[stats.name] || shortLabelName);
+            const shortName = smartTranslateProjectName(stats.name || key, isRtl);
             const connStats = connectionsStatsByProject[stats.name];
             
             const explicitlyHasWater = checkExplicitPerm(stats.name, 'water_connections');
@@ -1779,13 +1932,13 @@ function NewDashboard({ user, onLogout }) {
                 {/* إظهار أعمدة الإصلاح فقط إذا كان هناك بيانات لها */}
                 {chartData.some(d => d.total > 0) && (
                   <>
-                    <Bar dataKey="total" fill="#3B82F6" name={d('بلاغات الإصلاح', 'Repair Reports')} />
-                    <Bar dataKey="fixed" fill="#10B981" name={d('تم الإصلاح', 'Repaired')} />
+                    <Bar isAnimationActive={false} dataKey="total" fill="#3B82F6" name={d('بلاغات الإصلاح', 'Repair Reports')} />
+                    <Bar isAnimationActive={false} dataKey="fixed" fill="#10B981" name={d('تم الإصلاح', 'Repaired')} />
                   </>
                 )}
                 {/* إظهار أعمدة التوصيلات دائماً إذا وجدت */}
-                {chartData.some(d => d.water > 0) && <Bar dataKey="water" fill="#0EA5E9" name={d('توصيلات المياه', 'Water Connections')} />}
-                {chartData.some(d => d.sewage) && <Bar dataKey="sewage" fill="#059669" name={d('توصيلات الصرف', 'Sewage Connections')} />}
+                {chartData.some(d => d.water > 0) && <Bar isAnimationActive={false} dataKey="water" fill="#0EA5E9" name={d('توصيلات المياه', 'Water Connections')} />}
+                {chartData.some(d => d.sewage) && <Bar isAnimationActive={false} dataKey="sewage" fill="#059669" name={d('توصيلات الصرف', 'Sewage Connections')} />}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1795,7 +1948,7 @@ function NewDashboard({ user, onLogout }) {
             <h3 className="text-xl font-bold text-gray-900 mb-4">{d('توزيع البلاغات حسب المشاريع', 'Distribution of Reports by Projects')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie
+                <Pie isAnimationActive={false} isAnimationActive={false}
                   data={pieData}
                   cx="50%"
                   cy="50%"
@@ -1849,7 +2002,7 @@ function NewDashboard({ user, onLogout }) {
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <span className="text-red-600">🔴</span>
                 {selectedCategory72h === 'reports' ? d('البلاغات', 'Reports') : 
-                 selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} {d('المضافة خلال 72 ساعة لكل محافظة', 'Added in Last 72 Hours by Governorate')}
+                 selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} {d('المضافة خلال 24 ساعة لكل محافظة', 'Added in Last 24 Hours by Governorate')}
               </h3>
               <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
                 📅 {new Date().toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB', { 
@@ -1863,7 +2016,7 @@ function NewDashboard({ user, onLogout }) {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-blue-800">
                 ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : 
-                         selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'water connections') : d('توصيلات الصرف', 'sewage connections')} {d('من تاريخ المباشرة ', ' from start date ')} <strong>{new Date(Date.now() - 72*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', { 
+                         selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'water connections') : d('توصيلات الصرف', 'sewage connections')} {d('من تاريخ المباشرة ', ' from start date ')} <strong>{new Date(Date.now() - 24*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', { 
                   year: 'numeric', 
                   month: 'numeric', 
                   day: 'numeric',
@@ -1875,15 +2028,14 @@ function NewDashboard({ user, onLogout }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
               {!last72HoursCounts || last72HoursCounts.length === 0 ? (
                 <div className="col-span-full text-center py-8 text-gray-500">
-                  {d('لا توجد بلاغات جديدة خلال آخر 72 ساعة', 'No new reports during the last 72 hours')}
+                  {d('لا توجد بلاغات جديدة خلال آخر 24 ساعة', 'No new reports during the last 24 hours')}
                 </div>
               ) : (
                 [...last72HoursCounts]
                   .filter(item => item.count > 0)
                   .sort((a, b) => b.count - a.count)
                   .map((item, idx) => {
-                    const cleanItemProj = item.project ? item.project.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '') : '';
-                    const translatedItemProj = isRtl ? cleanItemProj : (CLEAN_PROJECT_NAMES_EN[item.project] || cleanItemProj);
+                    const translatedItemProj = smartTranslateProjectName(item.project, isRtl);
                     return (
                       <div 
                         key={`${item.governorate}-${idx}`} 
@@ -1912,7 +2064,7 @@ function NewDashboard({ user, onLogout }) {
                           </div>
                         </div>
                         <div className="text-xs text-red-600 mt-1 font-medium">
-                          {selectedCategory72h === 'reports' ? d('جديد خلال 72 ساعة', 'New in 72 hours') : d('جديدة خلال 72 ساعة', 'New in 72 hours')}
+                          {selectedCategory72h === 'reports' ? d('جديد خلال 24 ساعة', 'New in 24 hours') : d('جديدة خلال 24 ساعة', 'New in 24 hours')}
                         </div>
                       </div>
                     );

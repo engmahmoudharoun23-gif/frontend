@@ -46,7 +46,14 @@ function BusinessReports({ user, onLogout }) {
     return () => window.removeEventListener('wfm_translation_updated', handleTranslationUpdated);
   }, []);
 
-  const [reports, setReports] = useState([]);
+  const getInitialReports = () => {
+    try {
+      const cached = localStorage.getItem('cache_BusinessReports.js_reports');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [reports, setReports] = useState(getInitialReports);
   const hasPermission = (permKey) => {
     if (user?.role === 'admin') return true;
     if ((user?.permissions || []).includes(permKey)) return true;
@@ -54,7 +61,7 @@ function BusinessReports({ user, onLogout }) {
     return Object.values(pp).some(perms => (perms || []).includes(permKey));
   };
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -187,11 +194,12 @@ function BusinessReports({ user, onLogout }) {
   }
 
   const fetchReports = useCallback(async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/business-reports`, { headers: { Authorization: `Bearer ${token}` } });
       setReports(res.data || []);
+      try { localStorage.setItem('cache_BusinessReports.js_reports', JSON.stringify(res.data || [])); } catch(e) {}
     } catch { 
       toast.error(t('businessReports.downloadError') || 'حدث خطأ أثناء تحميل البيانات'); 
     } finally { 
@@ -506,7 +514,7 @@ function BusinessReports({ user, onLogout }) {
 
         {/* Content */}
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div>
+          <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري تحميل البيانات...'}</span></div>
         ) : reports.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
             <FileBarChart2 className="w-16 h-16 mx-auto text-gray-300 mb-4" />

@@ -231,8 +231,15 @@ function Contractors({ user, onLogout }) {
     return () => window.removeEventListener('wfm_translation_updated', handleTranslationUpdated);
   }, []);
   
-  const [contractors, setContractors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialContractors = () => {
+    try {
+      const cached = localStorage.getItem('cache_Contractors.js_contractors');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [contractors, setContractors] = useState(getInitialContractors);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [filterProject, setFilterProject] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -263,11 +270,9 @@ function Contractors({ user, onLogout }) {
   }, []);
 
   useEffect(() => {
-    if (projects.length > 0) {
-      fetchContractors();
-      setCurrentPage(1);
-    }
-  }, [projects, filterProject]);
+    fetchContractors();
+    setCurrentPage(1);
+  }, [filterProject]);
 
   const fetchProjects = async () => {
     try {
@@ -287,7 +292,7 @@ function Contractors({ user, onLogout }) {
   };
 
   const fetchContractors = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const token = localStorage.getItem('token');
       let url = filterProject 
@@ -295,6 +300,7 @@ function Contractors({ user, onLogout }) {
         : `${API}/contractors?all_contractors=true`;
       const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
       setContractors(res.data);
+      try { localStorage.setItem('cache_Contractors.js_contractors', JSON.stringify(res.data)); } catch(e) {}
     } catch (e) {
       console.error(e);
     } finally {
@@ -379,7 +385,7 @@ function Contractors({ user, onLogout }) {
         )}
 
         {loading ? (
-          <div className="text-center py-8">{t('contractorsPage.loading')}</div>
+          <div className="text-center py-8"><div className="flex flex-col items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div></div>
         ) : contractors.length === 0 ? (
           <div className="text-center py-8 text-gray-500">{t('contractorsPage.noContractors')}</div>
         ) : (

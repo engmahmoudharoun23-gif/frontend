@@ -23,8 +23,15 @@ function Extracts({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   
-  const [extracts, setExtracts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const getInitialExtracts = () => {
+    try {
+      const cached = localStorage.getItem('cache_Extracts.js_extracts');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return [];
+  };
+  const [extracts, setExtracts] = useState(getInitialExtracts);
+  const [loading, setLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
   const [activeTab, setActiveTab] = useState('incoming');
   const [showModal, setShowModal] = useState(false);
@@ -161,7 +168,7 @@ function Extracts({ user, onLogout }) {
   // جلب مستخلصات الأدمن
   const fetchExtracts = useCallback(async () => {
     if (!isAdmin) return;
-    setLoading(true);
+    // setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedProject) params.append('project', selectedProject);
@@ -183,10 +190,12 @@ function Extracts({ user, onLogout }) {
       // Handle both old and new response format
       if (Array.isArray(data)) {
         setExtracts(data);
+      try { localStorage.setItem('cache_Extracts.js_extracts', JSON.stringify(data)); } catch(e) {}
         setTotalCount(data.length);
         setTotalPages(1);
       } else {
         setExtracts(data.extracts || []);
+      try { localStorage.setItem('cache_Extracts.js_extracts', JSON.stringify(data.extracts || [])); } catch(e) {}
         setTotalCount(data.total_count || 0);
         setTotalPages(data.total_pages || 1);
       }
@@ -673,7 +682,7 @@ function Extracts({ user, onLogout }) {
               
               {managerLoading ? (
                 <div className="text-center py-10">
-                  <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto"></div>
+                  <div className="flex flex-col items-center"><div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mb-4"></div><span className="text-purple-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div>
                   <p className="text-gray-500 mt-2">{t('extractsPage.loading')}</p>
                 </div>
               ) : managerExtracts.length === 0 ? (
@@ -945,7 +954,7 @@ function Extracts({ user, onLogout }) {
 
         {/* الجداول */}
         {loading ? (
-          <div className="text-center py-10 bg-white rounded-xl shadow"><div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto"></div></div>
+          <div className="text-center py-10 bg-white rounded-xl shadow"><div className="flex flex-col items-center"><div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mb-4"></div><span className="text-purple-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div></div>
         ) : filteredExtracts.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl shadow">
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
