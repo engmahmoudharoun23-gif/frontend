@@ -1651,7 +1651,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      {isRtl ? 'ملاحظات الاستشاري' : 'Consultant Notes'}
+                      {isRtl ? 'ملاحظات الاستشاري المهندس مدحت ومطلق الغامدي والشاذلي' : 'Consultant Notes (Eng. Medhat, Motlaq Alghamdi & ElShazly)'}
                     </div>
                     {pendingConsultantCount > 0 && (
                       <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm min-w-[20px] text-center ml-2">
@@ -1939,7 +1939,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <div className="sidebar-icon-box">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </div>
-                    <span className="sidebar-text">{isRtl ? 'ملاحظات الاستشاري' : 'Consultant Notes'}</span>
+                    <span className="sidebar-text">{isRtl ? 'ملاحظات الاستشاري المهندس مدحت ومطلق الغامدي والشاذلي' : 'Consultant Notes (Eng. Medhat, Motlaq Alghamdi & ElShazly)'}</span>
                   </div>
                   {pendingConsultantCount > 0 && (
                     <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm min-w-[20px] text-center ml-2">
