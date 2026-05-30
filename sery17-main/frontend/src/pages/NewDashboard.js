@@ -816,12 +816,17 @@ function NewDashboard({ user, onLogout }) {
 
   useEffect(() => {
     // تحميل البيانات الأساسية التي تعتمد على الشهر - مع عرض شاشة التحميل الكاملة
+    // عند تغيير الشهر نمسح الـ cache لإجبار إعادة الجلب
+    sessionStorage.removeItem('dashboard_lastFetchTime');
+    sessionStorage.removeItem('dashboard_projectsStats');
+    sessionStorage.removeItem('dashboard_monthlyStats');
+
     const loadMainData = async () => {
       setLoading(true);
       try {
         await Promise.all([
           fetchConnectionsStats(),
-          fetchProjectsData(false) // نمرر false لعدم تغيير حالة التحميل داخلياً
+          fetchProjectsData(false, selectedMonth) // نمرر false وقيمة الشهر صراحةً
         ]);
       } catch (error) {
         console.error('Error loading main dashboard data:', error);
@@ -1016,10 +1021,15 @@ function NewDashboard({ user, onLogout }) {
       console.error('Error fetching 72 hours counts:', error);
     }
   };
-  const fetchProjectsData = async (showLoading = true) => {
+  // fetchProjectsData يقبل monthOverride لتجنب مشكلة الـ stale closure
+  const fetchProjectsData = async (showLoading = true, monthOverride = undefined) => {
+    // استخدام monthOverride إذا مُرِّر، وإلا نستخدم selectedMonth من الـ state
+    const effectiveMonth = monthOverride !== undefined ? monthOverride : selectedMonth;
+
     const lastFetch = sessionStorage.getItem('dashboard_lastFetchTime');
     const now = Date.now();
-    if (lastFetch && now - parseInt(lastFetch) < 15000) {
+    // نتجاوز الـ cache فقط إذا لم يتم تمرير monthOverride (أي استدعاء عادي وليس بسبب تغيير الشهر)
+    if (monthOverride === undefined && lastFetch && now - parseInt(lastFetch) < 15000) {
       if (showLoading) setLoading(false);
       return;
     }
@@ -1052,10 +1062,11 @@ function NewDashboard({ user, onLogout }) {
       }
       
       setAllProjects(projectsToFetch);
-            sessionStorage.setItem('dashboard_allProjects', JSON.stringify(projectsToFetch));
+      sessionStorage.setItem('dashboard_allProjects', JSON.stringify(projectsToFetch));
       
-      const monthParam = selectedMonth ? `?month=${selectedMonth}` : '';
-      const fallbackMonthParam = selectedMonth ? `&month=${selectedMonth}` : '';
+      // استخدام effectiveMonth بدلاً من selectedMonth مباشرة لتجنب الـ stale closure
+      const monthParam = effectiveMonth ? `?month=${effectiveMonth}` : '';
+      const fallbackMonthParam = effectiveMonth ? `&month=${effectiveMonth}` : '';
       
       // Try the ultra-fast unified batch endpoint first
       try {
@@ -1815,25 +1826,37 @@ function NewDashboard({ user, onLogout }) {
             {/* Month Filter - Responsive */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
               <label className="text-xs sm:text-sm font-medium text-gray-700">{d('اختيار الشهر:', 'Select Month:')}</label>
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex gap-2 w-full sm:w-auto items-center">
                 <input
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="px-2 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm flex-1 sm:flex-none"
                 />
-                {selectedMonth && (
+                {selectedMonth ? (
                   <button
                     onClick={() => setSelectedMonth('')}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium flex items-center gap-1"
+                    title={d('عرض جميع البلاغات بدون فلتر شهر', 'Show all reports without month filter')}
                   >
-                    {d('إلغاء', 'Cancel')}
+                    <span>✕</span>
+                    <span>{d('إلغاء الفلتر', 'Clear Filter')}</span>
                   </button>
+                ) : (
+                  <span className="px-3 py-1.5 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-medium">
+                    {d('جميع البلاغات', 'All Reports')}
+                  </span>
                 )}
               </div>
+              {selectedMonth && (
+                <span className="text-xs text-blue-600 font-medium bg-blue-50 border border-blue-200 px-2 py-1 rounded-lg">
+                  📅 {d('يعرض بلاغات شهر:', 'Showing reports for:')} {new Date(selectedMonth + '-01').toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { month: 'long', year: 'numeric' })}
+                </span>
+              )}
             </div>
           </div>
         </div>
+
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {getSortedProjects().map(([key, stats], index) => {

@@ -925,13 +925,11 @@ function Reports({ user, onLogout }) {
 
   const handlePermanentDeleteNote = async () => {
     if (!selectedConsultantReportId) return;
-    if (!window.confirm('هل أنت متأكد من الحذف النهائي للملاحظة والردود؟')) return;
+    if (!window.confirm(t('consultantNoteModal.confirmDeleteNote', { defaultValue: 'هل أنت متأكد من الحذف النهائي للملاحظة والردود؟' }))) return;
     
     setIsSavingConsultantNote(true);
     try {
-      await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note`, {
-        consultant_note: ''
-      }, {
+      await axios.delete(`${API}/reports/${selectedConsultantReportId}/consultant_note`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -940,6 +938,9 @@ function Reports({ user, onLogout }) {
           return {
             ...r,
             consultant_note: '',
+            consultant_note_by: '',
+            consultant_note_reply: '',
+            consultant_note_replied_by: '',
             consultant_note_processed: false
           };
         }
@@ -947,11 +948,11 @@ function Reports({ user, onLogout }) {
       }));
       
       setCurrentConsultantNote('');
-      toast.success('تم الحذف النهائي بنجاح');
+      toast.success(t('consultantNoteModal.deleteNoteSuccess', { defaultValue: 'تم الحذف النهائي بنجاح' }));
       setShowConsultantNoteModal(false);
     } catch (error) {
       console.error('Error deleting note:', error);
-      toast.error('حدث خطأ أثناء الحذف');
+      toast.error(t('consultantNoteModal.deleteNoteError', { defaultValue: 'حدث خطأ أثناء الحذف' }));
     } finally {
       setIsSavingConsultantNote(false);
     }
@@ -3320,7 +3321,8 @@ const fetchReports = async () => {
                   {t('consultantNoteModal.deleteReply', { defaultValue: 'حذف الرد' })}
                 </button>
               )}
-              {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && (
+              {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && 
+               hasReportPermission(reports.find(r => r.id === selectedConsultantReportId), 'consultant_notes') && (
                 <button
                   onClick={handlePermanentDeleteNote}
                   disabled={isSavingConsultantNote}

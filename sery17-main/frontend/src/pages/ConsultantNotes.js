@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { translateBrandingText } from '../utils/brandingTranslation';
 import Pagination from '../components/Pagination';
+import { hasProjectPermission } from '../utils/permissions';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -26,6 +27,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
   
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,25 +38,31 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const [selectedReplyReportId, setSelectedReplyReportId] = useState(null);
   const [isSavingReply, setIsSavingReply] = useState(false);
 
-  useEffect(() => {
-    fetchNotes();
-  }, []);
-
-  const fetchNotes = async () => {
+  const fetchNotes = async (page = currentPage, limit = itemsPerPage, search = searchQuery) => {
     try {
-      // setLoading(true);
+      setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/reports/consultant-notes`, {
+        params: { page, limit, search },
         headers: { Authorization: `Bearer ${token}` }
       });
       setReports(response.data.reports || []);
-      try { localStorage.setItem('cache_ConsultantNotes.js_reports', JSON.stringify(response.data.reports || [])); } catch(e) {}
+      setTotalItems(response.data.total || 0);
+      try {
+        if (page === 1 && !search) {
+          localStorage.setItem('cache_ConsultantNotes.js_reports', JSON.stringify(response.data.reports || []));
+        }
+      } catch(e) {}
     } catch (error) {
       console.error('Error fetching consultant notes:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchNotes(currentPage, itemsPerPage, searchQuery);
+  }, [currentPage, itemsPerPage, searchQuery]);
 
   const handleToggleProcess = async (reportId) => {
     try {
@@ -130,19 +138,28 @@ const ConsultantNotes = ({ user, onLogout }) => {
     }
   };
 
-  // Filter reports
-  const filteredReports = reports.filter(r => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase().trim();
-    return (r.report_number && String(r.report_number).toLowerCase().includes(q)) || 
-           (r.id && String(r.id).toLowerCase().includes(q));
-  });
+  const handleDeleteNote = async (reportId) => {
+    if (!window.confirm(t('consultantNotesPage.confirmDeleteNote', { defaultValue: 'هل أنت متأكد من حذف الملاحظة وجميع الردود التابعة لها نهائياً؟' }))) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(`${API}/reports/${reportId}/consultant_note`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        toast.success(t('consultantNotesPage.noteDeletedSuccess', { defaultValue: 'تم حذف الملاحظة بنجاح' }));
+        fetchNotes(currentPage, itemsPerPage, searchQuery);
+      }
+    } catch (error) {
+      console.error('Error deleting consultant note:', error);
+      toast.error(t('consultantNotesPage.noteDeleteError', { defaultValue: 'حدث خطأ أثناء حذف الملاحظة' }));
+    }
+  };
 
-  // Pagination calculation
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredReports.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
+  // Since we use server-side pagination and search:
+  const currentItems = reports;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
   
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -159,7 +176,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
             </h2>
             
             <span className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap self-end sm:self-auto">
-              {filteredReports.length} {t("consultantNotesPage.reportCount", { defaultValue: "بلاغ" })}
+              {totalItems} {t("consultantNotesPage.reportCount", { defaultValue: "بلاغ" })}
             </span>
           </div>
           
@@ -190,23 +207,19 @@ const ConsultantNotes = ({ user, onLogout }) => {
             <div className="flex justify-center items-center py-20">
               <div className="flex flex-col items-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div>
             </div>
-          ) : reports.length === 0 ? (
+          ) : totalItems === 0 ? (
             <div className="text-center py-20">
               <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
                 <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={searchQuery ? "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" : "M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"} />
                 </svg>
               </div>
-              <p className="text-gray-500 text-lg font-medium">{t("consultantNotesPage.noNotes", { defaultValue: "لا توجد ملاحظات من الاستشاري حالياً" })}</p>
-            </div>
-          ) : filteredReports.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <p className="text-gray-500 text-lg font-medium">{t("consultantNotesPage.noSearchResults", { defaultValue: "لا توجد نتائج مطابقة للبحث" })}</p>
+              <p className="text-gray-500 text-lg font-medium">
+                {searchQuery 
+                  ? t("consultantNotesPage.noSearchResults", { defaultValue: "لا توجد نتائج مطابقة للبحث" })
+                  : t("consultantNotesPage.noNotes", { defaultValue: "لا توجد ملاحظات من الاستشاري حالياً" })
+                }
+              </p>
             </div>
           ) : (
             <>
@@ -405,6 +418,20 @@ const ConsultantNotes = ({ user, onLogout }) => {
                               {t("consultantNotesPage.conversationClosed", { defaultValue: "المحادثة مغلقة" })}
                             </span>
                           )}
+
+                          {/* زر حذف الملاحظة */}
+                          {hasProjectPermission(user, report.project, 'consultant_notes') && (
+                            <button
+                              onClick={() => handleDeleteNote(report.id)}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+                              title={t("consultantNotesPage.deleteNote", { defaultValue: "حذف الملاحظة" })}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              {t("consultantNotesPage.deleteNote", { defaultValue: "حذف" })}
+                            </button>
+                          )}
                           
                           {/* عرض الحالة */}
                           {(user?.role === 'admin' || user?.can_create_subusers) ? (
@@ -453,12 +480,12 @@ const ConsultantNotes = ({ user, onLogout }) => {
             </div>
             
             {/* Pagination Controls */}
-            {filteredReports.length > 0 && (
+            {totalItems > 0 && (
               <div className="rounded-b-xl overflow-hidden border-t border-gray-100">
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={filteredReports.length}
+                  totalItems={totalItems}
                   itemsPerPage={itemsPerPage}
                   onPageChange={paginate}
                   onItemsPerPageChange={(newLimit) => {
