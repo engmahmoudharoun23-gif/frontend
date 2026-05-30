@@ -31,6 +31,7 @@ import SafetyReports from './pages/SafetyReports';
 import WorkPermits from './pages/WorkPermits';
 import QualityReports from './pages/QualityReports';
 import BusinessReports from './pages/BusinessReports';
+import Archive from './pages/Archive';
 // import Chat from './pages/Chat'; // تم تعطيل نظام الدردشة
 import './App.css';
 
@@ -382,6 +383,10 @@ function App() {
         <Route
           path="/business-reports"
           element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'business_reports') || hasAnyProjectPermission(user, 'business_reports_review')) ? <BusinessReports user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
+          path="/archive"
+          element={user && user.role === 'admin' ? <Archive user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         {/* تم تعطيل نظام الدردشة */}
         {/* <Route

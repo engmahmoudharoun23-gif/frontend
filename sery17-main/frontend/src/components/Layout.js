@@ -929,7 +929,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* User Info & Actions - Responsive */}
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
               {/* جرس التنبيهات للبلاغات بانتظار المراجعة - يظهر للمراجعين وللمنشئين */}
-              {(hasPermission('reports_review') || hasPermission('reports_add') || hasPermission('reports_view')) && pendingReviewCount > 0 && (
+              {(hasPermission('reports_review') || hasPermission('reports_add') || hasPermission('reports_view')) && (
                 <div className="relative">
                   <button 
                     onClick={() => setNotificationsOpen(!notificationsOpen)}
@@ -937,16 +937,18 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     title={isRtl ? `${pendingReviewCount} بلاغات قيد المراجعة` : `${pendingReviewCount} Reports Pending Review`}
                   >
                     <svg 
-                      className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-300 animate-pulse" 
+                      className={`w-6 h-6 sm:w-7 sm:h-7 ${pendingReviewCount > 0 ? 'text-yellow-300 animate-pulse' : 'text-gray-300'}`} 
                       fill="currentColor" 
                       viewBox="0 0 24 24"
                     >
                       <path d="M12 2C10.9 2 10 2.9 10 4V4.29C7.03 5.17 5 7.9 5 11V17L3 19V20H21V19L19 17V11C19 7.9 16.97 5.17 14 4.29V4C14 2.9 13.1 2 12 2ZM12 23C13.11 23 14 22.11 14 21H10C10 22.11 10.89 23 12 23Z"/>
                     </svg>
                     {/* Badge للعدد */}
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {pendingReviewCount > 9 ? '9+' : pendingReviewCount}
-                    </span>
+                    {pendingReviewCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {pendingReviewCount > 9 ? '9+' : pendingReviewCount}
+                      </span>
+                    )}
                   </button>
                   
                   {/* Dropdown للإشعارات */}
@@ -1027,7 +1029,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                     {items.map((item, idx) => (
                                       <Link
                                         key={idx}
-                                        to={`/reports?license_status=review_pending&scroll=true&governorate=${encodeURIComponent(item.originalGov || item.governorate)}${item.project ? `&project=${encodeURIComponent(item.project)}` : ''}${item.created_by ? `&created_by=${encodeURIComponent(item.created_by)}` : ''}`}
+                                        to={`/reports?license_status=review_pending&scroll=true&governorate=${encodeURIComponent(item.originalGov || item.governorate)}${item.project ? `&project=${encodeURIComponent(item.project)}` : ''}${item.created_by ? `&created_by=${encodeURIComponent(item.created_by)}` : ''}&t=${Date.now()}`}
                                         onClick={() => {
                                           setNotificationsOpen(false);
                                         }}
@@ -1590,8 +1592,15 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               {hasPermission('dashboard') && (
                 <Link 
                   to="/" 
-                  onClick={() => setSidebarOpen(false)} 
-                  className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}
+                  onClick={(e) => {
+                    if (location.pathname === '/' || location.pathname === '/dashboard') {
+                      e.preventDefault();
+                      window.location.reload();
+                    } else {
+                      setSidebarOpen(false);
+                    }
+                  }} 
+                  className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/') || isActive('/dashboard') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}
                 >
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
                   {t('sidebar.dashboard')}
@@ -1837,6 +1846,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
               
+              {/* الأرشيف */}
+              {user && user.role === 'admin' && (
+                <Link to="/archive" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/archive') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                  {i18n.language === 'ar' ? 'الأرشيف' : 'Archive'}
+                </Link>
+              )}
+              
               {/* سلة المحذوفات */}
               {hasPermission('trash') && (
                 <Link to="/trash" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/trash') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -1875,8 +1892,15 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {hasPermission('dashboard') && (
               <Link
                 to="/"
-                onClick={() => setSidebarOpen(false)}
-                className={`sidebar-item ${isActive('/') ? 'sidebar-item-active' : 'text-gray-700'}`}
+                onClick={(e) => {
+                  if (location.pathname === '/' || location.pathname === '/dashboard') {
+                    e.preventDefault();
+                    window.location.reload();
+                  } else {
+                    setSidebarOpen(false);
+                  }
+                }}
+                className={`sidebar-item ${isActive('/') || isActive('/dashboard') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2220,6 +2244,22 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </svg>
                 </div>
                 <span className="sidebar-text">{t('sidebar.settings')}</span>
+              </Link>
+            )}
+            
+            {/* الأرشيف */}
+            {user && user.role === 'admin' && (
+              <Link
+                to="/archive"
+                onClick={() => setSidebarOpen(false)}
+                className={`sidebar-item ${isActive('/archive') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="sidebar-icon-box">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                </div>
+                <span className="sidebar-text">{i18n.language === 'ar' ? 'الأرشيف' : 'Archive'}</span>
               </Link>
             )}
             

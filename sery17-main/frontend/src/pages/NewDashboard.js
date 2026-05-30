@@ -1732,7 +1732,7 @@ function NewDashboard({ user, onLogout }) {
                               <td className="px-2 py-1 text-center">
                                 <button
                                   onClick={() => {
-                                    const searchNum = selectedCategory72h === 'reports' ? item.report_number : (item.request_number || item.ccb_report_number);
+                                    const searchNum = item.id;
                                     const path = selectedCategory72h === 'reports' ? '/reports' : 
                                                  selectedCategory72h === 'water_connections' ? '/water-connections' : '/sewage-connections';
                                     navigate(`${path}?search=${encodeURIComponent(searchNum)}&exact=true`);

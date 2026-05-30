@@ -338,6 +338,9 @@ function Reports({ user, onLogout }) {
   const [consultantReplyText, setConsultantReplyText] = useState('');
   const [showConsultantReplyBox, setShowConsultantReplyBox] = useState(false);
   const [selectedConsultantReportId, setSelectedConsultantReportId] = useState(null);
+  const [editingBubbleIndex, setEditingBubbleIndex] = useState(null);
+  const [editingBubbleText, setEditingBubbleText] = useState('');
+  const [activeBubbleDropdown, setActiveBubbleDropdown] = useState(null);
   const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
          // الملاحظة الحالية
   const [availableProjects, setAvailableProjects] = useState([]); // المشاريع من قاعدة البيانات
@@ -523,7 +526,7 @@ function Reports({ user, onLogout }) {
         status: '',
         license_status: newLicenseStatus || '',
         my_reports: false,
-        created_by: '',
+        created_by: searchParams.get('created_by') || '',
         exact: false,
         date_from: '',
         date_to: '',
@@ -975,6 +978,29 @@ function Reports({ user, onLogout }) {
     } catch (error) {
       console.error('Error toggling status:', error);
       toast.error(t('consultantNotesPage.processError', { defaultValue: 'حدث خطأ أثناء تغيير الحالة' }));
+    }
+  };
+
+  const updateConsultantReplyString = async (newReplyStr) => {
+    setIsSavingConsultantNote(true);
+    try {
+      const response = await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note_reply`, { reply: newReplyStr }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.data.success) {
+        setReports(reports.map(r => 
+          r.id === selectedConsultantReportId 
+            ? { ...r, consultant_note_reply: response.data.reply, consultant_note_replied_by: response.data.replied_by, consultant_note_processed: false } 
+            : r
+        ));
+        toast.success(t('consultantNoteModal.replySuccess', { defaultValue: 'تم التحديث بنجاح' }));
+        setEditingBubbleIndex(null);
+      }
+    } catch (error) {
+      console.error('Error updating reply:', error);
+      toast.error(t('consultantNoteModal.replyError', { defaultValue: 'حدث خطأ أثناء التحديث' }));
+    } finally {
+      setIsSavingConsultantNote(false);
     }
   };
 
@@ -2559,7 +2585,7 @@ const fetchReports = async () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
+                {reports.length === 0 && loading ? (
                   <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
                 ) : reports.length === 0 ? (
                   <tr>
@@ -3266,12 +3292,38 @@ const fetchReports = async () => {
                     
                     return (
                       <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
-                        <div className="font-bold mb-2 opacity-90 text-[12px]">
-                          {prefixText} {bubbleName}
+                        <div className="font-bold mb-2 opacity-90 text-[12px] flex justify-between items-center">
+                          <span>{prefixText} {bubbleName}</span>
+                          {(!r.consultant_note_processed && (user?.full_name === b.name || user?.username === b.name || (b.name === 'المستوى الثالث' && !user?.full_name && !user?.username) || (b.name && user?.username?.toLowerCase().includes('medhat') && b.name.toLowerCase().includes('medhat')))) && (
+                            <div className="flex gap-2">
+                              <button onClick={() => { setEditingBubbleIndex(i); setEditingBubbleText(b.text); }} className="text-blue-600 hover:text-blue-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-blue-200">{t("common.edit", { defaultValue: "تعديل" })}</button>
+                              <button onClick={() => {
+                                if(!window.confirm(t("consultantNotesPage.confirmDeleteReply", { defaultValue: "هل أنت متأكد من حذف ردك؟" }))) return;
+                                const newBubbles = bubbles.filter((_, idx) => idx !== i);
+                                const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
+                                updateConsultantReplyString(newStr);
+                              }} className="text-red-600 hover:text-red-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-red-200">{t("common.delete", { defaultValue: "حذف" })}</button>
+                            </div>
+                          )}
                         </div>
-                        <div className="whitespace-pre-wrap break-words leading-relaxed">
-                          {translateBrandingText(b.text, isRtl)}
-                        </div>
+                        {editingBubbleIndex === i ? (
+                          <div className="mt-2">
+                            <textarea className="w-full p-2 border rounded-md" value={editingBubbleText} onChange={e => setEditingBubbleText(e.target.value)}></textarea>
+                            <div className="flex gap-2 mt-2">
+                              <button onClick={() => {
+                                const newBubbles = [...bubbles];
+                                newBubbles[i].text = editingBubbleText;
+                                const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
+                                updateConsultantReplyString(newStr);
+                              }} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 shadow-sm border border-blue-600">{t("common.saveEdit", { defaultValue: "حفظ التعديل" })}</button>
+                              <button onClick={() => setEditingBubbleIndex(null)} className="bg-white text-gray-700 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 shadow-sm border border-gray-300">{t("common.cancel", { defaultValue: "إلغاء" })}</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="whitespace-pre-wrap break-words leading-relaxed">
+                            {translateBrandingText(b.text, isRtl)}
+                          </div>
+                        )}
                       </div>
                     );
                   });
@@ -3322,7 +3374,8 @@ const fetchReports = async () => {
                 </button>
               )}
               {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && 
-               hasReportPermission(reports.find(r => r.id === selectedConsultantReportId), 'consultant_notes') && (
+               hasReportPermission(reports.find(r => r.id === selectedConsultantReportId), 'consultant_notes') && 
+               (reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.username || reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.full_name || (!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
                 <button
                   onClick={handlePermanentDeleteNote}
                   disabled={isSavingConsultantNote}
