@@ -789,7 +789,7 @@ function HRManagement({ user, onLogout }) {
         
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow mb-6" data-testid="hr-tabs-container">
-          <div className="flex border-b">
+          <div className="flex border-b overflow-x-auto">
             {[
               { key: 'employees', label: isRtl ? '1. الموظفين' : '1. Employees', count: filterData(employees).length, icon: <svg className="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
               { key: 'contracts', label: isRtl ? '2. العقود' : '2. Contracts', count: filterData(contracts).length, icon: <svg className="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
@@ -797,7 +797,7 @@ function HRManagement({ user, onLogout }) {
               { key: 'advances_custodies', label: isRtl ? '4. السلف والعهد' : '4. Advances & Custody', count: filterData(advancesCustodies).length, icon: <svg className="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
             ].map(tab => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} data-testid={`hr-tab-${tab.key}`}
-                className={`flex-1 py-4 px-6 text-center font-medium transition-colors ${
+                className={`flex-1 py-4 px-6 text-center font-medium transition-colors whitespace-nowrap min-w-max ${
                   activeTab === tab.key ? 'text-slate-700 border-b-2 border-slate-600 bg-slate-50' : 'text-gray-500 hover:bg-gray-50'
                 }`}>
                 {tab.icon} {tab.label}
