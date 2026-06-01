@@ -32,7 +32,7 @@ import WorkPermits from './pages/WorkPermits';
 import QualityReports from './pages/QualityReports';
 import BusinessReports from './pages/BusinessReports';
 import Archive from './pages/Archive';
-// import Chat from './pages/Chat'; // تم تعطيل نظام الدردشة
+import Chat from './pages/Chat';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -389,10 +389,10 @@ function App() {
           element={user && user.role === 'admin' ? <Archive user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         {/* تم تعطيل نظام الدردشة */}
-        {/* <Route
+                <Route
           path="/chat"
           element={user ? <Chat user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
-        /> */}
+        />
         <Route
           path="/consultant-notes"
           element={user ? <ConsultantNotes user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}

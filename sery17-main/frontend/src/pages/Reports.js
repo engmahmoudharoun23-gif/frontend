@@ -2801,7 +2801,8 @@ const fetchReports = async () => {
                                 
                                 
                                 {/* خيار ملاحظات الاستشاري */}
-                                {hasReportPermission(report, 'consultant_notes') && (user?.role === 'admin' || user?.can_create_subusers) && (
+                                {hasReportPermission(report, 'consultant_notes') && 
+                                  (user?.role === 'admin' || (user?.can_create_subusers && user?.has_sub_users)) && (
                                   <button 
                                     onClick={() => {
                                       setSelectedConsultantReportId(report.id);

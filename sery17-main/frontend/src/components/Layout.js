@@ -6,6 +6,7 @@ import { hasProjectPermission as hasProjectPermUtil, PROJECT_SCOPED_PERMISSIONS 
 import { useBranding } from '../hooks/useBranding';
 import { Globe, ShieldAlert, ClipboardCheck, FileBarChart2, Bell, UserCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { toast } from 'react-toastify';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -55,9 +56,11 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const [pendingQualityCount, setPendingQualityCount] = useState(0);
   const [pendingBusinessCount, setPendingBusinessCount] = useState(0);
   const [pendingConsultantCount, setPendingConsultantCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   
   const previousSignedCount = useRef(0);
   const previousPendingReviewCount = useRef(0);
+  const previousUnreadChatCount = useRef(0);
   
   // اسم المنصة - يُقرأ من localStorage أولاً لتجنب التأخير
   const [platformName, setPlatformName] = useState(() => {
@@ -107,6 +110,10 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     const saved = localStorage.getItem('notificationSoundEnabled');
     return saved !== null ? JSON.parse(saved) : true; // مفعل افتراضياً
   });
+  const [soundVolume, setSoundVolume] = useState(() => {
+    const saved = localStorage.getItem('notificationSoundVolume');
+    return saved !== null ? parseFloat(saved) : 1.0; // 100% افتراضياً
+  });
   const unseenIntervalRef = useRef(null);
   const previousAnnouncementRef = useRef(null);
   const [dynamicAnnouncement, setDynamicAnnouncement] = useState('');
@@ -134,12 +141,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         osc.connect(gainNode);
         gainNode.connect(audioContext.destination);
         
-        // استخدام الانزلاق السريع في التردد لإعطاء طابع (Pop / Click) المميز لتطبيقات المحادثة
+        // نغمة رنين ناعمة ومقبولة (Sine Wave) بدلاً من النغمة الحادة
         osc.frequency.setValueAtTime(freq, startTime);
-        osc.frequency.exponentialRampToValueAtTime(freq * 0.9, startTime + duration);
         
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(vol, startTime + 0.01);
+        // التدرج اللوغاريتمي للصوت مع منع الـ Clipping
+        const actualVol = vol * Math.pow(soundVolume, 2);
+        // هجوم سريع (Attack) وتلاشي ناعم (Decay) لتشبه صوت القطرة أو الجرس الخفيف
+        gainNode.gain.linearRampToValueAtTime(actualVol, startTime + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
         
         osc.start(startTime);
@@ -147,13 +156,55 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       };
 
       const t = audioContext.currentTime;
-      // نغمة سريعة وحادة تشبه إشعار رسالة الواتساب الجديدة (نغمتين سريعتين متتاليتين)
-      playTone(900, 'triangle', t, 0.08, 0.8);
-      playTone(1350, 'triangle', t + 0.08, 0.15, 0.8);
+      // نغمة مريحة جداً للأذن (نغمتين متتاليتين بتآلف موسيقي مريح - G5 ثم C6)
+      playTone(783.99, 'sine', t, 0.25, 1.2);
+      playTone(1046.50, 'sine', t + 0.15, 0.4, 1.2);
     } catch (e) {
       console.error('Could not play notification sound:', e);
     }
-  }, []);
+  }, [soundVolume]);
+
+  const playChatSound = useCallback(() => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const osc = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      osc.type = 'sine'; // Sine wave is perfect for a whistle sound
+      osc.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      const t = audioContext.currentTime;
+      // نغمة العصفور (واتساب القديم): تدرج التردد للصعود ثم الهبوط
+      const actualVol = 0.5 * Math.pow(soundVolume, 2);
+
+      // الصفرة الأولى (صعود Fwee)
+      osc.frequency.setValueAtTime(1800, t);
+      osc.frequency.linearRampToValueAtTime(2600, t + 0.1);
+      
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(actualVol, t + 0.02);
+      gainNode.gain.setValueAtTime(actualVol, t + 0.08);
+      gainNode.gain.linearRampToValueAtTime(0, t + 0.1);
+
+      // الصفرة الثانية (هبوط Fwoo)
+      osc.frequency.setValueAtTime(2600, t + 0.12);
+      osc.frequency.linearRampToValueAtTime(1600, t + 0.35);
+
+      gainNode.gain.setValueAtTime(0, t + 0.12);
+      gainNode.gain.linearRampToValueAtTime(actualVol, t + 0.15);
+      gainNode.gain.setValueAtTime(actualVol, t + 0.25);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      
+      osc.start(t);
+      osc.stop(t + 0.4);
+    } catch (e) {
+      console.error('Could not play chat sound:', e);
+    }
+  }, [soundVolume]);
 
   // نغمة الآيفون العاجلة للمناسبات (عالية جداً)
   const playIphoneAlertSound = useCallback(() => {
@@ -176,8 +227,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         osc2.frequency.setValueAtTime(freq * 1.01, startTime); // تأثير صوتي مضاعف
         
         gainNode.gain.setValueAtTime(0, startTime);
-        // زيادة كبيرة في مستوى الصوت
-        gainNode.gain.linearRampToValueAtTime(1.5, startTime + 0.02);
+        // زيادة كبيرة في مستوى الصوت مع مراعاة مستوى الصوت المخصص بالتدريج اللوغاريتمي
+        const actualVol = 1.0 * Math.pow(soundVolume, 2);
+        gainNode.gain.linearRampToValueAtTime(actualVol, startTime + 0.02);
         gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
         
         osc.start(startTime);
@@ -195,7 +247,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     } catch (e) {
       console.log('Could not play iphone alert sound:', e);
     }
-  }, []);
+  }, [soundVolume]);
   
   // دالة تشغيل صوت تذكير (أقل حدة) للتمييز عن الإشعار الجديد
   const playReminderSound = useCallback(() => {
@@ -214,7 +266,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       oscillator.frequency.setValueAtTime(500, audioContext.currentTime);
       oscillator.frequency.setValueAtTime(400, audioContext.currentTime + 0.15);
       
-      gainNode.gain.setValueAtTime(0.4, audioContext.currentTime); // تعديل الصوت ليكون أوضح بقليل
+      const actualVol = 0.4 * Math.pow(soundVolume, 2);
+      gainNode.gain.setValueAtTime(actualVol, audioContext.currentTime); // تعديل الصوت ليكون أوضح بقليل
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
       
       oscillator.start(audioContext.currentTime);
@@ -222,7 +275,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     } catch (e) {
       console.log('Could not play reminder sound:', e);
     }
-  }, []);
+  }, [soundVolume]);
   
   // دالة تبديل حالة الصوت
   const toggleSound = useCallback(() => {
@@ -271,6 +324,13 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     document.documentElement.lang = currentLang;
   }, [i18n.language]);
 
+  // تصفير إشعار الدردشة فوراً عند الدخول إلى صفحة الدردشة
+  useEffect(() => {
+    if (location.pathname === '/chat') {
+      setUnreadChatCount(0);
+    }
+  }, [location.pathname]);
+
   const isActive = (path) => location.pathname === path;
   
   // جلب عدد البلاغات بانتظار المراجعة والتفاصيل حسب المحافظة
@@ -285,9 +345,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         });
         const newPendingReviewCount = countResponse.data.count || 0;
         
-        // تم إيقاف تشغيل النغمة لعدد بلاغات قيد المراجعة بناءً على طلب المستخدم
+        // تشغيل النغمة لعدد بلاغات قيد المراجعة بناءً على طلب المستخدم
         if (!isFirstLoad.current && soundEnabled && newPendingReviewCount > previousPendingReviewCount.current) {
-          console.log('🔔 بلاغ قيد المراجعة جديد! (بدون صوت)', previousPendingReviewCount.current, '->', newPendingReviewCount);
+          playNotificationSound();
         }
         previousPendingReviewCount.current = newPendingReviewCount;
         setPendingReviewCount(newPendingReviewCount);
@@ -309,26 +369,22 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         
         // تشغيل صوت التنبيه للفواتير الجديدة
         if (!isFirstLoad.current && soundEnabled && newInvoicesCount > previousInvoicesCount.current) {
-          // playNotificationSound();
-          console.log('🔔 فاتورة جديدة! العدد السابق:', previousInvoicesCount.current, '-> الجديد:', newInvoicesCount);
+          playNotificationSound();
         }
         
         // تشغيل صوت التنبيه للطلبات الجديدة
         if (!isFirstLoad.current && soundEnabled && newRequestsCount > previousRequestsCount.current) {
-          // playNotificationSound();
-          console.log('🔔 طلب موظف جديد! العدد السابق:', previousRequestsCount.current, '-> الجديد:', newRequestsCount);
+          playNotificationSound();
         }
 
         // تشغيل صوت التنبيه للمستندات الموقعة الجديدة
         if (!isFirstLoad.current && soundEnabled && newSignedCount > previousSignedCount.current) {
-          // playNotificationSound();
-          console.log('🔔 توقيع جديد! العدد السابق:', previousSignedCount.current, '-> الجديد:', newSignedCount);
+          playNotificationSound();
         }
         
         // تشغيل صوت التنبيه للمستخلصات الجديدة
         if (!isFirstLoad.current && soundEnabled && newExtractsCount > previousExtractsCount.current) {
-          // playNotificationSound();
-          console.log('🔔 مستخلص جديد! العدد السابق:', previousExtractsCount.current, '-> الجديد:', newExtractsCount);
+          playNotificationSound();
         }
         
         // جلب البلاغات الجديدة (غير المرئية)
@@ -343,13 +399,12 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         // تشغيل الأصوات
         if (soundEnabled) {
           if (newUnseenCount > savedUnseenCount) {
-            // جرس حاد للبلاغات الجديدة (سواء عند التصفح أو الانتقال بين الصفحات)
-            playNotificationSound(); 
-            console.log('🔔 بلاغ جديد! العدد السابق:', savedUnseenCount, '-> الجديد:', newUnseenCount);
-          } else if (isFirstLoad.current && newUnseenCount > 0) {
-            // جرس تذكير (هادئ) عند دخول المستخدم للنظام ووجود إشعارات سابقة غير مقروءة
-            playReminderSound();
-            console.log('🔔 تذكير عند الدخول: لديك', newUnseenCount, 'إشعارات غير مقروءة');
+            // تنبيه واحد فقط عند ورود إشعارات جديدة لتجنب الإزعاج
+            playNotificationSound();
+          } else if (!sessionStorage.getItem('wfm_login_sound_played') && newUnseenCount > 0) {
+            // تنبيه واحد فقط عند الدخول في حال وجود إشعارات سابقة غير مقروءة
+            sessionStorage.setItem('wfm_login_sound_played', 'true');
+            playNotificationSound();
           }
         }
         
@@ -383,6 +438,64 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             setSupportMessagesCount(supportResponse.data.count || 0);
           } catch (e) { /* silent */ }
         }
+        
+        // جلب عدد الرسائل غير المقروءة للدردشة
+        try {
+          const chatNotifRes = await axios.get(`${API}/chat/v2/unread-count`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const newUnreadCount = chatNotifRes.data.unread_count || 0;
+          
+          const savedUnreadChatCount = parseInt(localStorage.getItem('wfm_last_unread_chat_count') || '0', 10);
+          
+          let shouldPlayChatAlert = false;
+          let chatToastMessage = null;
+
+          if (newUnreadCount > savedUnreadChatCount) {
+            // رسالة جديدة وصلت أثناء تشغيل النظام أو تراكم جديد
+            shouldPlayChatAlert = true;
+            chatToastMessage = isRtl ? `لديك رسائل جديدة في الدردشة الفورية 💬` : `You have new messages in Instant Chat 💬`;
+          } else if (!sessionStorage.getItem('wfm_chat_login_sound_played') && newUnreadCount > 0) {
+            // رسائل مخزنة قديمة عند تسجيل الدخول للنظام (لأول مرة في هذه الجلسة)
+            shouldPlayChatAlert = true;
+            chatToastMessage = isRtl ? `لديك رسائل غير مقروءة في الدردشة الفورية 💬` : `You have unread messages 💬`;
+          }
+
+          // تحديث التخزين المحلي فوراً لمنع التكرار حتى لو حدث خطأ لاحقاً
+          localStorage.setItem('wfm_last_unread_chat_count', newUnreadCount.toString());
+          previousUnreadChatCount.current = newUnreadCount;
+
+          if (location.pathname === '/chat') {
+            setUnreadChatCount(0);
+          } else {
+            setUnreadChatCount(newUnreadCount);
+
+            if (shouldPlayChatAlert) {
+              sessionStorage.setItem('wfm_chat_login_sound_played', 'true');
+              if (soundEnabled) {
+                try {
+                  playChatSound();
+                } catch (soundErr) {
+                  console.error("Error playing chat sound:", soundErr);
+                }
+              }
+              if (chatToastMessage) {
+                try {
+                  toast.info(chatToastMessage, {
+                    position: "top-center",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                  });
+                } catch (toastErr) {
+                  console.error("Error showing toast:", toastErr);
+                }
+              }
+            }
+          }
+        } catch (e) { /* silent */ }
         
         // التحقق من الإعلان العام (شريط المناسبات العاجلة)
         try {
@@ -461,33 +574,19 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     const interval = setInterval(fetchPendingReview, 15000);
     
     return () => clearInterval(interval);
-  }, [user, soundEnabled, playNotificationSound]);
+  }, [user, soundEnabled, playNotificationSound, location.pathname]);
   
-  // نظام التذكير الدوري (كل 30 ثانية) للإشعارات غير المقروءة للفت الانتباه
+  // نظام التذكير الدوري الهادئ للبلاغات قيد المراجعة
   useEffect(() => {
-    if (!soundEnabled) {
-      if (reminderIntervalRef.current) {
-        clearInterval(reminderIntervalRef.current);
-        reminderIntervalRef.current = null;
-      }
-      return;
+    // تشغيل نغمة هادئة للتذكير في حال وجود بلاغات قيد المراجعة
+    if (soundEnabled && pendingReviewCount > 0) {
+      const reminderInterval = setInterval(() => {
+        playReminderSound();
+      }, 1 * 60 * 1000); // تذكير كل دقيقة
+      
+      return () => clearInterval(reminderInterval);
     }
-    
-    reminderIntervalRef.current = setInterval(() => {
-      const hasUnread = unseenReportsCount > 0 || pendingInvoicesCount > 0 || pendingRequestsCount > 0 || pendingExtractsCount > 0;
-      if (hasUnread && soundEnabled) {
-        playReminderSound(); // تشغيل صوت التذكير (جرس مختلف)
-        console.log('🔔 تذكير: لديك إشعارات غير مقروءة');
-      }
-    }, 30000); // كل 30 ثانية
-    
-    return () => {
-      if (reminderIntervalRef.current) {
-        clearInterval(reminderIntervalRef.current);
-      }
-    };
-  }, [soundEnabled, unseenReportsCount, pendingInvoicesCount, pendingRequestsCount, pendingExtractsCount, playNotificationSound]);
-  
+  }, [soundEnabled, pendingReviewCount, playReminderSound]);
   // دالة تحديد البلاغ كمرئي (مقروء)
   const markReportAsSeen = async (reportId, report) => {
     try {
@@ -928,6 +1027,24 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
 
             {/* User Info & Actions - Responsive */}
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
+              
+              {/* أيقونة الدردشة الفورية في الشريط العلوي */}
+              <Link
+                to="/chat"
+                onClick={() => setUnreadChatCount(0)}
+                className="relative p-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+                title={isRtl ? 'الدردشة الفورية' : 'Instant Chat'}
+              >
+                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                {unreadChatCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse shadow-lg">
+                    {unreadChatCount > 9 ? '9+' : unreadChatCount}
+                  </span>
+                )}
+              </Link>
+
               {/* جرس التنبيهات للبلاغات بانتظار المراجعة - يظهر للمراجعين وللمنشئين */}
               {(hasPermission('reports_review') || hasPermission('reports_add') || hasPermission('reports_view')) && (
                 <div className="relative">
@@ -1122,7 +1239,34 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                           <span>🔔</span>
                           <span>{isRtl ? 'إشعارات البلاغات والتوصيلات' : 'Reports & Connections Notifications'}</span>
                         </h3>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
+                          {/* Slider للتحكم بمستوى الصوت */}
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="1" 
+                              step="0.1" 
+                              value={soundEnabled ? soundVolume : 0}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (val === 0) {
+                                  setSoundEnabled(false);
+                                  localStorage.setItem('notificationSoundEnabled', JSON.stringify(false));
+                                } else {
+                                  setSoundEnabled(true);
+                                  localStorage.setItem('notificationSoundEnabled', JSON.stringify(true));
+                                  setSoundVolume(val);
+                                  localStorage.setItem('notificationSoundVolume', val);
+                                }
+                              }}
+                              onMouseUp={() => { if(soundVolume > 0) playNotificationSound(); }}
+                              onTouchEnd={() => { if(soundVolume > 0) playNotificationSound(); }}
+                              className="w-16 sm:w-20 h-1.5 bg-blue-200/50 rounded-lg appearance-none cursor-pointer"
+                              title={isRtl ? 'مستوى الصوت' : 'Volume'}
+                            />
+                          </div>
+                          
                           {/* زر تفعيل/تعطيل الصوت */}
                           <button
                             onClick={(e) => {
@@ -1854,6 +1998,23 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
               
+              {/* الدردشة الفورية - فوق سلة المحذوفات */}
+              <Link
+                to="/chat"
+                onClick={() => {
+                  setSidebarOpen(false);
+                  setUnreadChatCount(0);
+                }}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-right text-sm transition-colors ${isActive('/chat') ? 'bg-gradient-to-l from-indigo-500 to-purple-600 text-white font-bold shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                <span>{isRtl ? '💬 الدردشة الفورية' : '💬 Instant Chat'}</span>
+                {unreadChatCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-extrabold animate-pulse">
+                    {unreadChatCount}
+                  </span>
+                )}
+              </Link>
+              
               {/* سلة المحذوفات */}
               {hasPermission('trash') && (
                 <Link to="/trash" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/trash') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -2262,6 +2423,29 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <span className="sidebar-text">{i18n.language === 'ar' ? 'الأرشيف' : 'Archive'}</span>
               </Link>
             )}
+            
+             <Link
+              to="/chat"
+              onClick={() => {
+                setSidebarOpen(false);
+                setUnreadChatCount(0);
+              }}
+              className={`sidebar-item ${isActive('/chat') ? 'sidebar-item-active' : 'text-gray-700'} flex items-center justify-between`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="sidebar-icon-box" style={{ background: isActive('/chat') ? 'linear-gradient(to bottom right, #8b5cf6, #6366f1)' : '' }}>
+                  <svg className={`sidebar-icon ${isActive('/chat') ? 'text-white' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <span className="sidebar-text font-bold">{isRtl ? 'الدردشة الفورية' : 'Instant Chat'}</span>
+              </div>
+              {unreadChatCount > 0 && (
+                <span className="ml-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-extrabold animate-pulse">
+                  {unreadChatCount}
+                </span>
+              )}
+            </Link>
             
             {/* سلة المحذوفات */}
             {hasPermission('trash') && (
