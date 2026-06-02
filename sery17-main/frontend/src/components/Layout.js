@@ -340,7 +340,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         const token = localStorage.getItem('token');
         
         // جلب العدد الإجمالي
-        const countResponse = await axios.get(`${API}/reports/pending-review-count`, {
+        const countResponse = await axios.get(`${API}/reports/pending-review-count?t=${new Date().getTime()}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const newPendingReviewCount = countResponse.data.count || 0;
@@ -353,13 +353,13 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         setPendingReviewCount(newPendingReviewCount);
         
         // جلب التفاصيل حسب المحافظة
-        const govResponse = await axios.get(`${API}/reports/pending-review-by-governorate`, {
+        const govResponse = await axios.get(`${API}/reports/pending-review-by-governorate?t=${new Date().getTime()}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setGovernorateCounts(govResponse.data.data || []);
         
         // جلب عدد الفواتير والطلبات المعلقة
-        const notifResponse = await axios.get(`${API}/notifications/pending-count`, {
+        const notifResponse = await axios.get(`${API}/notifications/pending-count?t=${new Date().getTime()}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const newInvoicesCount = notifResponse.data.pending_invoices || 0;
@@ -388,7 +388,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         }
         
         // جلب البلاغات الجديدة (غير المرئية)
-        const unseenResponse = await axios.get(`${API}/reports/notifications/unseen`, {
+        const unseenResponse = await axios.get(`${API}/reports/notifications/unseen?t=${new Date().getTime()}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const newUnseenCount = unseenResponse.data.total || 0;
@@ -432,7 +432,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           Object.values(user.project_permissions || {}).some(perms => (perms || []).includes('support_messages'));
         if (hasSupportPerm) {
           try {
-            const supportResponse = await axios.get(`${API}/support/messages/count`, {
+            const supportResponse = await axios.get(`${API}/support/messages/count?t=${new Date().getTime()}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             setSupportMessagesCount(supportResponse.data.count || 0);
@@ -441,7 +441,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         
         // جلب عدد الرسائل غير المقروءة للدردشة
         try {
-          const chatNotifRes = await axios.get(`${API}/chat/v2/unread-count`, {
+          const chatNotifRes = await axios.get(`${API}/chat/v2/unread-count?t=${new Date().getTime()}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const newUnreadCount = chatNotifRes.data.unread_count || 0;
@@ -551,10 +551,10 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       try {
         const token = localStorage.getItem('token');
         const [safetyRes, qualityRes, businessRes, consultantRes] = await Promise.all([
-          axios.get(`${API}/safety-reports`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API}/quality-reports`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API}/business-reports`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API}/reports/consultant-notes`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { reports: [] } }))
+          axios.get(`${API}/safety-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API}/quality-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API}/business-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API}/reports/consultant-notes?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { reports: [] } }))
         ]);
         setPendingSafetyCount((safetyRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);
         setPendingQualityCount((qualityRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);

@@ -101,7 +101,7 @@ const Chat = ({ user, onLogout }) => {
 
   const fetchContacts = useCallback(async () => {
     try {
-      const response = await fetch(`${API}/chat/v2/contacts`, {
+      const response = await fetch(`${API}/chat/v2/contacts?t=${new Date().getTime()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!response.ok) throw new Error();
@@ -117,7 +117,7 @@ const Chat = ({ user, onLogout }) => {
   const fetchMessages = useCallback(async (contactId, isBackground = false) => {
     if (!contactId) return;
     try {
-      const response = await fetch(`${API}/chat/v2/messages/${contactId}`, {
+      const response = await fetch(`${API}/chat/v2/messages/${contactId}?t=${new Date().getTime()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!response.ok) throw new Error();
