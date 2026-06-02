@@ -2761,7 +2761,11 @@ const fetchReports = async () => {
                             <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                           </svg>
                           {report.notes && report.notes.trim() !== '' && (
-                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse" title="يوجد ملاحظات"></span>
+                            <span className="absolute -top-1 -right-1 text-orange-500 animate-bounce" title="يوجد ملاحظات">
+                              <svg className="w-4 h-4 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                              </svg>
+                            </span>
                           )}
                         </button>
 
@@ -2794,7 +2798,7 @@ const fetchReports = async () => {
                                   className={`group flex items-center px-4 py-3 text-sm text-purple-700 hover:bg-purple-600 hover:text-white w-full transition-colors font-bold ${isRtl ? 'text-right' : 'text-left'}`}
                                 >
                                   <svg className={`h-5 w-5 text-purple-500 group-hover:text-white ${isRtl ? 'ml-3' : 'mr-3'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                   </svg>
                                   {t('reports.actions.viewNotes')}
                                 </button>
