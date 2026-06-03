@@ -31,7 +31,8 @@ import SafetyReports from './pages/SafetyReports';
 import WorkPermits from './pages/WorkPermits';
 import QualityReports from './pages/QualityReports';
 import BusinessReports from './pages/BusinessReports';
-// import Chat from './pages/Chat'; // تم تعطيل نظام الدردشة
+import Archive from './pages/Archive';
+import Chat from './pages/Chat';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -63,20 +64,19 @@ function App() {
   useEffect(() => {
     const fetchTheme = async () => {
       try {
-        const response = await axios.get(`${API}/settings/platform`);
+        const response = await axios.get(`${API}/settings/platform?t=${new Date().getTime()}`);
         const theme = response.data.theme || 'blue';
         const localDark = localStorage.getItem('darkMode');
         const dark = localDark !== null ? (localDark === 'true') : (response.data.dark_mode || false);
         setPlatformTheme(theme);
         setDarkMode(dark);
-        applyTheme(theme, dark);
+        // تم الإزالة من هنا لكي لا يتضارب مع الثيم الشخصي، سيتم التطبيق في useEffect أدناه
       } catch (error) {
         console.error('Failed to fetch theme:', error);
         const localDark = localStorage.getItem('darkMode');
         const dark = localDark === 'true';
         setPlatformTheme('blue');
         setDarkMode(dark);
-        applyTheme('blue', dark);
       }
       setPlatformThemeLoaded(true);
     };
@@ -137,7 +137,7 @@ function App() {
 
   const fetchUserSilent = async () => {
     try {
-      const response = await axios.get(`${API}/auth/me`);
+      const response = await axios.get(`${API}/auth/me?t=${new Date().getTime()}`);
       setUser(response.data);
       localStorage.setItem('user', JSON.stringify(response.data));
     } catch (error) {
@@ -150,7 +150,7 @@ function App() {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get(`${API}/auth/me`);
+      const response = await axios.get(`${API}/auth/me?t=${new Date().getTime()}`);
       setUser(response.data);
       localStorage.setItem('user', JSON.stringify(response.data));
     } catch (error) {
@@ -383,11 +383,15 @@ function App() {
           path="/business-reports"
           element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'business_reports') || hasAnyProjectPermission(user, 'business_reports_review')) ? <BusinessReports user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
+        <Route
+          path="/archive"
+          element={user && user.role === 'admin' ? <Archive user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
         {/* تم تعطيل نظام الدردشة */}
-        {/* <Route
+                <Route
           path="/chat"
           element={user ? <Chat user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
-        /> */}
+        />
         <Route
           path="/consultant-notes"
           element={user ? <ConsultantNotes user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
