@@ -2598,7 +2598,7 @@ const fetchReports = async () => {
                           {filters.project ? (
                             <>
                               <p className="text-xl">📭 {t('reports.noReportsProject')}</p>
-                              <p className="text-sm text-gray-500 mt-2">{t('reports.project')}: {filters.project}</p>
+                              <p className="text-sm text-gray-500 mt-2">{t('reports.project')}: {translateBrandingText(filters.project, isRtl)}</p>
                             </>
                           ) : (
                             <p>{t('reports.noReports')}</p>

@@ -64,20 +64,19 @@ function App() {
   useEffect(() => {
     const fetchTheme = async () => {
       try {
-        const response = await axios.get(`${API}/settings/platform`);
+        const response = await axios.get(`${API}/settings/platform?t=${new Date().getTime()}`);
         const theme = response.data.theme || 'blue';
         const localDark = localStorage.getItem('darkMode');
         const dark = localDark !== null ? (localDark === 'true') : (response.data.dark_mode || false);
         setPlatformTheme(theme);
         setDarkMode(dark);
-        applyTheme(theme, dark);
+        // تم الإزالة من هنا لكي لا يتضارب مع الثيم الشخصي، سيتم التطبيق في useEffect أدناه
       } catch (error) {
         console.error('Failed to fetch theme:', error);
         const localDark = localStorage.getItem('darkMode');
         const dark = localDark === 'true';
         setPlatformTheme('blue');
         setDarkMode(dark);
-        applyTheme('blue', dark);
       }
       setPlatformThemeLoaded(true);
     };
@@ -138,7 +137,7 @@ function App() {
 
   const fetchUserSilent = async () => {
     try {
-      const response = await axios.get(`${API}/auth/me`);
+      const response = await axios.get(`${API}/auth/me?t=${new Date().getTime()}`);
       setUser(response.data);
       localStorage.setItem('user', JSON.stringify(response.data));
     } catch (error) {
@@ -151,7 +150,7 @@ function App() {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get(`${API}/auth/me`);
+      const response = await axios.get(`${API}/auth/me?t=${new Date().getTime()}`);
       setUser(response.data);
       localStorage.setItem('user', JSON.stringify(response.data));
     } catch (error) {

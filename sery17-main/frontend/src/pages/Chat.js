@@ -50,6 +50,54 @@ const playNotificationSound = () => {
   }
 };
 
+const playBuzzSound = () => {
+  try {
+    // Play the audio multiple times simultaneously to amplify the volume significantly
+    const playLoudly = () => {
+      const audio1 = new Audio('/yahoo-buzz.mp3');
+      const audio2 = new Audio('/yahoo-buzz.mp3');
+      const audio3 = new Audio('/yahoo-buzz.mp3');
+      
+      audio1.play().catch(e => console.error("Audio play failed", e));
+      audio2.play().catch(e => {});
+      audio3.play().catch(e => {});
+    };
+    playLoudly();
+    
+    // Add a shake effect to the chat window (like old Yahoo!)
+    const chatContainer = document.querySelector('.bg-white.rounded-2xl.shadow-xl.overflow-hidden') || document.body;
+    if (chatContainer) {
+      if (!document.getElementById('yahoo-shake-style')) {
+        const style = document.createElement('style');
+        style.id = 'yahoo-shake-style';
+        style.innerHTML = `
+          @keyframes yahooShake {
+            0% { transform: translate(3px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+          }
+          .yahoo-shake {
+            animation: yahooShake 0.1s infinite;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      chatContainer.classList.add('yahoo-shake');
+      setTimeout(() => chatContainer.classList.remove('yahoo-shake'), 1200); // Shake for 1.2s matching the sound
+    }
+  } catch (e) {
+    console.error("Error playing buzz", e);
+  }
+};
+
 const Chat = ({ user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
@@ -64,6 +112,19 @@ const Chat = ({ user, onLogout }) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojis = [
+    // Faces
+    "😀","😃","😄","😁","😆","😅","😂","🤣","🥲","☺️","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓","😎","🥸","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👹","👺","🤡","💩","👻","💀","👽","👾","🤖",
+    // Hands
+    "👋","🤚","🖐","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","✍️","💅","🤳","💪","🦾","🦵","🦿","🦶","👣",
+    // Hearts/Emotions
+    "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❤️‍🔥","❤️‍🩹","❣️","💕","💞","💓","💗","💖","💘","💝","💟",
+    // Animals
+    "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪰","🪲","🪳","🦟","🦗","🕷","🕸","🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🦭","🐊","🐅","🐆","🦓","🦍","🦧","🦣","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🦬","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙","🐐","🦌","🐕","🐩","🦮","🐕‍🦺","🐈","🐈‍⬛","🪶","🐓","🦃","🦤","🦚","🦜","🦢","🦩","🕊","🐇","🦝","🦨","🦡","🦫","🦦","🦥","🐁","🐀","🐿","🦔",
+    // Common symbols
+    "🔥","✨","🌟","💫","💥","💯","💢","💨","💦","💤","✅","☑️","✔️","❌","❎","✖️","➕","➖","➗","‼️","⁉️","❓","❔","❕","❗️","🎉","🎊","🎈","💡","⏳","⌚️","⏰","⏱","⏲","🕰","🧭"
+  ];
 
   const messagesEndRef = useRef(null);
   const messagesAreaRef = useRef(null);
@@ -131,7 +192,11 @@ const Chat = ({ user, onLogout }) => {
           // New message arrived from the other person
           const lastMsg = data[data.length - 1];
           if (lastMsg && lastMsg.sender_id !== user.id) {
-            playNotificationSound();
+            if (lastMsg.text === '[BUZZ]') {
+              playBuzzSound();
+            } else {
+              playNotificationSound();
+            }
             // Scroll to bottom for new message
             setTimeout(() => scrollToBottom(), 150);
           }
@@ -193,7 +258,7 @@ const Chat = ({ user, onLogout }) => {
 
   const [pendingAttachment, setPendingAttachment] = useState(null);
 
-  const handleSendMessage = async (imageUrl = null) => {
+  const handleSendMessage = async (imageUrl = null, customText = null) => {
     if (editingMessage) {
       await handleEditMessage(editingMessage.id);
       return;
@@ -227,12 +292,14 @@ const Chat = ({ user, onLogout }) => {
       setUploadingImage(false);
     }
 
-    if (!inputText.trim() && !finalImageUrl) return;
+    const textToSend = customText || inputText.trim();
+
+    if (!textToSend && !finalImageUrl) return;
     if (!selectedContact) return;
 
     const msgData = {
       receiver_id: selectedContact.id,
-      text: inputText.trim() || null,
+      text: textToSend || null,
       image_url: finalImageUrl
     };
 
@@ -421,7 +488,7 @@ const Chat = ({ user, onLogout }) => {
         <div
           className={`bg-gray-50 flex flex-col border-gray-200 flex-shrink-0 transition-all duration-300
             ${isRtl ? 'border-l' : 'border-r'}
-            ${selectedContact ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}
+            ${selectedContact ? 'hidden md:flex md:w-96' : 'flex w-full md:w-96'}
           `}
         >
           {/* Header */}
@@ -460,13 +527,17 @@ const Chat = ({ user, onLogout }) => {
                   `}
                 >
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-                      {contact.name?.charAt(0)?.toUpperCase()}
-                    </div>
+                    {contact.avatar ? (
+                      <img src={contact.avatar} alt={contact.name} className="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-200" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                        {contact.name?.charAt(0)?.toUpperCase()}
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 overflow-hidden text-right min-w-0">
                     <div className="flex items-center justify-between">
-                      <div className="font-bold text-gray-800 truncate text-sm">{t(contact.name || '')}</div>
+                      <div className="font-bold text-gray-800 truncate text-sm">{t(`common.${contact.name}`, { defaultValue: contact.name })}</div>
                       {contact.unread_count > 0 && (
                         <span className="bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full animate-pulse flex items-center justify-center min-w-4 h-4 shadow-sm">
                           {contact.unread_count}
@@ -499,11 +570,15 @@ const Chat = ({ user, onLogout }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isRtl ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
                   </svg>
                 </button>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold shadow-sm flex-shrink-0">
-                  {t(selectedContact.name || '')?.charAt(0)?.toUpperCase()}
-                </div>
+                {selectedContact.avatar ? (
+                  <img src={selectedContact.avatar} alt={selectedContact.name} className="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 border border-gray-200" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold shadow-sm flex-shrink-0">
+                    {t(`common.${selectedContact.name}`, { defaultValue: selectedContact.name })?.charAt(0)?.toUpperCase()}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-gray-800 truncate">{t(selectedContact.name || '')}</div>
+                  <div className="font-bold text-gray-800 truncate">{t(`common.${selectedContact.name}`, { defaultValue: selectedContact.name })}</div>
                   <div className="text-xs text-emerald-500 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full inline-block animate-pulse"></span>
                     {isRtl ? 'محادثة خاصة ومشفرة' : 'Private encrypted conversation'}
@@ -560,8 +635,16 @@ const Chat = ({ user, onLogout }) => {
                           <div className={`w-full flex items-end gap-2 mb-2 ${isMine ? 'justify-end' : 'justify-start'}`} style={{ direction: 'ltr' }}>
                             {/* Avatar placeholder for non-mine to keep alignment */}
                             {!isMine && (
-                              <div className={`w-7 h-7 rounded-full flex-shrink-0 ${showAvatar ? 'bg-gradient-to-tr from-indigo-400 to-purple-500 text-white flex items-center justify-center text-xs font-bold' : 'opacity-0'}`}>
-                                {showAvatar ? selectedContact.name?.charAt(0)?.toUpperCase() : ''}
+                              <div className={`relative w-7 h-7 flex-shrink-0 ${!showAvatar ? 'opacity-0' : ''}`}>
+                                {showAvatar && (
+                                  selectedContact.avatar ? (
+                                    <img src={selectedContact.avatar} alt={selectedContact.name} className="w-7 h-7 rounded-full object-cover shadow-sm border border-gray-200" />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                                      {selectedContact.name?.charAt(0)?.toUpperCase()}
+                                    </div>
+                                  )
+                                )}
                               </div>
                             )}
 
@@ -626,7 +709,14 @@ const Chat = ({ user, onLogout }) => {
                                 )}
                                 {msg.text && (
                                   <div className="whitespace-pre-wrap break-words text-[14.5px] leading-relaxed">
-                                    {msg.text}
+                                    {msg.text === '[BUZZ]' ? (
+                                      <span className="flex items-center gap-2 font-bold text-amber-600 animate-pulse">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                        {i18n.language === 'ar' ? 'أرسل تنبيهاً! (Buzz)' : 'Sent a Buzz!'}
+                                      </span>
+                                    ) : (
+                                      msg.text
+                                    )}
                                   </div>
                                 )}
                                 <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isMine ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -762,6 +852,48 @@ const Chat = ({ user, onLogout }) => {
                       </svg>
                     )}
                   </button>
+
+                  <button
+                    onClick={() => {
+                      playBuzzSound();
+                      handleSendMessage(null, '[BUZZ]');
+                    }}
+                    disabled={uploadingImage}
+                    className={`p-2 rounded-full text-amber-500 hover:bg-amber-50 hover:text-amber-600 transition-colors flex-shrink-0 ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={isRtl ? "إرسال تنبيه صوتي (Buzz)" : "Send Buzz"}
+                  >
+                    <svg className="w-5 h-5 hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </button>
+
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className={`p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-indigo-500 transition-colors flex-shrink-0 ${showEmojiPicker ? 'bg-gray-100 text-indigo-500' : ''}`}
+                      title={isRtl ? "إضافة إيموجي" : "Add Emoji"}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </button>
+                    
+                    {showEmojiPicker && (
+                      <div className={`absolute bottom-full ${isRtl ? 'left-0' : 'right-0'} mb-2 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 p-3 w-72 max-h-64 overflow-y-auto grid grid-cols-6 gap-1 z-50`}>
+                        {emojis.map(emoji => (
+                          <button
+                            key={emoji}
+                            onClick={() => {
+                              setInputText(prev => prev + emoji);
+                              setShowEmojiPicker(false);
+                              inputRef.current?.focus();
+                            }}
+                            className="text-2xl hover:bg-gray-50 hover:scale-110 p-2 rounded-lg transition-all text-center flex items-center justify-center"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   </div>
                 </div>

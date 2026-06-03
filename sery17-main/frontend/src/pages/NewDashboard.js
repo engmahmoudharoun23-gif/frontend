@@ -1441,7 +1441,7 @@ function NewDashboard({ user, onLogout }) {
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-8 bg-blue-600 rounded-full"></div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight flex flex-wrap items-center">
-                      {d('لوحة التحكم', 'Dashboard')} 
+                      {d('لوحة التحكم وتحليل البيانات', 'Dashboard and Data Analysis')} 
                       <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full mr-2 ml-2">v1.1 Dynamic</span>
                     </h1>
                   </div>

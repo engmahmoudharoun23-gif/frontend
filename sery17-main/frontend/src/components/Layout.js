@@ -117,7 +117,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const unseenIntervalRef = useRef(null);
   const previousAnnouncementRef = useRef(null);
   const [dynamicAnnouncement, setDynamicAnnouncement] = useState('');
-  const [showDynamicAnnouncement, setShowDynamicAnnouncement] = useState(false);
+  const [showDynamicAnnouncement, setShowDynamicAnnouncement] = useState(null);
   const [flashDynamicAnnouncement, setFlashDynamicAnnouncement] = useState(true);
   const previousUnseenCount = useRef(0);
   const previousInvoicesCount = useRef(0);
@@ -503,12 +503,21 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           const { show_announcement, global_announcement, flash_announcement } = settingsRes.data;
           
           if (show_announcement && global_announcement) {
-            // إذا تغير الإعلان عن السابق ولم تكن هذه أول مرة يحمل فيها النظام
-            if (previousAnnouncementRef.current !== null && global_announcement !== previousAnnouncementRef.current) {
+            const lastSeenAnn = localStorage.getItem('last_seen_announcement');
+            const lastSeenTime = localStorage.getItem('last_seen_ann_time');
+            const now = new Date().getTime();
+            
+            let shouldShowPopup = false;
+            // إظهار الإشعار مرة واحدة فقط عند إنشاء إعلان جديد (لكل مستخدم)
+            if (global_announcement !== lastSeenAnn) {
+               shouldShowPopup = true;
+            }
+
+            if (shouldShowPopup) {
               if (soundEnabled) playIphoneAlertSound();
               Swal.fire({
                 title: isRtl ? 'إعلان هام وعاجل!' : 'Urgent Announcement!',
-                text: global_announcement,
+                text: translateBrandingText(global_announcement, isRtl),
                 icon: 'warning',
                 confirmButtonText: isRtl ? 'تم الاطلاع' : 'Understood',
                 confirmButtonColor: '#e53935',
@@ -516,6 +525,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 allowOutsideClick: false,
                 allowEscapeKey: false
               });
+              localStorage.setItem('last_seen_announcement', global_announcement);
+              localStorage.setItem('last_seen_ann_time', now.toString());
             }
             setDynamicAnnouncement(global_announcement);
             setShowDynamicAnnouncement(true);
@@ -550,14 +561,17 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       // جلب عدد تقارير السلامة والجودة والأعمال قيد المراجعة
       try {
         const token = localStorage.getItem('token');
-        const [safetyRes, qualityRes, businessRes, consultantRes] = await Promise.all([
+        const [safetyRes, qualityRes, warehouseRes, businessRes, consultantRes] = await Promise.all([
           axios.get(`${API}/safety-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API}/quality-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API}/warehouse-visits?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
           axios.get(`${API}/business-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API}/reports/consultant-notes?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { reports: [] } }))
         ]);
         setPendingSafetyCount((safetyRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);
-        setPendingQualityCount((qualityRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);
+        const qCount = (qualityRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length;
+        const wCount = (warehouseRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length;
+        setPendingQualityCount(qCount + wCount);
         setPendingBusinessCount((businessRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);
         
         // جلب عدد ملاحظات الاستشاري قيد المعالجة
@@ -884,17 +898,17 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               </button>
               
               {/* Company Logos - Small on the right */}
-              <div className="flex items-center gap-2">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1.5 border border-white/20">
-                  <img src={branding.company_logo_url || "/bayt-alkhibra-logo.png"} alt={translateBrandingText(branding.company_name, isRtl) || "بيت الخبرة"} className="h-10 w-auto" />
+              <div className="flex items-center gap-1 sm:gap-2">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1 sm:p-1.5 border border-white/20 shrink-0">
+                  <img src={branding.company_logo_url || "/bayt-alkhibra-logo.png"} alt={translateBrandingText(branding.company_name, isRtl) || "بيت الخبرة"} className="h-6 sm:h-8 md:h-10 w-auto max-w-[60px] sm:max-w-[100px] md:max-w-none object-contain" />
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1.5 border border-white/20">
-                  <img src={branding.partner_logo_url || "/nwc-logo.png"} alt={translateBrandingText(branding.partner_company_name, isRtl) || "شركة المياة الوطنية"} className="h-10 w-auto" />
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1 sm:p-1.5 border border-white/20 shrink-0">
+                  <img src={branding.partner_logo_url || "/nwc-logo.png"} alt={translateBrandingText(branding.partner_company_name, isRtl) || "شركة المياة الوطنية"} className="h-6 sm:h-8 md:h-10 w-auto max-w-[60px] sm:max-w-[100px] md:max-w-none object-contain" />
                 </div>
                 {/* شعار رؤية السعودية 2030 - HTML flexbox للتنسيق الصحيح */}
                 <div
+                  className="hidden sm:flex flex-col items-center"
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
                     gap: '1px', opacity: 0.97,
                     textShadow: '0 1px 3px rgba(0,0,0,0.6)',
                     filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
@@ -1687,7 +1701,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       </header>
 
       {/* Global Announcement Banner */}
-      {(showDynamicAnnouncement ? showDynamicAnnouncement : branding.show_announcement) && (dynamicAnnouncement ? dynamicAnnouncement : branding.global_announcement) && (
+      {(showDynamicAnnouncement !== null ? showDynamicAnnouncement : branding.show_announcement) && (dynamicAnnouncement ? dynamicAnnouncement : branding.global_announcement) && (
         <div className={`w-full z-40 relative border-b-2 overflow-hidden ${branding.flash_announcement !== false ? 'border-[#b71c1c]' : 'border-red-700 bg-red-600'}`}
              style={branding.flash_announcement !== false ? { animation: 'flashWarning 1s infinite' } : {}}>
           <style>{`

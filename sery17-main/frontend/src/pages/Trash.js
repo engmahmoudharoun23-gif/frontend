@@ -301,7 +301,7 @@ function Trash({ user, onLogout }) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-blue-600">
                         {activeTab === 'reports' ? t('trash.report') : 
                          activeTab === 'safety_report' ? t('trash.safety_reports') :
-                         activeTab === 'quality_report' ? t('trash.quality_reports') :
+                         activeTab === 'quality_report' ? (item.trash_type === 'warehouse_visit' ? t('qualityReports.warehouseVisitsTab') : t('trash.quality_reports')) :
                          activeTab === 'business_report' ? t('trash.business_reports') :
                          activeTab === 'water_connections' ? t('trash.waterConnection') : 
                          activeTab === 'sewage_connections' ? t('trash.sewageConnection') : 
