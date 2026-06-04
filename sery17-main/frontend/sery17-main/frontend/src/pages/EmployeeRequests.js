@@ -901,7 +901,7 @@ function EmployeeRequests({ user, onLogout }) {
         </div>
 
         {/* Content */}
-        {loading ? (
+        {requests.length === 0 && loading ? (
           <div className="text-center py-12">
             <div className="flex flex-col items-center"><div className="animate-spin h-8 w-8 mx-auto border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div>
           </div>

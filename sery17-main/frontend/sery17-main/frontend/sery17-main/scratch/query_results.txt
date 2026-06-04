@@ -1,0 +1,8 @@
+User Mahmoud found:
+  ID: b619d398-1927-4c57-8c56-8499ad5ef297
+  Governorates: ['جدة']
+  Projects: ['مشروع ايصال']
+Hierarchy Filter: {'created_by': {'$in': ['b619d398-1927-4c57-8c56-8499ad5ef297', 'Mahmoud']}}
+Final Built Query: {'project': {'$in': ['مشروع ايصال']}, 'created_by': {'$in': ['b619d398-1927-4c57-8c56-8499ad5ef297', 'Mahmoud']}, '$or': [{'governorate': {'$regex': '(جد[[هة]ة])', '$options': 'i'}}, {'area': {'$regex': '(جد[[هة]ة])', '$options': 'i'}}]}
+Water Connections Match Count: 0
+Water Connections Match Count (No Project Filter): 0

@@ -858,6 +858,27 @@ function Users({ user, onLogout }) {
       }
     }
   };
+
+  // أرشفة مشروع
+  const handleArchiveProject = async (index) => {
+    const projectToArchive = availableProjects[index];
+    const confirmMessage = i18n.language === 'ar' ? `هل أنت متأكد من نقل المشروع "${projectToArchive}" إلى الأرشيف؟` : `Are you sure you want to archive project "${projectToArchive}"?`;
+    if (window.confirm(confirmMessage)) {
+      try {
+        const projectsRes = await axios.get(`${API}/projects`);
+        const project = projectsRes.data.find(p => p.name === projectToArchive);
+        if (project) {
+          await axios.post(`${API}/projects/${project.id}/archive`, { archive: true });
+        }
+        await fetchProjects();
+        setSelectedProjects(selectedProjects.filter(p => p !== projectToArchive));
+        toast.success(i18n.language === 'ar' ? "تم نقل المشروع إلى الأرشيف بنجاح" : "Project archived successfully");
+      } catch (error) {
+        console.error('Error archiving project:', error);
+        toast.error(i18n.language === 'ar' ? "فشل في أرشفة المشروع" : "Failed to archive project");
+      }
+    }
+  };
   
   // بدء تعديل اسم مشروع
   const startEditingProject = (index) => {
@@ -1214,6 +1235,12 @@ function Users({ user, onLogout }) {
                           className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
                         >
                           ✏️ {t('users.edit')}
+                        </button>
+                        <button
+                          onClick={() => handleArchiveProject(index)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-sm transition-colors"
+                        >
+                          📦 {i18n.language === 'ar' ? 'الأرشيف' : 'Archive'}
                         </button>
                         <button
                           onClick={() => handleDeleteProject(index)}
@@ -1906,7 +1933,7 @@ function Users({ user, onLogout }) {
                   </tr>
                 </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {loading ? (
+                    {users.length === 0 && loading ? (
                       <tr>
                         <td colSpan="8" className="px-6 py-12 text-center">
                           <div className="flex flex-col items-center gap-3">

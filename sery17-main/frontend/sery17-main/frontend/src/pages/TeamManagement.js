@@ -79,6 +79,7 @@ function TeamManagement({ user, onLogout }) {
   };
   
   const isAdmin = user.role === 'admin';
+  const canManage = user.role === 'admin' || user.can_create_subusers === true || user.level === 1 || user.level === 2;
 
   // جلب المشاريع من قاعدة البيانات
   useEffect(() => {
@@ -137,6 +138,10 @@ function TeamManagement({ user, onLogout }) {
 
   const handleAddMember = async (e) => {
     e.preventDefault();
+    if (!canManage) {
+      toast.error(isRtl ? 'غير مصرح لك بالقيام بهذا الإجراء' : 'Unauthorized action');
+      return;
+    }
     // setLoading(true);
     try {
       if (editingMember) {
@@ -161,6 +166,7 @@ function TeamManagement({ user, onLogout }) {
   };
 
   const handleEdit = (member) => {
+    if (!canManage) return;
     setEditingMember(member);
     setFormData({
       name: member.name,
@@ -174,6 +180,7 @@ function TeamManagement({ user, onLogout }) {
   };
 
   const handleDelete = async (id) => {
+    if (!canManage) return;
     if (!window.confirm(isRtl ? 'هل أنت متأكد من حذف هذا الموظف؟' : 'Are you sure you want to delete this employee?')) return;
     try {
       await axios.delete(`${API}/team-members/${id}`);
@@ -201,7 +208,7 @@ function TeamManagement({ user, onLogout }) {
               </p>
             </div>
             
-            {user.can_create_subusers && (
+            {canManage && (
               <button
                 onClick={() => setShowAddMember(true)}
                 className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md active:scale-95"
@@ -211,6 +218,7 @@ function TeamManagement({ user, onLogout }) {
               </button>
             )}
           </div>
+
           
           {/* Enhanced Filter */}
           {isAdmin && (
@@ -301,20 +309,20 @@ function TeamManagement({ user, onLogout }) {
         {/* Team Members Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto w-full">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'الصورة' : 'Image'}</th>
-                <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'الاسم' : 'Name'}</th>
-                <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'البريد الإلكتروني' : 'Email'}</th>
-                <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'رقم الهاتف' : 'Phone'}</th>
-                <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'الوظيفة' : 'Position'}</th>
-                <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'المشروع' : 'Project'}</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{isRtl ? 'إجراءات' : 'Actions'}</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'الصورة' : 'Image'}</th>
+                  <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'الاسم' : 'Name'}</th>
+                  <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'البريد الإلكتروني' : 'Email'}</th>
+                  <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'رقم الهاتف' : 'Phone'}</th>
+                  <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'الوظيفة' : 'Position'}</th>
+                  <th className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? 'المشروع' : 'Project'}</th>
+                  {canManage && <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{isRtl ? 'إجراءات' : 'Actions'}</th>}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+              {teams.length === 0 && loading ? (
                 <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
               ) : teams.length === 0 ? (
                 <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500">{isRtl ? 'لا يوجد أعضاء فريق' : 'No team members found'}</td></tr>
@@ -341,32 +349,34 @@ function TeamManagement({ user, onLogout }) {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.phone}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.position ? translateBrandingText(member.position, isRtl) : '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{member.project ? translateBrandingText(member.project, isRtl) : '-'}</td>
-                    <td className="px-6 py-4 text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                            <MoreVertical className="w-5 h-5 text-gray-500" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 bg-white shadow-xl border border-gray-100 rounded-xl p-1">
-                          <DropdownMenuItem 
-                            onClick={() => handleEdit(member)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer font-medium"
-                          >
-                            <Edit className="w-4 h-4 text-gray-500" /> {isRtl ? 'تعديل البيانات' : 'Edit Data'}
-                          </DropdownMenuItem>
-                          
-                          <DropdownMenuSeparator className="my-1 bg-gray-100" />
-                          
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(member.id)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg cursor-pointer font-medium"
-                          >
-                            <Trash2 className="w-4 h-4" /> {isRtl ? 'حذف الموظف' : 'Delete Employee'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+                    {canManage && (
+                      <td className="px-6 py-4 text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                              <MoreVertical className="w-5 h-5 text-gray-500" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 bg-white shadow-xl border border-gray-100 rounded-xl p-1">
+                            <DropdownMenuItem 
+                              onClick={() => handleEdit(member)}
+                              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer font-medium"
+                            >
+                              <Edit className="w-4 h-4 text-gray-500" /> {isRtl ? 'تعديل البيانات' : 'Edit Data'}
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator className="my-1 bg-gray-100" />
+                            
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(member.id)}
+                              className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg cursor-pointer font-medium"
+                            >
+                              <Trash2 className="w-4 h-4" /> {isRtl ? 'حذف الموظف' : 'Delete Employee'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

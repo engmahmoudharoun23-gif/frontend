@@ -306,8 +306,15 @@ function Settings({ user, onLogout, onLogin }) {
 
   const handleSavePersonalTheme = async (themeId) => {
     try {
-      await axios.put(`${API}/settings/personal-theme`, { personal_theme: themeId === 'default' ? null : themeId });
-      setPersonalTheme(themeId === 'default' ? null : themeId);
+      const newTheme = themeId === 'default' ? null : themeId;
+      await axios.put(`${API}/settings/personal-theme`, { personal_theme: newTheme });
+      setPersonalTheme(newTheme);
+      
+      if (user) {
+        const updatedUser = { ...user, personal_theme: newTheme };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      
       toast.success(t('settings.success.colorChanged'));
       setTimeout(() => window.location.reload(), 800);
     } catch (err) {
