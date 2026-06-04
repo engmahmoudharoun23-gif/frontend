@@ -66,6 +66,7 @@ function BusinessReports({ user, onLogout }) {
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [viewReport, setViewReport] = useState(null);
   const [viewNote, setViewNote] = useState(null);
@@ -351,6 +352,7 @@ function BusinessReports({ user, onLogout }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (uploading) {
       toast.info('يرجى الانتظار، جاري رفع الملف');
       return;
@@ -359,6 +361,7 @@ function BusinessReports({ user, onLogout }) {
       toast.error('يرجى رفع ملف أولاً');
       return;
     }
+    setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
@@ -372,6 +375,8 @@ function BusinessReports({ user, onLogout }) {
       fetchReports();
     } catch (err) { 
       toast.error(err.response?.data?.detail || 'حدث خطأ أثناء الحفظ'); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -964,9 +969,10 @@ function BusinessReports({ user, onLogout }) {
                 <div className="flex gap-3 pt-2">
                   <button 
                     type="submit" 
-                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-all cursor-pointer"
+                    disabled={isSubmitting || uploading}
+                    className={`flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold transition-all ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700 cursor-pointer'}`}
                   >
-                    {editingReport ? t('businessReports.saveChangesBtn') : t('businessReports.saveBtn')}
+                    {isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? t('businessReports.saveChangesBtn') : t('businessReports.saveBtn')}
                   </button>
                   <button 
                     type="button" 

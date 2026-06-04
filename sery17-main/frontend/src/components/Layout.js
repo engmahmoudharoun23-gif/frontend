@@ -1872,7 +1872,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               )}
               
               {/* تقارير الأعمال */}
-              {(hasPermission('business_reports') || hasPermission('business_reports_review')) && (
+              {hasPermission('business_reports') && (
                 <Link to="/business-reports" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/business-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -2212,7 +2212,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             )}
 
             {/* تقارير الأعمال */}
-            {(hasPermission('business_reports') || hasPermission('business_reports_review')) && (
+            {hasPermission('business_reports') && (
               <Link
                 to="/business-reports"
                 onClick={() => setSidebarOpen(false)}

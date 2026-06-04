@@ -54,6 +54,7 @@ function SafetyReports({ user, onLogout }) {
   const [imagePreview, setImagePreview] = useState('');
   const [imagePreviews, setImagePreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
   const [viewReport, setViewReport] = useState(null);
   const [viewNote, setViewNote] = useState(null);
@@ -284,6 +285,8 @@ function SafetyReports({ user, onLogout }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
@@ -296,6 +299,7 @@ function SafetyReports({ user, onLogout }) {
       setShowModal(false);
       fetchReports();
     } catch (err) { toast.error(err.response?.data?.detail || 'حدث خطأ'); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleDelete = async (id) => {
@@ -783,7 +787,7 @@ function SafetyReports({ user, onLogout }) {
                   ))}
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold transition-all">{editingReport ? t('safetyReports.saveChangesBtn') : t('safetyReports.saveBtn')}</button>
+                  <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold transition-all ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-700'}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? t('safetyReports.saveChangesBtn') : t('safetyReports.saveBtn')}</button>
                   <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium">{t('safetyReports.cancel')}</button>
                 </div>
               </form>
