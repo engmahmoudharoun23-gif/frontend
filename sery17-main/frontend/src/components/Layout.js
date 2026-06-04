@@ -562,10 +562,10 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       try {
         const token = localStorage.getItem('token');
         const [safetyRes, qualityRes, warehouseRes, businessRes, consultantRes] = await Promise.all([
-          axios.get(`${API}/safety-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API}/quality-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API}/safety-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
+          axios.get(`${API}/quality-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
           axios.get(`${API}/warehouse-visits?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
-          axios.get(`${API}/business-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API}/business-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
           axios.get(`${API}/reports/consultant-notes?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { reports: [] } }))
         ]);
         setPendingSafetyCount((safetyRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);
