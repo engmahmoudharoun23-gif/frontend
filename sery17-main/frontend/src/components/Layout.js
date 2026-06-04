@@ -129,36 +129,36 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   // دالة تشغيل صوت التنبيه الأساسي - نغمة حادة وسريعة تشبه الواتساب
   const playNotificationSound = useCallback(() => {
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
-      
-      const playTone = (freq, type, startTime, duration, vol) => {
-        const osc = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        osc.type = type;
-        osc.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+      const audio = new Audio('/notification.mp3');
+      audio.volume = soundVolume;
+      audio.play().catch(e => {
+        // Fallback to oscillator if browser blocks audio
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
         
-        // نغمة رنين ناعمة ومقبولة (Sine Wave) بدلاً من النغمة الحادة
-        osc.frequency.setValueAtTime(freq, startTime);
-        
-        gainNode.gain.setValueAtTime(0, startTime);
-        // التدرج اللوغاريتمي للصوت مع منع الـ Clipping
-        const actualVol = vol * Math.pow(soundVolume, 2);
-        // هجوم سريع (Attack) وتلاشي ناعم (Decay) لتشبه صوت القطرة أو الجرس الخفيف
-        gainNode.gain.linearRampToValueAtTime(actualVol, startTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-      };
+        const playTone = (freq, type, startTime, duration, vol) => {
+          const osc = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          osc.type = type;
+          osc.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          osc.frequency.setValueAtTime(freq, startTime);
+          gainNode.gain.setValueAtTime(0, startTime);
+          const actualVol = vol * Math.pow(soundVolume, 2);
+          gainNode.gain.linearRampToValueAtTime(actualVol, startTime + 0.01);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
 
-      const t = audioContext.currentTime;
-      // نغمة مريحة جداً للأذن (نغمتين متتاليتين بتآلف موسيقي مريح - G5 ثم C6)
-      playTone(783.99, 'sine', t, 0.25, 1.2);
-      playTone(1046.50, 'sine', t + 0.15, 0.4, 1.2);
+        const t = audioContext.currentTime;
+        playTone(783.99, 'sine', t, 0.25, 1.2);
+        playTone(1046.50, 'sine', t + 0.15, 0.4, 1.2);
+      });
     } catch (e) {
       console.error('Could not play notification sound:', e);
     }
