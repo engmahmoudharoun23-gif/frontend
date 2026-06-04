@@ -50,6 +50,7 @@ function QualityReports({ user, onLogout }) {
   };
 
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -303,6 +304,8 @@ function QualityReports({ user, onLogout }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
@@ -315,6 +318,7 @@ function QualityReports({ user, onLogout }) {
       setShowModal(false);
       fetchReports();
     } catch (err) { toast.error(err.response?.data?.detail || 'حدث خطأ'); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleDelete = async (id) => {
@@ -804,7 +808,7 @@ function QualityReports({ user, onLogout }) {
                   ))}
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-bold transition-all">{editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.saveChangesBtn')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.saveBtn'))}</button>
+                  <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold transition-all ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-teal-700'}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.saveChangesBtn')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.saveBtn'))}</button>
                   <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium">{t('qualityReports.cancel')}</button>
                 </div>
               </form>
