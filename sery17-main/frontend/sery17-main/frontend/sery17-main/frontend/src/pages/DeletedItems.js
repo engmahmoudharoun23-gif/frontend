@@ -274,7 +274,7 @@ function DeletedItems({ user, onLogout }) {
               </div>
             )}
 
-            {loading ? (
+            {items.length === 0 && loading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <div className="w-12 h-12 border-4 border-slate-100 rounded-full animate-spin mb-4" style={{ borderTopColor: 'var(--color-primary)' }}></div>
                 <p className="text-slate-400 font-black">{t('deletedItems.refreshing')}</p>

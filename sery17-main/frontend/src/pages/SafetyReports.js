@@ -267,7 +267,7 @@ function SafetyReports({ user, onLogout }) {
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(t('safetyReports.imageAddSuccess') || 'تم إضافة الملفات بنجاح');
+      toast.success(i18n.language === 'ar' ? 'تم إضافة الملفات بنجاح' : 'Files added successfully');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
