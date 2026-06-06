@@ -1709,7 +1709,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               0%, 49% { background-color: #e53935; box-shadow: inset 0 0 15px rgba(0,0,0,0.15); } 
               50%, 100% { background-color: #7f0000; box-shadow: inset 0 0 25px rgba(0,0,0,0.4); } 
             }
-            @keyframes marqueeScroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+            @keyframes marqueeScroll { 0% { transform: translateX(-100%); } 100% { transform: translateX(100vw); } }
           `}</style>
           <div className="mx-auto py-3 sm:py-4 flex items-center overflow-hidden w-full relative h-12 sm:h-14">
             <p className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-widest whitespace-nowrap absolute drop-shadow-lg" 
