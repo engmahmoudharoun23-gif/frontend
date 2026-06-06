@@ -1005,6 +1005,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </div>
                 </div>
               </div>
+              </div>
             </div>
 
             {/* Center: Title with Handshake Icon */}
