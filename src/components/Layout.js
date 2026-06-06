@@ -906,16 +906,15 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   <img src={branding.partner_logo_url || "/nwc-logo.png"} alt={translateBrandingText(branding.partner_company_name, isRtl) || "شركة المياة الوطنية"} className="h-6 sm:h-8 md:h-10 w-auto max-w-[60px] sm:max-w-[100px] md:max-w-none object-contain" />
                 </div>
                 {/* شعار رؤية السعودية 2030 - HTML flexbox للتنسيق الصحيح */}
-                <div className="flex items-center justify-center w-[45px] sm:w-[65px] lg:w-[85px] h-6 sm:h-8 md:h-10 shrink-0">
-                  <div
-                    className="flex flex-col items-center transform scale-[0.4] sm:scale-[0.65] lg:scale-[0.9] origin-center"
-                    style={{
-                      gap: '1px', opacity: 0.97,
-                      textShadow: '0 1px 3px rgba(0,0,0,0.6)',
-                      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
-                    }}
-                    title={isRtl ? "رؤية المملكة العربية السعودية 2030" : "Saudi Vision 2030"}
-                  >
+                <div
+                  className="hidden sm:flex flex-col items-center"
+                  style={{
+                    gap: '1px', opacity: 0.97,
+                    textShadow: '0 1px 3px rgba(0,0,0,0.6)',
+                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
+                  }}
+                  title={isRtl ? "رؤية المملكة العربية السعودية 2030" : "Saudi Vision 2030"}
+                >
                   {/* السطر 1: رؤية VISION */}
                   <div style={{
                     color: 'white', fontSize: '15px', fontWeight: '800',
@@ -1004,7 +1003,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     KINGDOM OF SAUDI ARABIA
                   </div>
                 </div>
-              </div>
               </div>
             </div>
 
