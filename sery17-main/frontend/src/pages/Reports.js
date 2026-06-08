@@ -412,7 +412,7 @@ function Reports({ user, onLogout }) {
       setIsNewReportsFilter(true);
       const fetchNewReports = async () => {
         try {
-          // setLoading(true);
+          setLoading(true);
           const token = localStorage.getItem('token');
           const response = await axios.get(`${API}/reports/notifications/unseen`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -454,7 +454,7 @@ function Reports({ user, onLogout }) {
       // تنفيذ البحث مباشرة
       const fetchWithSearch = async () => {
         try {
-          // setLoading(true);
+          setLoading(true);
           const params = new URLSearchParams();
           params.append('search', searchQuery);
           params.append('page', pageFromUrl);
@@ -569,8 +569,7 @@ function Reports({ user, onLogout }) {
               setReports(JSON.parse(cached));
               setLoading(false);
             } else {
-              setReports([]);
-              // setLoading(true);
+              setLoading(true);
             }
           } catch (e) {}
         }
@@ -1029,7 +1028,7 @@ const fetchReports = async () => {
     // لا تجلب البلاغات العادية إذا كان فلتر البلاغات الجديدة مفعّل
     if (isNewReportsFilter) return;
     
-    // setLoading(true);
+    setLoading(true);
     
     // إعادة تعيين التحديد عند جلب بلاغات جديدة
     setSelectedReports([]);
@@ -1124,7 +1123,7 @@ const fetchReports = async () => {
     setExportCount(null);
     setCurrentPage(1);
     
-    // setLoading(true);
+    setLoading(true);
     const params = new URLSearchParams();
     if (defaultProj) params.append('project', defaultProj);
     if (defaultGov) params.append('governorate', defaultGov);
@@ -1187,7 +1186,7 @@ const fetchReports = async () => {
     handlePageChange(1);
     
     // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً" (مثل handleQuickSearch)
-    // setLoading(true);
+    setLoading(true);
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, val]) => { 
       if (val && typeof val === 'string' && val.trim()) {
@@ -1469,7 +1468,7 @@ const fetchReports = async () => {
   
   // البحث السريع عن البلاغات حسب جميع الفلاتر
   const handleSearchExportCount = async () => {
-    // setLoading(true);
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       
@@ -1571,7 +1570,7 @@ const fetchReports = async () => {
       return;
     }
     
-    // setLoading(true);
+    setLoading(true);
     try {
       // إذا تم تحديد "الكل"، استخدم التصدير بالفلاتر (أسرع وأكثر موثوقية)
       if (isAllSelected) {
@@ -2584,7 +2583,7 @@ const fetchReports = async () => {
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">⚙️</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className={`bg-white divide-y divide-gray-200 transition-opacity duration-200 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                 {reports.length === 0 && loading ? (
                   <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
                 ) : reports.length === 0 ? (
@@ -2741,7 +2740,7 @@ const fetchReports = async () => {
                         }`}
                       >
                         <span>{report.review_status === 'تمت المراجعة' ? t('statusMap.تمت المراجعة') : t('statusMap.قيد المراجعة')}</span>
-                        {report.review_status === 'تمت المراجعة' && report.reviewed_by_name && (
+                        {report.reviewed_by_name && (
                           <span className="text-[10px] opacity-80 mt-0.5 max-w-[130px] truncate block" title={translateBrandingText(report.reviewed_by_name, isRtl)}>
                             {translateBrandingText(report.reviewed_by_name, isRtl)}
                           </span>
@@ -3015,25 +3014,25 @@ const fetchReports = async () => {
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span>الوسائط (صور وفيديو)</span>
+                <span>{t('reports.imagesModal.mediaTitle', {defaultValue: 'الوسائط (صور وفيديو)'})}</span>
                 <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{selectedImages.length}</span>
               </h3>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={async () => {
-                    toast.info(`📥 جارِ تحميل ${selectedImages.length} ملف...`);
+                    toast.info(`📥 ${t('reports.imagesModal.downloading', {defaultValue: 'جارِ تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.files', {defaultValue: 'ملف...'})}`);
                     for (let i = 0; i < selectedImages.length; i++) {
                       await downloadImage(selectedImages[i], i);
                       await new Promise(resolve => setTimeout(resolve, 300));
                     }
-                    toast.success(`✅ تم تحميل ${selectedImages.length} ملف بنجاح`);
+                    toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح'})}`);
                   }}
                   className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs sm:text-sm transition-colors"
                 >
                   <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  <span className="hidden sm:inline">تحميل الكل</span>
+                  <span className="hidden sm:inline">{t('reports.imagesModal.downloadAll', {defaultValue: 'تحميل الكل'})}</span>
                 </button>
                 <button onClick={() => setShowImagesModal(false)} className="p-1.5 sm:p-2 hover:bg-white/20 rounded-full transition-colors">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3056,7 +3055,7 @@ const fetchReports = async () => {
                       {isVideo(img) ? (
                         <video src={resolveImageUrl(img)} className="w-full h-full object-cover" muted playsInline preload="metadata" />
                       ) : (
-                        <img src={resolveImageUrl(img)} alt={`صورة ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={resolveImageUrl(img)} alt={`${t('reports.imagesModal.image', {defaultValue: 'صورة'})} ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
                       )}
                       {isVideo(img) && (
                         <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1 text-white">
@@ -3075,11 +3074,11 @@ const fetchReports = async () => {
                     </div>
                     {/* معلومات الصورة */}
                     <div className="p-2 sm:p-3 bg-blue-100/50 flex items-center justify-between">
-                      <p className="text-xs sm:text-sm font-semibold text-blue-800">مرفق {index + 1}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-blue-800">{t('reports.imagesModal.attachment', {defaultValue: 'مرفق'})} {index + 1}</p>
                       <button 
                         onClick={(e) => { e.stopPropagation(); downloadImage(img, index); }}
                         className="p-1.5 sm:p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                        title="تحميل الصورة"
+                        title={t('reports.imagesModal.downloadImage', {defaultValue: 'تحميل الصورة'})}
                       >
                         <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -3111,7 +3110,7 @@ const fetchReports = async () => {
           ) : (
             <img 
               src={resolveImageUrl(fullscreenImage)} 
-              alt="صورة مكبرة" 
+              alt={t('reports.imagesModal.enlargedImage', {defaultValue: 'صورة مكبرة'})} 
               className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
@@ -3134,7 +3133,7 @@ const fetchReports = async () => {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            تحميل
+            {t('reports.imagesModal.download', {defaultValue: 'تحميل'})}
           </button>
         </div>
       )}
@@ -3409,7 +3408,7 @@ const fetchReports = async () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowNotesModal(false)}>
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">📝 الملاحظات</h3>
+              <h3 className="text-xl font-bold text-gray-900">📝 {t('reports.notesModal.title', {defaultValue: 'الملاحظات'})}</h3>
               <button
                 onClick={() => setShowNotesModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -3420,14 +3419,14 @@ const fetchReports = async () => {
               </button>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 whitespace-pre-wrap text-gray-700">
-              {currentNotes || 'لا توجد ملاحظات'}
+              {currentNotes || t('reports.notesModal.empty', {defaultValue: 'لا توجد ملاحظات'})}
             </div>
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setShowNotesModal(false)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
-                إغلاق
+                {t('common.close', {defaultValue: 'إغلاق'})}
               </button>
             </div>
           </div>

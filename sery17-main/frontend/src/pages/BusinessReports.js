@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import Layout from '../components/Layout';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
-import { Plus, Trash2, Edit2, Eye, X, Upload, MoreVertical, FileText, Filter, Search, Download, FileBarChart2, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, X, Upload, MoreVertical, FileText, Filter, Search, Download, FileBarChart2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -87,12 +87,16 @@ function BusinessReports({ user, onLogout }) {
   const [appliedProject, setAppliedProject] = useState('');
   const [appliedGov, setAppliedGov] = useState('');
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     setAppliedDateFrom(tempDateFrom);
     setAppliedDateTo(tempDateTo);
     setAppliedProject(tempProject);
     setAppliedGov(tempGov);
-  };
+  }, [tempDateFrom, tempDateTo, tempProject, tempGov]);
+
+  useEffect(() => {
+    handleSearch();
+  }, [handleSearch]);
 
   const handleReset = () => {
     setTempDateFrom('');
@@ -249,10 +253,12 @@ function BusinessReports({ user, onLogout }) {
   const handleRevertReport = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/business-reports/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'قيد المراجعة' } : rep));
       toast.success(i18n.language === 'ar' ? 'تم اعادة فتح حالة المراجعة' : 'Review status reopened');
+      await axios.put(`${API}/business-reports/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch (err) {
+      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
@@ -260,10 +266,12 @@ function BusinessReports({ user, onLogout }) {
   const handleReviewReport = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/business-reports/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'تمت المراجعة' } : rep));
       toast.success(i18n.language === 'ar' ? 'تم مراجعة البلاغ بنجاح' : 'Report reviewed successfully');
+      await axios.put(`${API}/business-reports/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch (err) {
+      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
@@ -365,13 +373,14 @@ function BusinessReports({ user, onLogout }) {
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
-        await axios.put(`${API}/business-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('businessReports.updateSuccess'));
+        setShowModal(false);
+        await axios.put(`${API}/business-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
       } else {
-        await axios.post(`${API}/business-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('businessReports.saveSuccess'));
+        setShowModal(false);
+        await axios.post(`${API}/business-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
       }
-      setShowModal(false);
       fetchReports();
     } catch (err) { 
       toast.error(err.response?.data?.detail || 'حدث خطأ أثناء الحفظ'); 
@@ -384,10 +393,12 @@ function BusinessReports({ user, onLogout }) {
     if (!window.confirm(t('businessReports.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API}/business-reports/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.filter(rep => rep.id !== id));
       toast.success(t('businessReports.deleteSuccess'));
+      await axios.delete(`${API}/business-reports/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch { 
+      fetchReports();
       toast.error(t('businessReports.deleteError')); 
     }
     setActiveMenu(null);
@@ -454,12 +465,14 @@ function BusinessReports({ user, onLogout }) {
             </h1>
             <p className="text-gray-500 text-sm mt-1 mr-12">{t('businessReports.subTitle')}</p>
           </div>
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all cursor-pointer"
-          >
-            <Plus className="w-5 h-5" /> {t('businessReports.addNew')}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all cursor-pointer"
+            >
+              <Plus className="w-5 h-5" /> {t('businessReports.addNew')}
+            </button>
+          </div>
         </div>
 
         {/* Filters Section */}
@@ -470,7 +483,7 @@ function BusinessReports({ user, onLogout }) {
               <span>{t('businessReports.filterTitle')}</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full flex-1 items-end">
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 w-full flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full flex-1">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-gray-500 px-1">{t('businessReports.dateFrom')}</label>
                   <input
@@ -497,7 +510,10 @@ function BusinessReports({ user, onLogout }) {
                   <label className="text-xs font-semibold text-gray-500 px-1">{t('businessReports.project')}</label>
                   <select
                     value={tempProject}
-                    onChange={e => setTempProject(e.target.value)}
+                    onChange={e => {
+                      setTempProject(e.target.value);
+                      setTempGov('');
+                    }}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 outline-none text-sm text-gray-700 bg-white h-[38px]"
                   >
                     <option value="">{t('reports.allProjects')}</option>
@@ -518,16 +534,6 @@ function BusinessReports({ user, onLogout }) {
                       <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
                     ))}
                   </select>
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={handleSearch}
-                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center cursor-pointer text-sm font-bold h-[38px]"
-                    title={t('businessReports.searchBtn')}
-                  >
-                    <Search className="w-4 h-4" />
-                    <span>{t('businessReports.searchBtn')}</span>
-                  </button>
                 </div>
               </div>
             </div>

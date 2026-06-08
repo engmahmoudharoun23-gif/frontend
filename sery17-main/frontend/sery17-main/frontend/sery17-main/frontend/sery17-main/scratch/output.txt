@@ -1,0 +1,12 @@
+=== Contractors ===
+Name: شركة الموسي, Project: مشروع المحافظات الغربية - القطاع الأوسط
+Name: جيزة العربية, Project: مشروع كشف التسربات وإصلاحها
+Name: الاداء المتوازن, Project: مشروع المحافظات الغربية - القطاع الأوسط
+Name: حسين, Project: مشروع ايصال مكة
+
+=== Users ===
+Username: admin, Projects: [], Permissions: [], Project Permissions: {}
+Username: Eng Medhat Hussien, Projects: ['مشروع التشوة البصري', 'مشروع المحافظات الغربية - القطاع الأوسط', 'مشروع كشف التسربات وإصلاحها'], Permissions: [], Project Permissions: None
+Username: Eng Abdelmonem Shamshoom, Projects: ['مشروع ايصال مكة'], Permissions: [], Project Permissions: {'مشروع ايصال مكة': ['dashboard', 'water_connections', 'water_connections_import', 'sewage_connections', 'sewage_connections_import', 'projects', 'team', 'users_manage', 'contractors', 'invoices', 'view_all_invoices', 'review_invoices', 'employee_requests', 'view_all_employee_requests', 'review_employee_requests', 'settings', 'trash']}
+Username: MMahmoud, Projects: ['مشروع ايصال مكة'], Permissions: [], Project Permissions: {'مشروع ايصال مكة': ['dashboard', 'water_connections', 'water_connections_import', 'sewage_connections', 'sewage_connections_import', 'projects', 'team', 'invoices', 'employee_requests', 'settings', 'trash']}
+Username: Mahmoud, Projects: ['مشروع ايصال مكة'], Permissions: [], Project Permissions: {'مشروع ايصال مكة': ['dashboard', 'water_connections', 'water_connections_import', 'sewage_connections', 'sewage_connections_import', 'projects', 'team', 'invoices', 'employee_requests', 'trash', 'settings']}
