@@ -455,6 +455,7 @@ function SafetyReports({ user, onLogout }) {
               </div>
               <div className="border-t border-gray-100 pt-6">
                 <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('safetyReports.image')}</label>
+                <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
                 <div className="flex gap-4 mb-4">
                   <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
                     <Upload className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('safetyReports.selectImage')}</span>

@@ -536,6 +536,7 @@ function QualityReports({ user, onLogout }) {
               </div>
               <div className="border-t border-gray-100 pt-6">
                 <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('qualityReports.image')}</label>
+                
                 <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
                 <div className="flex gap-4 mb-4">
                   <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors bg-white">

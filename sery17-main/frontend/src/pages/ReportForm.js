@@ -1441,17 +1441,7 @@ function ReportForm({ user, onLogout }) {
                   </p>
                 </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.depth')}</label>
-                <input type="number" step="0.01" required value={formData.depth_meters} onChange={(e) => setFormData({...formData, depth_meters: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="" />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.diameter')}</label>
-                <input type="number" step="0.01" required value={formData.diameter_mm} onChange={(e) => setFormData({...formData, diameter_mm: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              
+
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <label className="block text-sm font-medium text-gray-700">{t('reports.contractor')} *</label>
@@ -1499,13 +1489,17 @@ function ReportForm({ user, onLogout }) {
                   </p>
                 )}
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.closeDate')}</label>
-                <input type="date" value={formData.closed_at} onChange={(e) => setFormData({...formData, closed_at: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <p className="text-xs text-gray-500 mt-1">{t('reportForm.closeDateTip')}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.diameter')}</label>
+                <input type="number" step="0.01" required value={formData.diameter_mm} onChange={(e) => setFormData({...formData, diameter_mm: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.depth')}</label>
+                <input type="number" step="0.01" required value={formData.depth_meters} onChange={(e) => setFormData({...formData, depth_meters: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="" />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.latitude')} (Latitude)</label>
                 <div className="flex gap-2">
@@ -1584,7 +1578,7 @@ function ReportForm({ user, onLogout }) {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{t('reportForm.locationTip')}</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.longitude')} (Longitude)</label>
                 <input 
@@ -1602,7 +1596,7 @@ function ReportForm({ user, onLogout }) {
                 />
                 <p className="text-xs text-gray-500 mt-1">{t('reportForm.locationTipLng')}</p>
               </div>
-              
+
               {/* رسالة نجاح الموقع */}
               {locationSuccess && (
                 <div className="md:col-span-2 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2 animate-pulse">
@@ -1612,6 +1606,14 @@ function ReportForm({ user, onLogout }) {
                   </span>
                 </div>
               )}
+
+              <div className="hidden md:block"></div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.closeDate')}</label>
+                <input type="date" value={formData.closed_at} onChange={(e) => setFormData({...formData, closed_at: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <p className="text-xs text-gray-500 mt-1">{t('reportForm.closeDateTip')}</p>
+              </div>
               
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">

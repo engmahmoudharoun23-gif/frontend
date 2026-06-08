@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { hasAnyProjectPermission, hasPermission } from './utils/permissions';
 import axios from 'axios';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Login from './pages/Login';
 import Dashboard from './pages/NewDashboard';
@@ -65,6 +65,9 @@ axios.interceptors.response.use(
     return response;
   },
   (error) => {
+    if (error.response?.status === 401 && error.response?.data?.detail === 'session_expired_logged_in_elsewhere') {
+      window.dispatchEvent(new Event('sessionExpiredElsewhere'));
+    }
     return Promise.reject(error);
   }
 );
@@ -99,6 +102,18 @@ function App() {
       setPlatformThemeLoaded(true);
     };
     fetchTheme();
+  }, []);
+
+  // الاستماع لحدث انتهاء الجلسة بسبب دخول من جهاز آخر
+  useEffect(() => {
+    const handleSessionExpiredElsewhere = () => {
+      toast.error('تم الدخول إلى حسابك من جهاز آخر، سيتم تسجيل خروجك', { autoClose: 5000 });
+      handleLogout();
+    };
+    window.addEventListener('sessionExpiredElsewhere', handleSessionExpiredElsewhere);
+    return () => {
+      window.removeEventListener('sessionExpiredElsewhere', handleSessionExpiredElsewhere);
+    };
   }, []);
   
   // تطبيق الثيم
