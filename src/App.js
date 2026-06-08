@@ -10,6 +10,7 @@ import Reports from './pages/Reports';
 import ReportForm from './pages/ReportForm';
 import Trash from './pages/Trash';
 import ConsultantNotes from './pages/ConsultantNotes';
+import ReportNotes from './pages/ReportNotes';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
 import TeamManagement from './pages/TeamManagement';
@@ -33,6 +34,7 @@ import QualityReports from './pages/QualityReports';
 import BusinessReports from './pages/BusinessReports';
 import Archive from './pages/Archive';
 import Chat from './pages/Chat';
+import Violations from './pages/Violations';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -50,6 +52,22 @@ const themeColors = {
 };
 
 import SessionTimeoutModal from './components/SessionTimeoutModal';
+
+// إضافة معترض (Interceptor) عالمي لـ Axios لتحديث العدادات تلقائياً بعد أي عملية تعديل
+axios.interceptors.response.use(
+  (response) => {
+    // إذا كانت العملية ناجحة وهي عملية إضافة أو تعديل أو حذف
+    const method = response.config?.method?.toLowerCase();
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      // إرسال إشارة صامتة لتحديث العدادات فوراً
+      window.dispatchEvent(new Event('updateBadges'));
+    }
+    return response;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 function App() {
   const [user, setUser] = useState(null);
@@ -376,6 +394,10 @@ function App() {
           element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'work_permits')) ? <WorkPermits user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         <Route
+          path="/violations"
+          element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'violations')) ? <Violations user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
           path="/quality-reports"
           element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'quality_reports')) ? <QualityReports user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
@@ -395,6 +417,10 @@ function App() {
         <Route
           path="/consultant-notes"
           element={user ? <ConsultantNotes user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/report-notes"
+          element={user ? <ReportNotes user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
         />
       </Routes>
       <SessionTimeoutModal 

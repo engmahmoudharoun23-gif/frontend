@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import Layout from '../components/Layout';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
-import { Plus, Trash2, Edit2, Eye, X, Upload, MoreVertical, FileText, Filter, Search, Download, FileBarChart2, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, X, Upload, MoreVertical, FileText, Filter, Search, Download, FileBarChart2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -15,7 +15,7 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const emptyForm = { date_from: '', date_to: '', project: '', governorate: '', notes: '', file_url: '', file_name: '' };
+const emptyForm = { date_from: '', date_to: '', project: '', governorate: '', notes: '', file_url: '', file_name: '', files: [] };
 
 const parseDate = (dateStr) => {
   if (!dateStr) return null;
@@ -66,6 +66,7 @@ function BusinessReports({ user, onLogout }) {
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [viewReport, setViewReport] = useState(null);
   const [viewNote, setViewNote] = useState(null);
@@ -86,12 +87,16 @@ function BusinessReports({ user, onLogout }) {
   const [appliedProject, setAppliedProject] = useState('');
   const [appliedGov, setAppliedGov] = useState('');
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     setAppliedDateFrom(tempDateFrom);
     setAppliedDateTo(tempDateTo);
     setAppliedProject(tempProject);
     setAppliedGov(tempGov);
-  };
+  }, [tempDateFrom, tempDateTo, tempProject, tempGov]);
+
+  useEffect(() => {
+    handleSearch();
+  }, [handleSearch]);
 
   const handleReset = () => {
     setTempDateFrom('');
@@ -248,10 +253,12 @@ function BusinessReports({ user, onLogout }) {
   const handleRevertReport = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/business-reports/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'قيد المراجعة' } : rep));
       toast.success(i18n.language === 'ar' ? 'تم اعادة فتح حالة المراجعة' : 'Review status reopened');
+      await axios.put(`${API}/business-reports/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch (err) {
+      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
@@ -259,41 +266,57 @@ function BusinessReports({ user, onLogout }) {
   const handleReviewReport = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/business-reports/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'تمت المراجعة' } : rep));
       toast.success(i18n.language === 'ar' ? 'تم مراجعة البلاغ بنجاح' : 'Report reviewed successfully');
+      await axios.put(`${API}/business-reports/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch (err) {
+      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     setUploading(true);
     setUploadProgress(0);
     
-    const formData = new FormData();
-    formData.append('file', file);
-    
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(`${API}/storage/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-        }
-      });
-      const { storage_path } = res.data;
-      const resolvedUrl = storage_path.startsWith('http') ? storage_path : `${API}/storage/files/${storage_path}`;
+      const newFiles = [...(form.files || [])];
+      
+      let i = 0;
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const res = await axios.post(`${API}/storage/upload`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(((i * 100) + (progressEvent.loaded * 100) / progressEvent.total) / files.length);
+            setUploadProgress(percentCompleted);
+          }
+        });
+        
+        const { storage_path } = res.data;
+        const resolvedUrl = storage_path.startsWith('http') ? storage_path : `${API}/storage/files/${storage_path}`;
+        
+        newFiles.push({
+           url: resolvedUrl,
+           name: file.name
+        });
+        i++;
+      }
+      
       setForm(prev => ({
         ...prev,
-        file_url: resolvedUrl,
-        file_name: file.name
+        files: newFiles,
+        file_url: newFiles.length > 0 ? newFiles[0].url : '',
+        file_name: newFiles.length > 0 ? newFiles[0].name : ''
       }));
       toast.success(t('businessReports.saveSuccess') || 'تم رفع الملف بنجاح');
     } catch (err) {
@@ -301,6 +324,17 @@ function BusinessReports({ user, onLogout }) {
     } finally {
       setUploading(false);
     }
+  };
+  
+  const removeFile = (idx) => {
+     const newFiles = [...(form.files || [])];
+     newFiles.splice(idx, 1);
+     setForm(prev => ({
+        ...prev,
+        files: newFiles,
+        file_url: newFiles.length > 0 ? newFiles[0].url : '',
+        file_name: newFiles.length > 0 ? newFiles[0].name : ''
+     }));
   };
 
   const openAdd = () => { 
@@ -318,7 +352,7 @@ function BusinessReports({ user, onLogout }) {
       governorate: r.governorate || '', 
       notes: r.notes || '', 
       file_url: r.file_url || '',
-      file_name: r.file_name || ''
+      file_name: r.file_name || '', files: r.files || []
     }); 
     setShowModal(true); 
     setActiveMenu(null); 
@@ -326,6 +360,7 @@ function BusinessReports({ user, onLogout }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (uploading) {
       toast.info('يرجى الانتظار، جاري رفع الملف');
       return;
@@ -334,19 +369,23 @@ function BusinessReports({ user, onLogout }) {
       toast.error('يرجى رفع ملف أولاً');
       return;
     }
+    setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
-        await axios.put(`${API}/business-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('businessReports.updateSuccess'));
+        setShowModal(false);
+        await axios.put(`${API}/business-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
       } else {
-        await axios.post(`${API}/business-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('businessReports.saveSuccess'));
+        setShowModal(false);
+        await axios.post(`${API}/business-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
       }
-      setShowModal(false);
       fetchReports();
     } catch (err) { 
       toast.error(err.response?.data?.detail || 'حدث خطأ أثناء الحفظ'); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -354,10 +393,12 @@ function BusinessReports({ user, onLogout }) {
     if (!window.confirm(t('businessReports.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API}/business-reports/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.filter(rep => rep.id !== id));
       toast.success(t('businessReports.deleteSuccess'));
+      await axios.delete(`${API}/business-reports/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch { 
+      fetchReports();
       toast.error(t('businessReports.deleteError')); 
     }
     setActiveMenu(null);
@@ -424,12 +465,14 @@ function BusinessReports({ user, onLogout }) {
             </h1>
             <p className="text-gray-500 text-sm mt-1 mr-12">{t('businessReports.subTitle')}</p>
           </div>
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all cursor-pointer"
-          >
-            <Plus className="w-5 h-5" /> {t('businessReports.addNew')}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all cursor-pointer"
+            >
+              <Plus className="w-5 h-5" /> {t('businessReports.addNew')}
+            </button>
+          </div>
         </div>
 
         {/* Filters Section */}
@@ -440,7 +483,7 @@ function BusinessReports({ user, onLogout }) {
               <span>{t('businessReports.filterTitle')}</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full flex-1 items-end">
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 w-full flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full flex-1">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-gray-500 px-1">{t('businessReports.dateFrom')}</label>
                   <input
@@ -467,7 +510,10 @@ function BusinessReports({ user, onLogout }) {
                   <label className="text-xs font-semibold text-gray-500 px-1">{t('businessReports.project')}</label>
                   <select
                     value={tempProject}
-                    onChange={e => setTempProject(e.target.value)}
+                    onChange={e => {
+                      setTempProject(e.target.value);
+                      setTempGov('');
+                    }}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 outline-none text-sm text-gray-700 bg-white h-[38px]"
                   >
                     <option value="">{t('reports.allProjects')}</option>
@@ -488,16 +534,6 @@ function BusinessReports({ user, onLogout }) {
                       <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
                     ))}
                   </select>
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={handleSearch}
-                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center cursor-pointer text-sm font-bold h-[38px]"
-                    title={t('businessReports.searchBtn')}
-                  >
-                    <Search className="w-4 h-4" />
-                    <span>{t('businessReports.searchBtn')}</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -569,7 +605,20 @@ function BusinessReports({ user, onLogout }) {
                           </span>
                         </td>
                         <td className="px-4 py-3.5 text-center max-w-[180px] truncate">
-                          {r.file_name ? (
+                          {(r.files && r.files.length > 0) ? (
+                            <div className="flex flex-col gap-1 items-center">
+                              {r.files.map((f, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => handleViewFile({ file_url: f.url, file_name: f.name })}
+                                  className="inline-flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-100 font-bold max-w-full truncate cursor-pointer transition-colors"
+                                  title={f.name}
+                                >
+                                  📎 <span className="truncate">{f.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : r.file_name ? (
                             <button
                               onClick={() => handleViewFile(r)}
                               className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md border border-blue-100 font-bold max-w-full truncate cursor-pointer transition-colors"
@@ -885,6 +934,7 @@ function BusinessReports({ user, onLogout }) {
                       <input 
                         type="file" 
                         accept=".ppt,.pptx,.pdf,image/*" 
+                        multiple
                         className="hidden" 
                         onChange={handleFileSelect} 
                         disabled={uploading} 
@@ -925,9 +975,10 @@ function BusinessReports({ user, onLogout }) {
                 <div className="flex gap-3 pt-2">
                   <button 
                     type="submit" 
-                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-all cursor-pointer"
+                    disabled={isSubmitting || uploading}
+                    className={`flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold transition-all ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700 cursor-pointer'}`}
                   >
-                    {editingReport ? t('businessReports.saveChangesBtn') : t('businessReports.saveBtn')}
+                    {isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? t('businessReports.saveChangesBtn') : t('businessReports.saveBtn')}
                   </button>
                   <button 
                     type="button" 
@@ -1069,7 +1120,7 @@ function BusinessReports({ user, onLogout }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setForm(prev => ({ ...prev, file_url: '', file_name: '' }));
+                    setForm(prev => ({ ...prev, file_url: '', file_name: '', files: [] }));
                     setShowDeleteFileConfirm(false);
                   }}
                   className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all cursor-pointer text-sm"
