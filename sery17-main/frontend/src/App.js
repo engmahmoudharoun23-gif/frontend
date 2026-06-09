@@ -65,9 +65,6 @@ axios.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401 && error.response?.data?.detail === 'session_expired_logged_in_elsewhere') {
-      window.dispatchEvent(new Event('sessionExpiredElsewhere'));
-    }
     return Promise.reject(error);
   }
 );
@@ -104,17 +101,7 @@ function App() {
     fetchTheme();
   }, []);
 
-  // الاستماع لحدث انتهاء الجلسة بسبب دخول من جهاز آخر
-  useEffect(() => {
-    const handleSessionExpiredElsewhere = () => {
-      toast.error('تم الدخول إلى حسابك من جهاز آخر، سيتم تسجيل خروجك', { autoClose: 5000 });
-      handleLogout();
-    };
-    window.addEventListener('sessionExpiredElsewhere', handleSessionExpiredElsewhere);
-    return () => {
-      window.removeEventListener('sessionExpiredElsewhere', handleSessionExpiredElsewhere);
-    };
-  }, []);
+
   
   // تطبيق الثيم
   const applyTheme = (theme, isDark) => {
