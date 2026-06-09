@@ -38,6 +38,7 @@ function Invoices({ user, onLogout }) {
   const [invoices, setInvoices] = useState(getInitialInvoices);
   const [filteredInvoices, setFilteredInvoices] = useState(getInitialInvoices);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -225,6 +226,8 @@ function Invoices({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     
     // حفظ البيانات فوراً ورفع الصور في الخلفية
     const dataToSend = { ...formData, amount: parseFloat(formData.amount) };
@@ -256,11 +259,15 @@ function Invoices({ user, onLogout }) {
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'حدث خطأ');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEdit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     
     // حفظ البيانات فوراً ورفع الصور في الخلفية
     const dataToSend = { ...formData, amount: parseFloat(formData.amount) };
@@ -292,6 +299,8 @@ function Invoices({ user, onLogout }) {
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'حدث خطأ');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -908,7 +917,7 @@ function Invoices({ user, onLogout }) {
                   )}
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium">{isRtl ? 'إرسال' : 'Submit'}</button>
+                  <button type="submit" disabled={isSubmitting} className={`flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>{isSubmitting ? (isRtl ? 'جاري الإرسال...' : 'Submitting...') : (isRtl ? 'إرسال' : 'Submit')}</button>
                   <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg text-sm">{isRtl ? 'إلغاء' : 'Cancel'}</button>
                 </div>
               </form>
@@ -958,7 +967,7 @@ function Invoices({ user, onLogout }) {
                   )}
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg text-sm font-medium">حفظ</button>
+                  <button type="submit" disabled={isSubmitting} className={`flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg text-sm font-medium ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>{isSubmitting ? 'جاري الحفظ...' : 'حفظ'}</button>
                   <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg text-sm">إلغاء</button>
                 </div>
               </form>

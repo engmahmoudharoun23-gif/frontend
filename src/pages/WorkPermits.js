@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import imageCompression from 'browser-image-compression';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
-import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -17,7 +17,7 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const emptyForm = { date: '', project: '', governorate: '', notes: '', image: '' };
+const emptyForm = { date: '', project: '', governorate: '', notes: '', image: '', images: [] };
 
 function WorkPermits({ user, onLogout }) {
   const { t, i18n } = useTranslation();
@@ -42,10 +42,18 @@ function WorkPermits({ user, onLogout }) {
 
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+
+  const [activeNotesReportId, setActiveNotesReportId] = useState(null);
+  const [consultantNote, setConsultantNote] = useState('');
+  const [consultantReply, setConsultantReply] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [notePopupAction, setNotePopupAction] = useState('save_only');
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [imagePreview, setImagePreview] = useState('');
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
   const [viewReport, setViewReport] = useState(null);
   const [viewNote, setViewNote] = useState(null);
@@ -74,6 +82,46 @@ function WorkPermits({ user, onLogout }) {
     setAppliedDate('');
     setAppliedProject('');
     setAppliedGov('');
+  };
+
+  const openNotesModal = (report) => {
+    setActiveNotesReportId(report.id);
+    setConsultantNote(report.consultant_note || '');
+    setConsultantReply(report.consultant_reply || '');
+  };
+
+  const handleSaveNote = async () => {
+    if (!activeNotesReportId) return;
+    if (isSavingNote) return;
+    setIsSavingNote(true);
+    const token = localStorage.getItem('token');
+    
+    let isProcessed = false;
+    if (notePopupAction === 'save_and_close') {
+      isProcessed = true;
+    }
+
+    try {
+      setReports(prev => prev.map(rep => rep.id === activeNotesReportId ? { ...rep, consultant_note: consultantNote, consultant_reply: consultantReply, report_note_processed: isProcessed } : rep));
+      toast.success(isRtl ? 'تم حفظ الملاحظة بنجاح' : 'Note saved successfully');
+      
+      if (notePopupAction === 'save_and_close') {
+        setActiveNotesReportId(null);
+      }
+
+      await axios.put(`${API}/work-permits/${activeNotesReportId}`, { 
+        consultant_note: consultantNote,
+        consultant_reply: consultantReply,
+        report_note_processed: isProcessed
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      
+      fetchReports();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'حدث خطأ');
+    } finally {
+      setIsSavingNote(false);
+      setNotePopupAction('save_only');
+    }
   };
 
   const projectOptions = useMemo(() => {
@@ -160,14 +208,18 @@ function WorkPermits({ user, onLogout }) {
   }
 
   const fetchReports = useCallback(async () => {
-    // setLoading(true);
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/work-permits`, { headers: { Authorization: `Bearer ${token}` } });
       setReports(res.data || []);
-    } catch { toast.error(t('workPermits.downloadError')); }
-    finally { setLoading(false); }
-  }, [t]);
+    } catch (err) {
+      console.error('Failed to fetch work permits:', err);
+      toast.error(isRtl ? 'حدث خطأ أثناء تحميل تصاريح العمل' : 'Failed to load work permits');
+    } finally {
+      setLoading(false);
+    }
+  }, [isRtl]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
@@ -212,63 +264,102 @@ function WorkPermits({ user, onLogout }) {
 
   const compressImage = async (file) => {
     const options = { 
-      maxSizeMB: 0.09, 
-      maxWidthOrHeight: 1024, 
+      maxSizeMB: 0.1,
+      maxWidthOrHeight: 1200, 
       useWebWorker: true,
-      initialQuality: 0.7
+      initialQuality: 0.75
     };
     try { return await imageCompression(file, options); }
     catch { return file; }
   };
 
   const handleImageSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     setUploading(true);
     try {
-      if (file.type === 'application/pdf') {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error("حجم ملف الـ PDF يتجاوز 10 ميجا. يرجى اختيار ملف أصغر.");
-          setUploading(false);
-          return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          let base64pdf = reader.result;
+      const newPreviews = [...imagePreviews];
+      const newImages = [...(form.images || [])];
+      
+      for (let file of files) {
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
+          if (file.size > 10 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 10 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+          const reader = new FileReader();
+          let base64pdf = await new Promise(resolve => {
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          });
           try {
             const token = localStorage.getItem('token');
             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data && res.data.pdf) {
-                base64pdf = res.data.pdf;
-            }
-          } catch (e) {
-            console.error("PDF compression failed", e);
-          }
-          setImagePreview(base64pdf);
-          setForm(prev => ({ ...prev, image: base64pdf }));
-          setUploading(false);
-          toast.success("تم ضغط وإرفاق ملف الـ PDF بنجاح");
-        };
-        reader.readAsDataURL(file);
-      } else {
-        const compressed = await compressImage(file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImagePreview(reader.result);
-          setForm(prev => ({ ...prev, image: reader.result }));
-          setUploading(false);
-          toast.success(t('workPermits.compressedSuccess'));
-        };
-        reader.readAsDataURL(compressed);
+            if (res.data && res.data.pdf) base64pdf = res.data.pdf;
+          } catch (e) { console.error('PDF compression failed', e); }
+          newPreviews.push(base64pdf);
+          newImages.push(base64pdf);
+        } else {
+          const compressed = await compressImage(file);
+          const result = await new Promise(resolve => {
+            const r = new FileReader();
+            r.onloadend = () => resolve(r.result);
+            r.readAsDataURL(compressed);
+          });
+          newPreviews.push(result);
+          newImages.push(result);
+        }
       }
-    } catch { setUploading(false); }
+      
+      setImagePreviews(newPreviews);
+      setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
+      setUploading(false);
+      toast.success(isRtl ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+    } catch (e) { 
+      console.error(e);
+      setUploading(false); 
+    }
   };
 
-  const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setShowModal(true); };
-  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '' }); setImagePreview(r.image || ''); setShowModal(true); setActiveMenu(null); };
+  const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
+  
+  const handleViewReport = async (r) => {
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/work-permits/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      setViewReport(res.data);
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
+    }
+  };
+
+  const openEdit = async (r) => { 
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/work-permits/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      const full = res.data;
+      setEditingReport(full); 
+      setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '', images: full.images || [] }); 
+      setImagePreview(full.image || ''); 
+      setImagePreviews(full.images || []); 
+      setShowModal(true); 
+      setActiveMenu(null); 
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (isSubmitting || uploading) return;
+    setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
@@ -280,7 +371,11 @@ function WorkPermits({ user, onLogout }) {
       }
       setShowModal(false);
       fetchReports();
-    } catch (err) { toast.error(err.response?.data?.detail || 'حدث خطأ'); }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ' : 'Error saving permit'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -295,7 +390,22 @@ function WorkPermits({ user, onLogout }) {
   };
 
   const handleDownloadPDF = async (report, titleText) => {
-    if (!report.image) {
+    let fullReport = report;
+    if (!fullReport.image) {
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/work-permits/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullReport = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!fullReport.image) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -303,29 +413,29 @@ function WorkPermits({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      if (report.image.startsWith('data:')) {
+      if (fullReport.image.startsWith('data:')) {
         const link = document.createElement('a');
-        link.href = report.image;
+        link.href = fullReport.image;
         let ext = '.jpg';
-        if (report.image.startsWith('data:application/pdf')) ext = '.pdf';
-        else if (report.image.startsWith('data:image/png')) ext = '.png';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
+        if (fullReport.image.startsWith('data:application/pdf')) ext = '.pdf';
+        else if (fullReport.image.startsWith('data:image/png')) ext = '.png';
+        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         toast.success(t('workPermits.downloadSuccess') || 'تم بدء التحميل بنجاح');
       } else {
-        const fileUrlParam = encodeURIComponent(report.image);
+        const fileUrlParam = encodeURIComponent(fullReport.image);
         const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
         
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.target = '_blank';
         let ext = '';
-        if (report.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-        else if (report.image.toLowerCase().endsWith('.png')) ext = '.png';
-        else if (report.image.toLowerCase().endsWith('.jpg') || report.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
+        if (fullReport.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
+        else if (fullReport.image.toLowerCase().endsWith('.png')) ext = '.png';
+        else if (fullReport.image.toLowerCase().endsWith('.jpg') || fullReport.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
+        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -338,6 +448,11 @@ function WorkPermits({ user, onLogout }) {
   };
 
   const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
+  useEffect(() => {
+    setAppliedDate(tempDate);
+    setCurrentPage(1);
+  }, [tempDate]);
+
   const indexOfLastReport = currentPage * reportsPerPage;
   const indexOfFirstReport = indexOfLastReport - reportsPerPage;
   const currentReports = filteredReports.slice(indexOfFirstReport, indexOfLastReport);
@@ -345,7 +460,119 @@ function WorkPermits({ user, onLogout }) {
   return (
     <Layout user={user} onLogout={onLogout}>
       <div className="p-4 md:p-6 max-w-7xl mx-auto" dir={isRtl ? 'rtl' : 'ltr'}>
-        {/* Header */}
+        {showModal ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in">
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 text-gray-600 font-bold">
+                <span className="text-2xl leading-none">{isRtl ? '←' : '→'}</span>
+                <span>{isRtl ? 'الرجوع' : 'Back'}</span>
+              </button>
+              <h2 className="text-2xl font-bold text-gray-800 border-r-4 border-orange-500 pr-4">
+                {editingReport ? t('workPermits.editReport') : t('workPermits.addNew')}
+              </h2>
+            </div>
+            <form onSubmit={handleSave} className="space-y-6 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('workPermits.date')} <span className="text-red-500">*</span></label>
+                  <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('workPermits.governorate')} <span className="text-red-500">*</span></label>
+                  <select
+                    required
+                    value={form.governorate}
+                    onChange={e => setForm({...form, governorate: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none bg-gray-50"
+                    disabled={!form.project}
+                  >
+                    <option value="">{t('workPermits.selectGov')}</option>
+                    {allowedGovsList.map(g => (
+                      <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">{t('workPermits.project')} <span className="text-red-500">*</span></label>
+                <select
+                  required
+                  value={form.project}
+                  onChange={e => setForm({...form, project: e.target.value, governorate: ''})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none bg-gray-50"
+                >
+                  <option value="">{t('workPermits.selectProject')}</option>
+                  {allowedProjectsList.map(p => (
+                    <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">{t('workPermits.notes')}</label>
+                <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={5} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none resize-none bg-gray-50" />
+              </div>
+              <div className="border-t border-gray-100 pt-6">
+                <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('workPermits.image')}</label>
+                <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
+                    <Upload className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('workPermits.selectImage')}</span>
+                    <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                  </label>
+                  <label className="flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
+                    <Camera className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('workPermits.camera')}</span>
+                    <input type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                  </label>
+                </div>
+                {uploading && <p className="text-sm text-orange-600 mb-4 font-bold animate-pulse">{t('workPermits.uploadingImage')}</p>}
+                {imagePreviews.length > 0 ? (
+                  <div className="mb-4 flex flex-wrap gap-4">
+                    {imagePreviews.map((img, idx) => (
+                      <div key={idx} className="relative inline-block">
+                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                          <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
+                            <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
+                          </div>
+                        ) : (
+                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in shadow-sm" onClick={() => setZoomedImage(img)} />
+                        )}
+                        <button type="button" onClick={() => removeImage(idx)} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (imagePreview && (
+                  <div className="mb-4 relative inline-block">
+                    {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
+                      <div className="p-4 bg-orange-50 rounded-xl border-2 border-orange-200 flex items-center justify-center min-w-[128px] min-h-[128px]">
+                        <div className="text-center">
+                          <FileText className="w-10 h-10 text-orange-500 mx-auto mb-2" />
+                          <span className="text-xs font-bold text-orange-800">ملف PDF مرفق</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <img src={resolveImageUrl(imagePreview)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-orange-200 cursor-zoom-in shadow-sm" onClick={() => setZoomedImage(imagePreview)} />
+                    )}
+                    <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-4 pt-4 border-t border-gray-100">
+                <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-4 bg-orange-600 text-white rounded-xl font-bold text-lg transition-all shadow-md ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-700 hover:shadow-lg hover:-translate-y-0.5'}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? t('workPermits.saveChangesBtn') : t('workPermits.saveBtn')}</button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          <>
+        {/* Back Arrow + Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <Link
+            to="/safety-reports"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-bold"
+          >
+            {isRtl ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+            <span>{isRtl ? 'الرجوع لتقارير السلامة' : 'Back to Safety Reports'}</span>
+          </Link>
+        </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
@@ -355,11 +582,6 @@ function WorkPermits({ user, onLogout }) {
             <p className="text-gray-500 text-sm mt-1 mr-12">{t('workPermits.subTitle')}</p>
           </div>
           <div className="flex gap-3">
-            {hasPermission('safety_reports') && (
-              <Link to="/safety-reports" className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all">
-                {isRtl ? <ArrowRight className="w-5 h-5" /> : <FileText className="w-5 h-5" />} {t('workPermits.goToSafety', { defaultValue: 'تقارير السلامة' })}
-              </Link>
-            )}
             <button
               onClick={openAdd}
               className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-medium shadow-md transition-all"
@@ -376,58 +598,63 @@ function WorkPermits({ user, onLogout }) {
               <Filter className="w-5 h-5 text-orange-600 animate-pulse" />
               <span>{t('workPermits.filterTitle')}</span>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full flex-1 max-w-3xl items-center">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full flex-1">
-                <div>
-                  <input
-                    type="date"
-                    value={tempDate}
-                    onChange={e => setTempDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
-                  />
-                </div>
-                <div>
-                  <select
-                    value={tempProject}
-                    onChange={e => setTempProject(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
-                  >
-                    <option value="">{t('reports.allProjects')}</option>
-                    {projectOptions.map(p => (
-                      <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <select
-                    value={tempGov}
-                    onChange={e => setTempGov(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
-                  >
-                    <option value="">{t('reports.allGovernorates')}</option>
-                    {govOptions.map(g => (
-                      <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
-                    ))}
-                  </select>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full">
+              <input
+                type="date"
+                value={tempDate}
+                onChange={e => setTempDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
+              />
+              <select
+                value={tempProject}
+                onChange={e => {
+                  setTempProject(e.target.value);
+                  setTempGov('');
+                  if (!e.target.value) {
+                    setAppliedProject('');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
+              >
+                <option value="">{t('reports.allProjects')}</option>
+                {projectOptions.map(p => (
+                  <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
+                ))}
+              </select>
+              <select
+                value={tempGov}
+                onChange={e => {
+                  setTempGov(e.target.value);
+                  if (!e.target.value) {
+                    setAppliedGov('');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
+              >
+                <option value="">{t('reports.allGovernorates')}</option>
+                {govOptions.map(g => (
+                  <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSearch}
+                  className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center shrink-0 cursor-pointer text-sm font-bold"
+                  title={t('workPermits.searchBtn')}
+                >
+                  <Search className="w-4 h-4" />
+                  <span>{t('workPermits.searchBtn')}</span>
+                </button>
+                {(appliedDate || appliedProject || appliedGov || tempDate || tempProject || tempGov) && (
                   <button
-                    onClick={handleSearch}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center shrink-0 cursor-pointer text-sm font-bold"
-                    title={t('workPermits.searchBtn')}
+                    onClick={handleReset}
+                    className="px-4 py-2 text-xs text-red-600 hover:text-red-700 font-bold hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-dashed border-red-200 shrink-0"
                   >
-                    <Search className="w-4 h-4" />
-                    <span>{t('workPermits.searchBtn')}</span>
+                    {t('workPermits.resetBtn')}
                   </button>
-                </div>
+                )}
               </div>
             </div>
-            {(appliedDate || appliedProject || appliedGov || tempDate || tempProject || tempGov) && (
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 text-xs text-red-600 hover:text-red-700 font-bold hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-dashed border-red-200"
-              >
-                {t('workPermits.resetBtn')}
-              </button>
-            )}
           </div>
         )}
 
@@ -485,7 +712,7 @@ function WorkPermits({ user, onLogout }) {
                             <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
                               r.status === 'تمت المراجعة'
                                 ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                                : 'bg-slate-700 text-white shadow-sm border border-slate-600'
                             }`}>
                               {translateBrandingText(r.status || 'قيد المراجعة', isRtl)}
                             </span>
@@ -505,17 +732,22 @@ function WorkPermits({ user, onLogout }) {
                               <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[65]">
                                 <div className="py-1">
                                   <DropdownMenuItem
-                                    onClick={() => setViewReport(r)}
+                                    onClick={() => handleViewReport(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
                                     <Eye className="w-4 h-4 text-orange-600" /> {t('workPermits.viewDetails')}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => setViewNote(r.notes || 'لا توجد ملاحظات')}
-                                    className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-amber-50 hover:text-amber-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
-                                  >
-                                    <FileText className="w-4 h-4 text-amber-600" /> {t('workPermits.notesTitle')}
-                                  </DropdownMenuItem>
+                                  {(!r.report_note_processed || user?.role === 'admin' || user?.level === 1 || user?.level === 2 || (user?.level === 3 && r.consultant_note)) && (
+                                    <DropdownMenuItem
+                                      onClick={() => openNotesModal(r)}
+                                      className="w-full text-right px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer relative"
+                                    >
+                                      <FileText className="w-4 h-4 text-amber-600" /> {isRtl ? 'اضافة ملاحظة للتقرير' : 'Add Note to Report'}
+                                      {r.consultant_note && !r.report_note_processed && (
+                                        <span className="absolute left-2 top-2 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                      )}
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem
                                     onClick={() => handleDownloadPDF(r, t('workPermits.title'))}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
@@ -540,7 +772,7 @@ function WorkPermits({ user, onLogout }) {
                                   )}
                                 </div>
                                 <div className="py-1 bg-slate-50/50 border-t border-slate-100">
-                                  {hasPermission('work_permits_edit') && (
+                                  {hasPermission('work_permits_edit') && !(user?.role !== 'admin' && user?.can_create_subusers) && (
                                     <DropdownMenuItem
                                     onClick={() => openEdit(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 hover:text-yellow-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
@@ -548,7 +780,7 @@ function WorkPermits({ user, onLogout }) {
                                     <Edit2 className="w-4 h-4 text-yellow-600" /> {t('workPermits.edit')}
                                   </DropdownMenuItem>
                                   )}
-                                  {hasPermission('work_permits_delete') && (
+                                  {hasPermission('work_permits_delete') && !(user?.role !== 'admin' && user?.can_create_subusers) && (
                                     <DropdownMenuItem
                                     onClick={() => handleDelete(r.id)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-semibold rounded-lg cursor-pointer"
@@ -677,93 +909,8 @@ function WorkPermits({ user, onLogout }) {
           </div>
         )}
 
-        {/* Add/Edit Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="sticky top-0 bg-orange-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
-                <h3 className="text-lg font-bold text-white">{editingReport ? t('workPermits.editReport') : t('workPermits.addNew')}</h3>
-                <button onClick={() => setShowModal(false)} className="text-white text-2xl hover:text-orange-200"><X className="w-6 h-6" /></button>
-              </div>
-              <form onSubmit={handleSave} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workPermits.date')} <span className="text-red-500">*</span></label>
-                    <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workPermits.governorate')} <span className="text-red-500">*</span></label>
-                    <select
-                      required
-                      value={form.governorate}
-                      onChange={e => setForm({...form, governorate: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none"
-                      disabled={!form.project}
-                    >
-                      <option value="">{t('workPermits.selectGov')}</option>
-                      {allowedGovsList.map(g => (
-                        <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workPermits.project')} <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={form.project}
-                    onChange={e => setForm({...form, project: e.target.value, governorate: ''})}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none"
-                  >
-                    <option value="">{t('workPermits.selectProject')}</option>
-                    {allowedProjectsList.map(p => (
-                      <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workPermits.notes')}</label>
-                  <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none resize-none" />
-                </div>
-                {/* Image Upload */}
-                <div className="border-t pt-4">
-                  <label className="block text-sm font-bold text-gray-700 mb-3">📷 {t('workPermits.image')}</label>
-                  <div className="flex gap-2 mb-3">
-                    <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
-                      <Upload className="w-5 h-5 text-orange-500" /><span className="text-sm text-orange-700 font-medium">{t('workPermits.selectImage')}</span>
-                      <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleImageSelect} disabled={uploading} />
-                    </label>
-                    <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
-                      <Camera className="w-5 h-5 text-orange-500" /><span className="text-sm text-orange-700 font-medium">{t('workPermits.camera')}</span>
-                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
-                    </label>
-                  </div>
-                  {uploading && <p className="text-sm text-orange-600 mb-3 animate-pulse">{t('workPermits.uploadingImage')}</p>}
-                  {imagePreview && (
-                    <div className="mb-3 relative inline-block">
-                      {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
-                        <div className="p-4 bg-orange-50 rounded-xl border-2 border-orange-200 flex items-center justify-center min-w-[128px] min-h-[128px]">
-                          <div className="text-center">
-                            <FileText className="w-10 h-10 text-orange-500 mx-auto mb-2" />
-                            <span className="text-xs font-bold text-orange-800">ملف PDF مرفق</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <img src={resolveImageUrl(imagePreview)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-orange-200 cursor-zoom-in" onClick={() => setZoomedImage(imagePreview)} />
-                      )}
-                      <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">×</button>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold transition-all">{editingReport ? t('workPermits.saveChangesBtn') : t('workPermits.saveBtn')}</button>
-                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium">{t('workPermits.cancel')}</button>
-                </div>
-              </form>
-            </div>
-          </div>
+          </>
         )}
-
         {/* View Modal */}
         {viewReport && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -803,6 +950,90 @@ function WorkPermits({ user, onLogout }) {
                     <span>{t('workPermits.downloadReport')}</span>
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Consultant Notes Modal */}
+        {activeNotesReportId && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex justify-between items-center shrink-0">
+                <h3 className="text-xl font-black text-white flex items-center gap-2">
+                  <FileText className="w-6 h-6 animate-pulse" /> {isRtl ? 'اضافة ملاحظة للتقرير' : 'Add Note to Report'}
+                </h3>
+                <button onClick={() => setActiveNotesReportId(null)} className="text-white/80 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-1.5"><X className="w-5 h-5" /></button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                {/* خانة ملاحظة الاستشاري (للمستوى 1 و 2) */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                    <span className="p-1.5 bg-amber-100 text-amber-700 rounded-lg">📝</span>
+                    {isRtl ? 'ملاحظة' : 'Note'}
+                  </label>
+                  <textarea 
+                    value={consultantNote}
+                    onChange={e => setConsultantNote(e.target.value)}
+                    disabled={user?.role !== 'admin' && user?.level !== 1 && user?.level !== 2}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500/50 outline-none resize-none text-sm text-gray-700 bg-gray-50/50 disabled:bg-gray-100 disabled:text-gray-500 min-h-[120px] transition-all"
+                    placeholder={isRtl ? 'اكتب ملاحظتك هنا...' : 'Type note here...'}
+                  />
+                </div>
+
+                {/* الديكور الفاصل */}
+                <div className="flex items-center justify-center py-2 relative">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dashed border-gray-200"></div></div>
+                  <div className="relative bg-white px-4 text-gray-400 text-xs font-bold rounded-full border border-gray-100 flex items-center gap-1.5 py-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                    {isRtl ? 'الرد والإفادة' : 'Reply & Feedback'}
+                  </div>
+                </div>
+
+                {/* خانة الرد (للمستوى 3) */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                    <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">💬</span>
+                    {isRtl ? 'الرد' : 'Reply'}
+                  </label>
+                  <textarea 
+                    value={consultantReply}
+                    onChange={e => setConsultantReply(e.target.value)}
+                    disabled={user?.role === 'admin' || user?.level === 1 || user?.level === 2}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/50 outline-none resize-none text-sm text-gray-700 bg-blue-50/10 disabled:bg-gray-100 disabled:text-gray-500 min-h-[120px] transition-all"
+                    placeholder={isRtl ? 'اكتب الرد هنا...' : 'Type reply here...'}
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                <button 
+                  onClick={() => setActiveNotesReportId(null)} 
+                  className="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:text-gray-800 font-bold transition-colors text-sm"
+                >
+                  {isRtl ? 'إغلاق' : 'Close'}
+                </button>
+                <button 
+                  onClick={() => {
+                    setNotePopupAction('save_only');
+                    setTimeout(handleSaveNote, 0);
+                  }}
+                  disabled={isSavingNote}
+                  className="px-6 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 font-bold transition-all shadow-sm shadow-amber-200 flex items-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isSavingNote && notePopupAction === 'save_only' ? <span className="animate-spin text-lg leading-none">⏳</span> : '💾'} {isRtl ? 'حفظ' : 'Save'}
+                </button>
+                <button 
+                  onClick={() => {
+                    setNotePopupAction('save_and_close');
+                    setTimeout(handleSaveNote, 0);
+                  }}
+                  disabled={isSavingNote}
+                  className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold transition-all shadow-sm shadow-emerald-200 flex items-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isSavingNote && notePopupAction === 'save_and_close' ? <span className="animate-spin text-lg leading-none">⏳</span> : '📨'} {isRtl ? 'حفظ وإرسال وإغلاق' : 'Save, Send & Close'}
+                </button>
               </div>
             </div>
           </div>
