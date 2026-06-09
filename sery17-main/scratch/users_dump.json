@@ -1,203 +1,118 @@
 [
   {
-    "_id": "6a08853b184c4c10ac48a110",
-    "id": "9e46065b-429c-48b7-af5a-5d0c36470104",
+    "name": "",
     "username": "admin",
-    "email": "admin@wfm.com",
-    "full_name": "مكتب بيت الخبرة للاستشارات الهندسية",
-    "role": "admin",
-    "governorates": [],
-    "hashed_password": "$2b$12$YvKwYeDkzN3NGII6u/g7zeRooIrgSQO3zGtiDnKSiN30kuERXOate",
-    "created_at": "2026-05-16T14:54:51.165166+00:00",
-    "is_active": true,
-    "profile_picture": "https://res.cloudinary.com/drlhlobwc/image/upload/v1778943498/sery17/profiles/xqofrp1oaue2wv6jrvcv.png",
-    "permissions": [],
-    "project_permissions": {},
-    "projects": [],
-    "connection_permissions": {}
-  },
-  {
-    "_id": "6a08877b42605ac96234f5eb",
-    "id": "f3a9c5ac-ef15-4622-aadb-c80ef2116625",
-    "username": "Eng Medhat Hussien",
-    "email": null,
-    "full_name": "م/ مدحت حسين",
-    "title": "مدير المشروع",
-    "profile_picture": null,
-    "role": "user",
-    "governorates": [
-      "شقراء",
-      "القصب",
-      "الدوادمي",
-      "مرات",
-      "ضرماء",
-      "عفيف",
-      "ساجر",
-      "المزاحمية",
-      "القويعية"
-    ],
     "projects": [
       "مشروع التشوة البصري",
-      "مشروع المحافظات الغربية - القطاع الأوسط",
+      "مشروع المحافظات الغربية",
       "مشروع كشف التسربات وإصلاحها"
-    ],
-    "hashed_password": "$2b$12$YwbvhmqIsK5q4ALIhmjCGODscmcgw5Ez/qeOfv2RSPixpGQcW2GPa",
-    "created_by": "9e46065b-429c-48b7-af5a-5d0c36470104",
-    "can_create_subusers": true,
-    "permissions": [],
-    "connection_permissions": null,
-    "project_permissions": null,
-    "personal_theme": null,
-    "created_at": "2026-05-16T15:04:27.750799+00:00",
-    "is_active": true
+    ]
   },
   {
-    "_id": "6a088d9b42605ac96234f5ec",
-    "id": "e4e7fd3f-06e3-44e4-9f69-4725c73925ce",
-    "username": "Eng Abdelmonem Shamshoom",
-    "email": null,
-    "full_name": "م عبدالمنعم",
-    "title": "مدير مشروع",
-    "profile_picture": null,
-    "role": "user",
-    "governorates": [
-      "جدة",
-      "الطائف"
-    ],
+    "name": "",
+    "username": "Eng Medhat Hussien",
     "projects": [
-      "مشروع ايصال"
-    ],
-    "hashed_password": "$2b$12$KjO4xo5kZT5gJZ0GkpF1QOCEOFlHmrG53DFbkgFyEWpJEGIPpQS26",
-    "created_by": "9e46065b-429c-48b7-af5a-5d0c36470104",
-    "can_create_subusers": true,
-    "permissions": [],
-    "connection_permissions": {},
-    "project_permissions": {
-      "مشروع ايصال": [
-        "dashboard",
-        "water_connections",
-        "sewage_connections",
-        "connections_full_form",
-        "connections_show_phone",
-        "connections_show_request_number",
-        "connections_show_restriction_number",
-        "connections_show_account_number",
-        "connections_show_dates",
-        "connections_show_measurements",
-        "connections_show_meter",
-        "connections_show_location",
-        "contractors",
-        "projects",
-        "users_manage",
-        "team",
-        "project_settings",
-        "invoices",
-        "extracts",
-        "view_all_invoices",
-        "review_invoices",
-        "employee_requests",
-        "view_all_employee_requests",
-        "review_employee_requests",
-        "settings",
-        "trash"
-      ]
-    },
-    "personal_theme": null,
-    "created_at": "2026-05-16T15:30:35.328201+00:00",
-    "is_active": true
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
   },
   {
-    "_id": "6a088f4642605ac96234f5f0",
-    "id": "b619d398-1927-4c57-8c56-8499ad5ef297",
-    "username": "Mahmoud",
-    "email": null,
-    "full_name": "م/ محمود",
-    "title": "مراقب",
-    "profile_picture": null,
-    "role": "user",
-    "governorates": [
-      "جدة"
-    ],
+    "name": "",
+    "username": "Eng Mahmoud Haroun",
     "projects": [
-      "مشروع ايصال"
-    ],
-    "hashed_password": "$2b$12$nnCrg6bRhPHxY1j53F/y..60buFB9Cwm.by9BnMOlKReHnnzF1BvS",
-    "created_by": "e4e7fd3f-06e3-44e4-9f69-4725c73925ce",
-    "can_create_subusers": false,
-    "permissions": [],
-    "connection_permissions": {},
-    "project_permissions": {
-      "مشروع ايصال": [
-        "dashboard",
-        "water_connections",
-        "sewage_connections",
-        "connections_full_form",
-        "connections_show_phone",
-        "connections_show_request_number",
-        "connections_show_restriction_number",
-        "connections_show_account_number",
-        "connections_show_dates",
-        "connections_show_measurements",
-        "connections_show_meter",
-        "connections_show_location",
-        "contractors",
-        "projects",
-        "team",
-        "project_settings",
-        "invoices",
-        "employee_requests",
-        "trash",
-        "settings"
-      ]
-    },
-    "personal_theme": null,
-    "created_at": "2026-05-16T15:37:42.723578+00:00",
-    "is_active": true
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
   },
   {
-    "_id": "6a088f8542605ac96234f5f1",
-    "id": "c6c09074-876c-4aa8-95ec-2ef94cf92e5c",
-    "username": "MMahmoud",
-    "email": null,
-    "full_name": "م/ محمود",
-    "title": "مراقب",
-    "profile_picture": null,
-    "role": "user",
-    "governorates": [
-      "الطائف"
-    ],
+    "name": "",
+    "username": "Mohamed Shawqi",
     "projects": [
-      "مشروع ايصال"
-    ],
-    "hashed_password": "$2b$12$79YxQUQXJZZv2eIFCJCyX.Y.YQPYWs4gIh3LRnwSnRKWYuA/NMgoa",
-    "created_by": "e4e7fd3f-06e3-44e4-9f69-4725c73925ce",
-    "can_create_subusers": false,
-    "permissions": [],
-    "connection_permissions": {},
-    "project_permissions": {
-      "مشروع ايصال": [
-        "dashboard",
-        "water_connections",
-        "sewage_connections",
-        "connections_full_form",
-        "connections_show_phone",
-        "connections_show_request_number",
-        "connections_show_restriction_number",
-        "connections_show_account_number",
-        "connections_show_dates",
-        "connections_show_measurements",
-        "connections_show_meter",
-        "connections_show_location",
-        "projects",
-        "team",
-        "invoices",
-        "employee_requests",
-        "settings",
-        "trash"
-      ]
-    },
-    "personal_theme": null,
-    "created_at": "2026-05-16T15:38:45.644994+00:00",
-    "is_active": true
+      "مشروع كشف التسربات وإصلاحها",
+      "مشروع المحافظات الغربية",
+      "مشروع التشوة البصري"
+    ]
+  },
+  {
+    "name": "",
+    "username": "Amr Tawfik",
+    "projects": [
+      "مشروع المحافظات الغربية"
+    ]
+  },
+  {
+    "name": "",
+    "username": "Mohamed Esmat",
+    "projects": [
+      "مشروع المحافظات الغربية"
+    ]
+  },
+  {
+    "name": "",
+    "username": "ElShazly",
+    "projects": [
+      "مشروع المحافظات الغربية"
+    ]
+  },
+  {
+    "name": "",
+    "username": "AlBashir",
+    "projects": [
+      "مشروع المحافظات الغربية",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
+  },
+  {
+    "name": "",
+    "username": "Faisal",
+    "projects": [
+      "مشروع المحافظات الغربية"
+    ]
+  },
+  {
+    "name": "",
+    "username": "Eng Abdul Hafeez",
+    "projects": [
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
+  },
+  {
+    "name": "",
+    "username": "Mehran",
+    "projects": [
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
+  },
+  {
+    "name": "",
+    "username": "Motlaq Alghamdi",
+    "projects": [
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
+  },
+  {
+    "name": "",
+    "username": "DR . Abdel Aty",
+    "projects": [
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
+  },
+  {
+    "name": "",
+    "username": "Amin Mukhtar",
+    "projects": [
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية"
+    ]
   }
 ]

@@ -1,14 +1,22 @@
 import asyncio
-import os
 from motor.motor_asyncio import AsyncIOMotorClient
+import sys
+
+# Windows workaround for DNS resolution in motor/pymongo on some networks
+import pymongo
+pymongo.has_c = False
 
 async def check():
-    client = AsyncIOMotorClient("mongodb+srv://sery17:sery17sery17@cluster0.k2sh8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+    client = AsyncIOMotorClient("mongodb+srv://omergehad345_db_user:Test123456789@cluster0.op68vs9.mongodb.net/?appName=Cluster0")
     db = client.wfm_reports
     
     print("Checking recent 15 Safety Reports:")
-    reports = await db.safety_reports.find({"is_deleted": {"$ne": True}}).sort("created_at", -1).limit(15).to_list(15)
-    
+    try:
+        reports = await db.safety_reports.find({"is_deleted": {"$ne": True}}).sort("created_at", -1).limit(15).to_list(15)
+    except Exception as e:
+        print("Connection failed:", e)
+        return
+        
     count_with_files = 0
     count_without_files = 0
     
@@ -39,4 +47,6 @@ async def check():
             
     print(f"\nSummary: {count_with_files} have files, {count_without_files} are empty.")
     
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 asyncio.run(check())
