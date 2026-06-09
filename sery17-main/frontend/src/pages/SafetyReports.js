@@ -366,7 +366,7 @@ function SafetyReports({ user, onLogout }) {
 
   const handleDownloadPDF = async (report, titleText) => {
     let fullReport = report;
-    if (!fullReport.image) {
+    if (!fullReport.image && (!fullReport.images || fullReport.images.length === 0)) {
       toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
       try {
         const token = localStorage.getItem('token');
@@ -380,7 +380,7 @@ function SafetyReports({ user, onLogout }) {
       }
     }
 
-    if (!fullReport.image) {
+    if (!fullReport.image && (!fullReport.images || fullReport.images.length === 0)) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -388,34 +388,50 @@ function SafetyReports({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      if (fullReport.image.startsWith('data:')) {
-        const link = document.createElement('a');
-        link.href = fullReport.image;
-        let ext = '.jpg';
-        if (fullReport.image.startsWith('data:application/pdf')) ext = '.pdf';
-        else if (fullReport.image.startsWith('data:image/png')) ext = '.png';
-        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
-      } else {
-        const fileUrlParam = encodeURIComponent(fullReport.image);
-        const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+      const downloadSingleFile = (fileData, idx) => {
+        const isString = typeof fileData === 'string';
+        const dataUrl = isString ? fileData : (fileData.data || fileData.url);
         
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_blank';
-        let ext = '';
-        if (fullReport.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-        else if (fullReport.image.toLowerCase().endsWith('.png')) ext = '.png';
-        else if (fullReport.image.toLowerCase().endsWith('.jpg') || fullReport.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        if (dataUrl.startsWith('data:')) {
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          let ext = '.jpg';
+          if (dataUrl.startsWith('data:application/pdf')) ext = '.pdf';
+          else if (dataUrl.startsWith('data:image/png')) ext = '.png';
+          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          const fileUrlParam = encodeURIComponent(dataUrl);
+          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+          
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.target = '_blank';
+          let ext = '';
+          if (dataUrl.toLowerCase().endsWith('.pdf')) ext = '.pdf';
+          else if (dataUrl.toLowerCase().endsWith('.png')) ext = '.png';
+          else if (dataUrl.toLowerCase().endsWith('.jpg') || dataUrl.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
+          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      };
+
+      if (fullReport.images && fullReport.images.length > 0) {
+        fullReport.images.forEach((img, idx) => {
+          downloadSingleFile(img, idx + 1);
+        });
+        toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+      } else if (fullReport.image) {
+        downloadSingleFile(fullReport.image, 1);
         toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
       }
+      
     } catch (e) {
       console.error('File download error:', e);
       toast.error(t('safetyReports.downloadError') || 'فشل تحميل الملف');
