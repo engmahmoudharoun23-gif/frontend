@@ -366,7 +366,9 @@ function SafetyReports({ user, onLogout }) {
 
   const handleDownloadPDF = async (report, titleText) => {
     let fullReport = report;
-    if (!fullReport.image && (!fullReport.images || fullReport.images.length === 0)) {
+    const hasAnyFile = (r) => r.image || r.file || r.file_url || (r.images && r.images.length > 0) || (r.files && r.files.length > 0);
+    
+    if (!hasAnyFile(fullReport)) {
       toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
       try {
         const token = localStorage.getItem('token');
@@ -380,7 +382,7 @@ function SafetyReports({ user, onLogout }) {
       }
     }
 
-    if (!fullReport.image && (!fullReport.images || fullReport.images.length === 0)) {
+    if (!hasAnyFile(fullReport)) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -422,14 +424,20 @@ function SafetyReports({ user, onLogout }) {
         }
       };
 
-      if (fullReport.images && fullReport.images.length > 0) {
-        fullReport.images.forEach((img, idx) => {
+      const allFiles = [];
+      if (fullReport.images && fullReport.images.length > 0) allFiles.push(...fullReport.images);
+      if (fullReport.files && fullReport.files.length > 0) allFiles.push(...fullReport.files);
+      if (fullReport.image) allFiles.push(fullReport.image);
+      if (fullReport.file) allFiles.push(fullReport.file);
+      if (fullReport.file_url) allFiles.push(fullReport.file_url);
+
+      if (allFiles.length > 0) {
+        allFiles.forEach((img, idx) => {
           downloadSingleFile(img, idx + 1);
         });
         toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
-      } else if (fullReport.image) {
-        downloadSingleFile(fullReport.image, 1);
-        toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+      } else {
+        toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       }
       
     } catch (e) {
@@ -940,35 +948,40 @@ function SafetyReports({ user, onLogout }) {
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
-                {(viewReport.images && viewReport.images.length > 0) ? (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    <div className="flex flex-wrap gap-2">
-                    {viewReport.images.map((img, idx) => (
-                      <div key={idx}>
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
-                          <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: img })}>
-                            <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                {(() => {
+                  const allFiles = [];
+                  if (viewReport.images && viewReport.images.length > 0) allFiles.push(...viewReport.images);
+                  if (viewReport.files && viewReport.files.length > 0) allFiles.push(...viewReport.files);
+                  if (viewReport.image) allFiles.push(viewReport.image);
+                  if (viewReport.file) allFiles.push(viewReport.file);
+                  if (viewReport.file_url) allFiles.push(viewReport.file_url);
+                  
+                  if (allFiles.length > 0) {
+                    return (
+                      <div>
+                        <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
+                        <div className="flex flex-wrap gap-2">
+                        {allFiles.map((fileObj, idx) => {
+                          const imgStr = typeof fileObj === 'string' ? fileObj : (fileObj.data || fileObj.url || '');
+                          if (!imgStr) return null;
+                          return (
+                          <div key={idx}>
+                            {imgStr.startsWith('data:application/pdf') || imgStr.endsWith('.pdf') ? (
+                              <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                                <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                              </div>
+                            ) : (
+                              <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} />
+                            )}
                           </div>
-                        ) : (
-                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(img)} />
-                        )}
+                          );
+                        })}
+                        </div>
                       </div>
-                    ))}
-                    </div>
-                  </div>
-                ) : (viewReport.image && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    {viewReport.image.startsWith('data:application/pdf') || viewReport.image.endsWith('.pdf') ? (
-                      <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: viewReport.image })}>
-                        <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                      </div>
-                    ) : (
-                      <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} />
-                    )}
-                  </div>
-                ))}
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
                   <p>{t('safetyReports.addedBy')}: {viewReport.created_by || '-'} | {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}</p>
                   <button
