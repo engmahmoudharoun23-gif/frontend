@@ -296,7 +296,38 @@ function SafetyReports({ user, onLogout }) {
   };
 
   const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
-  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '', images: r.images || [] }); setImagePreview(r.image || ''); setImagePreviews(r.images || []); setShowModal(true); setActiveMenu(null); };
+  
+  const handleViewReport = async (r) => {
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      setViewReport(res.data);
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
+    }
+  };
+
+  const openEdit = async (r) => { 
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      const full = res.data;
+      setEditingReport(full); 
+      setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '', images: full.images || [] }); 
+      setImagePreview(full.image || ''); 
+      setImagePreviews(full.images || []); 
+      setShowModal(true); 
+      setActiveMenu(null); 
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -334,7 +365,22 @@ function SafetyReports({ user, onLogout }) {
   };
 
   const handleDownloadPDF = async (report, titleText) => {
-    if (!report.image) {
+    let fullReport = report;
+    if (!fullReport.image) {
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/safety-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullReport = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!fullReport.image) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -342,29 +388,29 @@ function SafetyReports({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      if (report.image.startsWith('data:')) {
+      if (fullReport.image.startsWith('data:')) {
         const link = document.createElement('a');
-        link.href = report.image;
+        link.href = fullReport.image;
         let ext = '.jpg';
-        if (report.image.startsWith('data:application/pdf')) ext = '.pdf';
-        else if (report.image.startsWith('data:image/png')) ext = '.png';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
+        if (fullReport.image.startsWith('data:application/pdf')) ext = '.pdf';
+        else if (fullReport.image.startsWith('data:image/png')) ext = '.png';
+        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
       } else {
-        const fileUrlParam = encodeURIComponent(report.image);
+        const fileUrlParam = encodeURIComponent(fullReport.image);
         const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
         
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.target = '_blank';
         let ext = '';
-        if (report.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-        else if (report.image.toLowerCase().endsWith('.png')) ext = '.png';
-        else if (report.image.toLowerCase().endsWith('.jpg') || report.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
+        if (fullReport.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
+        else if (fullReport.image.toLowerCase().endsWith('.png')) ext = '.png';
+        else if (fullReport.image.toLowerCase().endsWith('.jpg') || fullReport.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
+        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -679,7 +725,7 @@ function SafetyReports({ user, onLogout }) {
                               <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[65]">
                                 <div className="py-1">
                                   <DropdownMenuItem
-                                    onClick={() => setViewReport(r)}
+                                    onClick={() => handleViewReport(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
                                     <Eye className="w-4 h-4 text-orange-600" /> {t('safetyReports.viewDetails')}
