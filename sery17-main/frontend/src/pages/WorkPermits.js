@@ -282,7 +282,8 @@ function WorkPermits({ user, onLogout }) {
       const newImages = [...(form.images || [])];
       
       for (let file of files) {
-        if (file.type === 'application/pdf') {
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
           if (file.size > 10 * 1024 * 1024) {
             toast.error("حجم ملف الـ PDF يتجاوز 10 ميجا. يرجى اختيار ملف أصغر.");
             continue;
@@ -292,11 +293,6 @@ function WorkPermits({ user, onLogout }) {
             reader.onloadend = () => resolve(reader.result);
             reader.readAsDataURL(file);
           });
-          try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-          } catch (e) { console.error('PDF compression failed', e); }
           newPreviews.push(base64pdf);
           newImages.push(base64pdf);
         } else {
