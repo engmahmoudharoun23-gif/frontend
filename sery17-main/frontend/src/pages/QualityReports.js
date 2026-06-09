@@ -349,6 +349,11 @@ function QualityReports({ user, onLogout }) {
              reader.onloadend = () => resolve(reader.result);
              reader.readAsDataURL(file);
            });
+           try {
+             const token = localStorage.getItem('token');
+             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
+             if (res.data && res.data.pdf) base64pdf = res.data.pdf;
+           } catch (e) { console.error('PDF compression failed', e); }
            newPreviews.push(base64pdf);
            newImages.push(base64pdf);
         } else {

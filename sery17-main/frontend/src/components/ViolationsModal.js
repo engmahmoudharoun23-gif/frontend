@@ -157,6 +157,11 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
             reader.onloadend = () => resolve(reader.result);
             reader.readAsDataURL(file);
           });
+          try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.data && res.data.pdf) base64pdf = res.data.pdf;
+          } catch (e) { console.error('PDF compression failed', e); }
           newPreviews.push({ type: 'pdf', data: base64pdf, name: file.name });
           newImages.push({ type: 'pdf', data: base64pdf, name: file.name });
         } else {
