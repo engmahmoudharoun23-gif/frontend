@@ -337,22 +337,47 @@ function BusinessReports({ user, onLogout }) {
      }));
   };
 
+  const handleViewReport = async (r) => {
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/business-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      setViewReport(res.data);
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+    }
+  };
+
   const openAdd = () => { 
     setEditingReport(null); 
     setForm(emptyForm); 
     setShowModal(true); 
   };
 
-  const openEdit = (r) => { 
-    setEditingReport(r); 
+  const openEdit = async (r) => { 
+    let full = r;
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/business-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      full = res.data;
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+      return;
+    }
+    setEditingReport(full); 
     setForm({ 
-      date_from: r.date_from || '', 
-      date_to: r.date_to || '', 
-      project: r.project || '', 
-      governorate: r.governorate || '', 
-      notes: r.notes || '', 
-      file_url: r.file_url || '',
-      file_name: r.file_name || '', files: r.files || []
+      date_from: full.date_from || '', 
+      date_to: full.date_to || '', 
+      project: full.project || '', 
+      governorate: full.governorate || '', 
+      notes: full.notes || '', 
+      file_url: full.file_url || '',
+      file_name: full.file_name || '', files: full.files || []
     }); 
     setShowModal(true); 
     setActiveMenu(null); 
@@ -404,40 +429,70 @@ function BusinessReports({ user, onLogout }) {
     setActiveMenu(null);
   };
 
-  const handleDownloadFile = (report) => {
-    if (!report.file_url) {
+  const handleDownloadFile = async (report) => {
+    let fullReport = report;
+    if (!fullReport.file_url) {
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/business-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullReport = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!fullReport.file_url) {
       toast.error('لا يوجد ملف للتحميل');
       return;
     }
     const token = localStorage.getItem('token') || '';
-    const fileUrlParam = encodeURIComponent(report.file_url);
+    const fileUrlParam = encodeURIComponent(fullReport.file_url);
     const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
     
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.target = '_blank';
-    link.download = report.file_name || 'report';
+    link.download = fullReport.file_name || 'report';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     toast.success(t('businessReports.downloadSuccess') || 'بدأ تحميل الملف');
   };
 
-  const handleViewFile = (report) => {
-    if (!report.file_url) {
+  const handleViewFile = async (report) => {
+    let fullReport = report;
+    if (!fullReport.file_url) {
+      toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/business-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullReport = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!fullReport.file_url) {
       toast.error('لا يوجد ملف للاطلاع');
       return;
     }
-    const ext = getFileExtension(report.file_name);
+    const ext = getFileExtension(fullReport.file_name);
     
     if (ext === 'ppt' || ext === 'pptx') {
-      const publicUrl = report.file_url.startsWith('http') 
-        ? report.file_url 
-        : resolveImageUrl(report.file_url);
+      const publicUrl = fullReport.file_url.startsWith('http') 
+        ? fullReport.file_url 
+        : resolveImageUrl(fullReport.file_url);
       window.open(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicUrl)}`, '_blank');
     } else {
       const token = localStorage.getItem('token') || '';
-      const fileUrlParam = encodeURIComponent(report.file_url);
+      const fileUrlParam = encodeURIComponent(fullReport.file_url);
       const viewUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?auth=${encodeURIComponent(token)}`;
       window.open(viewUrl, '_blank');
     }
@@ -605,20 +660,7 @@ function BusinessReports({ user, onLogout }) {
                           </span>
                         </td>
                         <td className="px-4 py-3.5 text-center max-w-[180px] truncate">
-                          {(r.files && r.files.length > 0) ? (
-                            <div className="flex flex-col gap-1 items-center">
-                              {r.files.map((f, i) => (
-                                <button
-                                  key={i}
-                                  onClick={() => handleViewFile({ file_url: f.url, file_name: f.name })}
-                                  className="inline-flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-100 font-bold max-w-full truncate cursor-pointer transition-colors"
-                                  title={f.name}
-                                >
-                                  📎 <span className="truncate">{f.name}</span>
-                                </button>
-                              ))}
-                            </div>
-                          ) : r.file_name ? (
+                          {r.file_name ? (
                             <button
                               onClick={() => handleViewFile(r)}
                               className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md border border-blue-100 font-bold max-w-full truncate cursor-pointer transition-colors"
@@ -659,7 +701,7 @@ function BusinessReports({ user, onLogout }) {
                               <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[65]">
                                 <div className="py-1">
                                   <DropdownMenuItem
-                                    onClick={() => setViewReport(r)}
+                                    onClick={() => handleViewReport(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
                                     <Eye className="w-4 h-4 text-blue-600" /> {t('businessReports.viewReport')}

@@ -17,7 +17,7 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const emptyForm = { date: '', project: '', governorate: '', notes: '', image: '' };
+const emptyForm = { date: '', project: '', governorate: '', notes: '', image: '', images: [] };
 
 function WorkPermits({ user, onLogout }) {
   const { t, i18n } = useTranslation();
@@ -51,6 +51,7 @@ function WorkPermits({ user, onLogout }) {
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [imagePreview, setImagePreview] = useState('');
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
@@ -273,49 +274,55 @@ function WorkPermits({ user, onLogout }) {
   };
 
   const handleImageSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     setUploading(true);
     try {
-      if (file.type === 'application/pdf') {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error("حجم ملف الـ PDF يتجاوز 10 ميجا. يرجى اختيار ملف أصغر.");
-          setUploading(false);
-          return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          let base64pdf = reader.result;
+      const newPreviews = [...imagePreviews];
+      const newImages = [...(form.images || [])];
+      
+      for (let file of files) {
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
+          if (file.size > 10 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 10 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+          const reader = new FileReader();
+          let base64pdf = await new Promise(resolve => {
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          });
           try {
             const token = localStorage.getItem('token');
             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data && res.data.pdf) {
-                base64pdf = res.data.pdf;
-            }
-          } catch (e) {
-            console.error("PDF compression failed", e);
-          }
-          setImagePreview(base64pdf);
-          setForm(prev => ({ ...prev, image: base64pdf }));
-          setUploading(false);
-          toast.success("تم ضغط وإرفاق ملف الـ PDF بنجاح");
-        };
-        reader.readAsDataURL(file);
-      } else {
-        const compressed = await compressImage(file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImagePreview(reader.result);
-          setForm(prev => ({ ...prev, image: reader.result }));
-          setUploading(false);
-          toast.success(t('workPermits.compressedSuccess'));
-        };
-        reader.readAsDataURL(compressed);
+            if (res.data && res.data.pdf) base64pdf = res.data.pdf;
+          } catch (e) { console.error('PDF compression failed', e); }
+          newPreviews.push(base64pdf);
+          newImages.push(base64pdf);
+        } else {
+          const compressed = await compressImage(file);
+          const result = await new Promise(resolve => {
+            const r = new FileReader();
+            r.onloadend = () => resolve(r.result);
+            r.readAsDataURL(compressed);
+          });
+          newPreviews.push(result);
+          newImages.push(result);
+        }
       }
-    } catch { setUploading(false); }
+      
+      setImagePreviews(newPreviews);
+      setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
+      setUploading(false);
+      toast.success(isRtl ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+    } catch (e) { 
+      console.error(e);
+      setUploading(false); 
+    }
   };
 
-  const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setShowModal(true); };
+  const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
   
   const handleViewReport = async (r) => {
     toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
@@ -338,8 +345,9 @@ function WorkPermits({ user, onLogout }) {
       toast.dismiss('loadingReport');
       const full = res.data;
       setEditingReport(full); 
-      setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '' }); 
+      setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '', images: full.images || [] }); 
       setImagePreview(full.image || ''); 
+      setImagePreviews(full.images || []); 
       setShowModal(true); 
       setActiveMenu(null); 
     } catch (err) {
@@ -505,18 +513,34 @@ function WorkPermits({ user, onLogout }) {
               </div>
               <div className="border-t border-gray-100 pt-6">
                 <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('workPermits.image')}</label>
+                <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
                 <div className="flex gap-4 mb-4">
                   <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
                     <Upload className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('workPermits.selectImage')}</span>
-                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                    <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleImageSelect} disabled={uploading} />
                   </label>
                   <label className="flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
                     <Camera className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('workPermits.camera')}</span>
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                    <input type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
                   </label>
                 </div>
                 {uploading && <p className="text-sm text-orange-600 mb-4 font-bold animate-pulse">{t('workPermits.uploadingImage')}</p>}
-                {imagePreview && (
+                {imagePreviews.length > 0 ? (
+                  <div className="mb-4 flex flex-wrap gap-4">
+                    {imagePreviews.map((img, idx) => (
+                      <div key={idx} className="relative inline-block">
+                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                          <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
+                            <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
+                          </div>
+                        ) : (
+                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in shadow-sm" onClick={() => setZoomedImage(img)} />
+                        )}
+                        <button type="button" onClick={() => removeImage(idx)} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (imagePreview && (
                   <div className="mb-4 relative inline-block">
                     {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
                       <div className="p-4 bg-orange-50 rounded-xl border-2 border-orange-200 flex items-center justify-center min-w-[128px] min-h-[128px]">
@@ -530,7 +554,7 @@ function WorkPermits({ user, onLogout }) {
                     )}
                     <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
                   </div>
-                )}
+                ))}
               </div>
               <div className="flex gap-4 pt-4 border-t border-gray-100">
                 <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-4 bg-orange-600 text-white rounded-xl font-bold text-lg transition-all shadow-md ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-700 hover:shadow-lg hover:-translate-y-0.5'}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? t('workPermits.saveChangesBtn') : t('workPermits.saveBtn')}</button>

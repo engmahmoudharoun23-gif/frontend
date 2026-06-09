@@ -253,8 +253,8 @@ function SafetyReports({ user, onLogout }) {
       const newImages = [...(form.images || [])];
       
       for (let file of files) {
-        if (file.type === 'application/pdf') {
-           // ضغط PDF عبر الباكند
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
            const reader = new FileReader();
            let base64pdf = await new Promise(resolve => {
              reader.onloadend = () => resolve(reader.result);
@@ -296,7 +296,38 @@ function SafetyReports({ user, onLogout }) {
   };
 
   const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
-  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '', images: r.images || [] }); setImagePreview(r.image || ''); setImagePreviews(r.images || []); setShowModal(true); setActiveMenu(null); };
+  
+  const handleViewReport = async (r) => {
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      setViewReport(res.data);
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
+    }
+  };
+
+  const openEdit = async (r) => { 
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      const full = res.data;
+      setEditingReport(full); 
+      setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '', images: full.images || [] }); 
+      setImagePreview(full.image || ''); 
+      setImagePreviews(full.images || []); 
+      setShowModal(true); 
+      setActiveMenu(null); 
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -334,7 +365,24 @@ function SafetyReports({ user, onLogout }) {
   };
 
   const handleDownloadPDF = async (report, titleText) => {
-    if (!report.image) {
+    let fullReport = report;
+    const hasAnyFile = (r) => r.image || r.file || r.file_url || (r.images && r.images.length > 0) || (r.files && r.files.length > 0);
+    
+    if (!hasAnyFile(fullReport)) {
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/safety-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullReport = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!hasAnyFile(fullReport)) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -342,34 +390,56 @@ function SafetyReports({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      if (report.image.startsWith('data:')) {
-        const link = document.createElement('a');
-        link.href = report.image;
-        let ext = '.jpg';
-        if (report.image.startsWith('data:application/pdf')) ext = '.pdf';
-        else if (report.image.startsWith('data:image/png')) ext = '.png';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      const downloadSingleFile = (fileData, idx) => {
+        const isString = typeof fileData === 'string';
+        const dataUrl = isString ? fileData : (fileData.data || fileData.url);
+        
+        if (dataUrl.startsWith('data:')) {
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          let ext = '.jpg';
+          if (dataUrl.startsWith('data:application/pdf')) ext = '.pdf';
+          else if (dataUrl.startsWith('data:image/png')) ext = '.png';
+          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          const fileUrlParam = encodeURIComponent(dataUrl);
+          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+          
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.target = '_blank';
+          let ext = '';
+          if (dataUrl.toLowerCase().endsWith('.pdf')) ext = '.pdf';
+          else if (dataUrl.toLowerCase().endsWith('.png')) ext = '.png';
+          else if (dataUrl.toLowerCase().endsWith('.jpg') || dataUrl.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
+          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      };
+
+      const allFiles = [];
+      if (fullReport.images && fullReport.images.length > 0) allFiles.push(...fullReport.images);
+      if (fullReport.files && fullReport.files.length > 0) allFiles.push(...fullReport.files);
+      if (fullReport.image) allFiles.push(fullReport.image);
+      if (fullReport.file) allFiles.push(fullReport.file);
+      if (fullReport.file_url) allFiles.push(fullReport.file_url);
+
+      if (allFiles.length > 0) {
+        allFiles.forEach((img, idx) => {
+          downloadSingleFile(img, idx + 1);
+        });
         toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
       } else {
-        const fileUrlParam = encodeURIComponent(report.image);
-        const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
-        
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_blank';
-        let ext = '';
-        if (report.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-        else if (report.image.toLowerCase().endsWith('.png')) ext = '.png';
-        else if (report.image.toLowerCase().endsWith('.jpg') || report.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       }
+      
     } catch (e) {
       console.error('File download error:', e);
       toast.error(t('safetyReports.downloadError') || 'فشل تحميل الملف');
@@ -455,6 +525,7 @@ function SafetyReports({ user, onLogout }) {
               </div>
               <div className="border-t border-gray-100 pt-6">
                 <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('safetyReports.image')}</label>
+                <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
                 <div className="flex gap-4 mb-4">
                   <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
                     <Upload className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('safetyReports.selectImage')}</span>
@@ -678,7 +749,7 @@ function SafetyReports({ user, onLogout }) {
                               <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[65]">
                                 <div className="py-1">
                                   <DropdownMenuItem
-                                    onClick={() => setViewReport(r)}
+                                    onClick={() => handleViewReport(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
                                     <Eye className="w-4 h-4 text-orange-600" /> {t('safetyReports.viewDetails')}
@@ -877,35 +948,40 @@ function SafetyReports({ user, onLogout }) {
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
-                {(viewReport.images && viewReport.images.length > 0) ? (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    <div className="flex flex-wrap gap-2">
-                    {viewReport.images.map((img, idx) => (
-                      <div key={idx}>
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
-                          <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: img })}>
-                            <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                {(() => {
+                  const allFiles = [];
+                  if (viewReport.images && viewReport.images.length > 0) allFiles.push(...viewReport.images);
+                  if (viewReport.files && viewReport.files.length > 0) allFiles.push(...viewReport.files);
+                  if (viewReport.image) allFiles.push(viewReport.image);
+                  if (viewReport.file) allFiles.push(viewReport.file);
+                  if (viewReport.file_url) allFiles.push(viewReport.file_url);
+                  
+                  if (allFiles.length > 0) {
+                    return (
+                      <div>
+                        <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
+                        <div className="flex flex-wrap gap-2">
+                        {allFiles.map((fileObj, idx) => {
+                          const imgStr = typeof fileObj === 'string' ? fileObj : (fileObj.data || fileObj.url || '');
+                          if (!imgStr) return null;
+                          return (
+                          <div key={idx}>
+                            {imgStr.startsWith('data:application/pdf') || imgStr.endsWith('.pdf') ? (
+                              <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                                <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                              </div>
+                            ) : (
+                              <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} />
+                            )}
                           </div>
-                        ) : (
-                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(img)} />
-                        )}
+                          );
+                        })}
+                        </div>
                       </div>
-                    ))}
-                    </div>
-                  </div>
-                ) : (viewReport.image && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    {viewReport.image.startsWith('data:application/pdf') || viewReport.image.endsWith('.pdf') ? (
-                      <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: viewReport.image })}>
-                        <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                      </div>
-                    ) : (
-                      <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} />
-                    )}
-                  </div>
-                ))}
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
                   <p>{t('safetyReports.addedBy')}: {viewReport.created_by || '-'} | {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}</p>
                   <button

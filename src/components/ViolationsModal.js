@@ -150,7 +150,8 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
       for (const file of files) {
-        if (file.type === 'application/pdf') {
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
           let base64pdf = await new Promise(resolve => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
@@ -220,9 +221,37 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
     }
   };
 
-  const handleDownloadFiles = (v) => {
-    if (!v.images || v.images.length === 0) return;
-    v.images.forEach((img, idx) => {
+  const handleViewViolation = async (v) => {
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/violations/${v.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      setViewViolation(res.data);
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+    }
+  };
+
+  const handleDownloadFiles = async (v) => {
+    let fullV = v;
+    if (fullV.images === undefined) {
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/violations/${v.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullV = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!fullV.images || fullV.images.length === 0) return;
+    fullV.images.forEach((img, idx) => {
       const isString = typeof img === 'string';
       const isPdf = !isString && img.type === 'pdf';
       const dataUrl = isString ? resolveImageUrl(img) : (img.data ? img.data : resolveImageUrl(img));
@@ -269,17 +298,29 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
     setShowForm(true);
   };
 
-  const openEdit = (v) => {
-    setEditingId(v.id);
+  const openEdit = async (v) => {
+    let full = v;
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/violations/${v.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      full = res.data;
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+      return;
+    }
+    setEditingId(full.id);
     setForm({
-      date: v.date || '',
-      project: v.project || '',
-      governorate: v.governorate || '',
-      violation_type: v.violation_type || '',
-      notes: v.notes || '',
-      images: v.images || [],
+      date: full.date || '',
+      project: full.project || '',
+      governorate: full.governorate || '',
+      violation_type: full.violation_type || '',
+      notes: full.notes || '',
+      images: full.images || [],
     });
-    setImagePreviews(v.images || []);
+    setImagePreviews(full.images || []);
     setShowForm(true);
   };
 
@@ -559,7 +600,7 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
                         <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[75]">
                           <div className="py-1">
                             <DropdownMenuItem
-                              onClick={() => setViewViolation(v)}
+                              onClick={() => handleViewViolation(v)}
                               className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                             >
                               <Eye className="w-4 h-4 text-red-600" /> {d('عرض المخالفة', 'View Violation')}

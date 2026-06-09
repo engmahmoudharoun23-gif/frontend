@@ -342,8 +342,8 @@ function QualityReports({ user, onLogout }) {
       const newImages = [...(form.images || [])];
       
       for (let file of files) {
-        if (file.type === 'application/pdf') {
-           // ضغط PDF عبر الباكند إلى 150KB
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
            const reader = new FileReader();
            let base64pdf = await new Promise(resolve => {
              reader.onloadend = () => resolve(reader.result);
@@ -385,7 +385,46 @@ function QualityReports({ user, onLogout }) {
   };
 
   const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
-  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '', images: r.images || [] }); setImagePreview(r.image || ''); setImagePreviews(r.images || []); setShowModal(true); setActiveMenu(null); };
+  
+  const handleViewReport = async (r) => {
+    if (activeTab === 'warehouse_visits') {
+      setViewReport(r);
+      return;
+    }
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/quality-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      setViewReport(res.data);
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
+    }
+  };
+
+  const openEdit = async (r) => { 
+    let full = r;
+    if (activeTab !== 'warehouse_visits') {
+      toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/quality-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        full = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+    setEditingReport(full); 
+    setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '', images: full.images || [] }); 
+    setImagePreview(full.image || ''); 
+    setImagePreviews(full.images || []); 
+    setShowModal(true); 
+    setActiveMenu(null); 
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -427,7 +466,22 @@ function QualityReports({ user, onLogout }) {
   };
 
   const handleDownloadPDF = async (report, titleText) => {
-    if (!report.image) {
+    let fullReport = report;
+    if (!fullReport.image && activeTab !== 'warehouse_visits') {
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/quality-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullReport = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!fullReport.image) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -435,22 +489,22 @@ function QualityReports({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      if (report.image.startsWith('data:')) {
+      if (fullReport.image.startsWith('data:')) {
         const link = document.createElement('a');
-        link.href = report.image;
-        link.download = `report_attachment_${report.id || 'file'}.jpg`;
+        link.href = fullReport.image;
+        link.download = `report_attachment_${fullReport.id || 'file'}.jpg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         toast.success(t('qualityReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
       } else {
-        const fileUrlParam = encodeURIComponent(report.image);
+        const fileUrlParam = encodeURIComponent(fullReport.image);
         const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
         
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.target = '_blank';
-        link.download = `report_attachment_${report.id || 'file'}`;
+        link.download = `report_attachment_${fullReport.id || 'file'}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -536,6 +590,7 @@ function QualityReports({ user, onLogout }) {
               </div>
               <div className="border-t border-gray-100 pt-6">
                 <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('qualityReports.image')}</label>
+                
                 <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
                 <div className="flex gap-4 mb-4">
                   <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors bg-white">
@@ -769,7 +824,7 @@ function QualityReports({ user, onLogout }) {
                               <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[65]">
                                 <div className="py-1">
                                   <DropdownMenuItem
-                                    onClick={() => setViewReport(r)}
+                                    onClick={() => handleViewReport(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
                                     <Eye className="w-4 h-4 text-teal-600" /> {t('qualityReports.viewDetails')}

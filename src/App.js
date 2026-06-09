@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { hasAnyProjectPermission, hasPermission } from './utils/permissions';
 import axios from 'axios';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Login from './pages/Login';
 import Dashboard from './pages/NewDashboard';
@@ -100,6 +100,8 @@ function App() {
     };
     fetchTheme();
   }, []);
+
+
   
   // تطبيق الثيم
   const applyTheme = (theme, isDark) => {
