@@ -1185,25 +1185,25 @@ const fetchReports = async () => {
     // 4. تحديث الصفحة
     handlePageChange(1);
     
-    // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً" (مثل handleQuickSearch)
+    // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً"
     setLoading(true);
     const params = new URLSearchParams();
-    Object.entries(newFilters).forEach(([key, val]) => { 
-      if (val && typeof val === 'string' && val.trim()) {
-        if (key === 'date') {
-          params.append('date_from', val);
-          params.append('date_to', val);
-        } else if (key === 'start_date') {
-          params.append('start_date_from', val);
-          params.append('start_date_to', val);
-        } else {
-          params.append(key, val);
-        }
-      }
-    });
-    if (!params.has('project') && currentProject) {
-      params.append('project', currentProject);
-    }
+
+    // استخدام newExportFilters مباشرة (تحتوي date_from, date_to, start_date_from, start_date_to)
+    const projectToUse = newExportFilters.project || filters.project || currentProject;
+    if (projectToUse) params.append('project', projectToUse);
+    if (newExportFilters.governorate) params.append('governorate', newExportFilters.governorate);
+    if (newExportFilters.contractor) params.append('contractor', newExportFilters.contractor);
+    if (newExportFilters.report_type) params.append('report_type', newExportFilters.report_type);
+    if (newExportFilters.status) params.append('status', newExportFilters.status);
+    if (newExportFilters.license_status) params.append('license_status', newExportFilters.license_status);
+    if (newExportFilters.date_from) params.append('date_from', newExportFilters.date_from);
+    if (newExportFilters.date_to) params.append('date_to', newExportFilters.date_to);
+    if (newExportFilters.start_date_from) params.append('start_date_from', newExportFilters.start_date_from);
+    if (newExportFilters.start_date_to) params.append('start_date_to', newExportFilters.start_date_to);
+    if (newExportFilters.created_by) params.append('created_by', newExportFilters.created_by);
+    if (newFilters.search) params.append('search', newFilters.search);
+
     params.append('page', 1);
     params.append('limit', reportsPerPage);
     
@@ -1212,14 +1212,15 @@ const fetchReports = async () => {
         const fetchedReports = response.data.reports || [];
         setReports(fetchedReports);
         
-        if (newFilters.project) {
+        if (newExportFilters.project) {
           try {
-            localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
+            localStorage.setItem(`reports_cache_${newExportFilters.project}`, JSON.stringify(fetchedReports));
           } catch (e) {}
         }
         
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
+        setExportCount(response.data.total_count || 0);
         setLoading(false);
       })
       .catch(error => {
@@ -2579,7 +2580,12 @@ const fetchReports = async () => {
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">📊 {t('reports.tableHeaders.status')}</th>
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">💡 {t('reports.tableHeaders.reportType')}</th>
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">👤 {t('reports.tableHeaders.createdBy')}</th>
-                <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">⚖️ {t('reports.review')}</th>
+                <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span>⚖️ {t('reports.review')}</span>
+                    <span className="text-[9px] font-semibold text-blue-600 normal-case leading-tight">{isRtl ? 'بواسطة مهندس النظام وتحليل البيانات' : 'By System & Data Analysis Engineer'}</span>
+                  </div>
+                </th>
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">⚙️</th>
                 </tr>
               </thead>
@@ -2687,9 +2693,16 @@ const fetchReports = async () => {
                         }
 
                         return (
-                          <span className={`px-2 py-0.5 text-[14px] font-black rounded-full border shadow-sm ${colorClass}`}>
-                            {statusText}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className={`px-2 py-0.5 text-[14px] font-black rounded-full border shadow-sm ${colorClass}`}>
+                              {statusText}
+                            </span>
+                            {report.wfm_closed && report.wfm_closed_by && (
+                              <span className="text-[11px] font-black text-green-700 opacity-80 mt-0.5 block text-center" title={translateBrandingText(report.wfm_closed_by, isRtl)}>
+                                {translateBrandingText(report.wfm_closed_by, isRtl)}
+                              </span>
+                            )}
+                          </div>
                         );
                       })()}
                     </td>
@@ -2741,7 +2754,7 @@ const fetchReports = async () => {
                       >
                         <span>{report.review_status === 'تمت المراجعة' ? t('statusMap.تمت المراجعة') : t('statusMap.قيد المراجعة')}</span>
                         {report.reviewed_by_name && (
-                          <span className="text-[10px] opacity-80 mt-0.5 max-w-[130px] truncate block" title={translateBrandingText(report.reviewed_by_name, isRtl)}>
+                          <span className="text-[11px] opacity-80 mt-0.5 block text-center" title={translateBrandingText(report.reviewed_by_name, isRtl)}>
                             {translateBrandingText(report.reviewed_by_name, isRtl)}
                           </span>
                         )}

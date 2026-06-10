@@ -66,7 +66,7 @@ function Users({ user, onLogout }) {
   const [selectedProjects, setSelectedProjects] = useState([]);
   
   // الصلاحيات
-  const [allPermissions, setAllPermissions] = useState(() => getCached('cache_Users.js_perms', []));
+  const [allPermissions, setAllPermissions] = useState(() => getCached('cache_Users.js_perms_v2', []));
   const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [editSelectedPermissions, setEditSelectedPermissions] = useState([]);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
@@ -420,7 +420,7 @@ function Users({ user, onLogout }) {
         // ── الصلاحيات ──
         const freshPerms = permsRes.data || [];
         setAllPermissions(freshPerms);
-        try { localStorage.setItem('cache_Users.js_perms', JSON.stringify(freshPerms)); } catch(e) {}
+        try { localStorage.setItem('cache_Users.js_perms_v2', JSON.stringify(freshPerms)); } catch(e) {}
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -2021,6 +2021,36 @@ function Users({ user, onLogout }) {
               </div>
               
               <div className="p-6 space-y-6">
+                {/* الصلاحيات الاستثنائية (عامة) */}
+                <div className="border-2 border-red-200 rounded-xl p-4 bg-red-50/50 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold text-red-800 flex items-center gap-2 text-lg">
+                      ⭐ {i18n.language === 'ar' ? 'صلاحيات استثنائية (عامة)' : 'Exceptional Permissions (Global)'}
+                    </h4>
+                  </div>
+                  <label className="flex items-center gap-4 p-4 bg-white rounded-xl border border-red-100 cursor-pointer hover:bg-red-50 transition-all shadow-sm">
+                    <div className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${editSelectedPermissions.includes('view_governorate_data') ? 'bg-red-600' : 'bg-gray-300'}`}>
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${editSelectedPermissions.includes('view_governorate_data') ? 'translate-x-8' : 'translate-x-1'}`} />
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={editSelectedPermissions.includes('view_governorate_data')}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setEditSelectedPermissions([...editSelectedPermissions, 'view_governorate_data']);
+                        } else {
+                          setEditSelectedPermissions(editSelectedPermissions.filter(p => p !== 'view_governorate_data'));
+                        }
+                      }}
+                    />
+                    <div>
+                      <span className="font-bold text-gray-900 block text-base">{i18n.language === 'ar' ? 'رؤية إجمالي بيانات المحافظة' : 'View Total Governorate Data'}</span>
+                      <span className="text-sm text-gray-600 block mt-1">{i18n.language === 'ar' ? 'تسمح للمستخدم برؤية جميع البلاغات والتقارير داخل المحافظات الموكلة إليه، متجاوزاً شرط أن يكون هو منشئ البلاغ.' : 'Allows the user to see all reports within their assigned governorates, bypassing the creator restriction.'}</span>
+                    </div>
+                  </label>
+                </div>
+
                 {/* قسم المشاريع المتاحة */}
                 <div className="border-2 border-blue-200 rounded-xl p-4 bg-blue-50/50">
                   <div className="flex items-center justify-between mb-4">

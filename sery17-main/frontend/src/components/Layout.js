@@ -1262,16 +1262,23 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                         </div>
                         
                         <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-                          <Link
-                            to="/reports?license_status=review_pending"
-                            onClick={() => setNotificationsOpen(false)}
-                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center justify-center gap-1"
+                          <button
+                            onClick={() => {
+                              setNotificationsOpen(false);
+                              const target = `/reports?license_status=review_pending&t=${Date.now()}`;
+                              if (location.pathname === '/reports') {
+                                window.location.href = target;
+                              } else {
+                                navigate(target);
+                              }
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center justify-center gap-1 w-full"
                           >
-                            <span>{isRtl ? 'عرض جميع البلاغات' : 'View all reports'}</span>
+                            <span>{isRtl ? 'عرض جميع البلاغات قيد المراجعة' : 'View all pending review reports'}</span>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
-                          </Link>
+                          </button>
                         </div>
                       </div>
                     </>
