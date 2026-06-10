@@ -6,6 +6,9 @@ import { PROJECT_GOVERNORATES as BASE_PROJECT_GOVERNORATES } from '../utils/proj
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { resolveImageUrl, isVideo } from '../utils/imageUrl';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import { useBranding } from '../hooks/useBranding';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -246,6 +249,7 @@ const translateBrandingText = (text, isRtl) => {
 function Reports({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
+  const { branding } = useBranding();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -788,6 +792,7 @@ function Reports({ user, onLogout }) {
   }, [exportFilters.project]);
   const [showImagesModal, setShowImagesModal] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedReportForMedia, setSelectedReportForMedia] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null); // الصورة المكبرة
   const [last24HoursCounts, setLast24HoursCounts] = useState({});
 
@@ -803,8 +808,12 @@ function Reports({ user, onLogout }) {
       try {
         const token = localStorage.getItem('token');
         const params = new URLSearchParams();
-        if (exportFilters.project) params.append('project', exportFilters.project);
-        if (exportFilters.governorate) params.append('governorate', exportFilters.governorate);
+        const activeProject = exportFilters.project || filters.project;
+        const activeGovernorate = exportFilters.governorate || filters.governorate;
+        
+        if (activeProject) params.append('project', activeProject);
+        if (activeGovernorate) params.append('governorate', activeGovernorate);
+        
         const response = await axios.get(`${API}/users/level3?${params}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -830,7 +839,7 @@ function Reports({ user, onLogout }) {
     
     fetchLevel3Users();
     fetchMyReportsCount();
-  }, [exportFilters.project, exportFilters.governorate]);
+  }, [exportFilters.project, exportFilters.governorate, filters.project, filters.governorate]);
   
   const fetchContractors = async () => {
     try {
@@ -1676,7 +1685,8 @@ const fetchReports = async () => {
   };
 
   // جلب الصور لبلاغ معين
-  const fetchReportImages = async (reportId) => {
+  const fetchReportImages = async (report) => {
+    const reportId = report.id;
     setLoadingImages(prev => ({ ...prev, [reportId]: true }));
     
     try {
@@ -1689,6 +1699,7 @@ const fetchReports = async () => {
       // عرض الصور في Modal
       if (images.length > 0) {
         setSelectedImages(images);
+        setSelectedReportForMedia(report);
         setShowImagesModal(true);
       } else {
         toast.info(t('reports.noImages'));
@@ -1701,9 +1712,214 @@ const fetchReports = async () => {
     }
   };
 
-  const viewImages = (images) => {
+  const viewImages = (images, report) => {
     setSelectedImages(images);
+    setSelectedReportForMedia(report);
     setShowImagesModal(true);
+  };
+
+  const handleDownloadImagesAsPdf = async () => {
+    if (!selectedReportForMedia || selectedImages.length === 0) return;
+    
+    toast.info(t('reports.pdf.preparing', {defaultValue: 'جاري تجهيز ملف الـ PDF... الرجاء الانتظار'}));
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      const headerDiv = document.createElement('div');
+      headerDiv.style.width = '800px';
+      headerDiv.style.padding = '30px';
+      headerDiv.style.backgroundColor = '#ffffff';
+      headerDiv.style.direction = 'rtl';
+      headerDiv.style.fontFamily = 'Arial, sans-serif';
+      headerDiv.style.color = '#000';
+      headerDiv.style.position = 'fixed';
+      headerDiv.style.top = '-9999px';
+      
+      const notSpecified = t('common.notSpecified', {defaultValue: 'غير محدد'});
+      
+      const getBase64Image = async (url) => {
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          return url;
+        }
+      };
+
+      const partnerLogoUrl = (branding.partner_logo_url || '').startsWith('http') 
+        ? branding.partner_logo_url 
+        : window.location.origin + (branding.partner_logo_url || '/nwc-logo.png');
+      const companyLogoUrl = (branding.company_logo_url || '').startsWith('http') 
+        ? branding.company_logo_url 
+        : window.location.origin + (branding.company_logo_url || '/bayt-alkhibra-logo.png');
+        
+      const [partnerLogoB64, companyLogoB64] = await Promise.all([
+        getBase64Image(partnerLogoUrl),
+        getBase64Image(companyLogoUrl)
+      ]);
+
+      let locLat = selectedReportForMedia.latitude || notSpecified;
+      let locLng = selectedReportForMedia.longitude || notSpecified;
+      
+      // Fallback to location string if latitude/longitude are not explicitly provided
+      if ((locLat === notSpecified || locLng === notSpecified) && selectedReportForMedia.location) {
+        const match = selectedReportForMedia.location.match(/-?\d{1,3}\.\d{4,}/g);
+        if (match && match.length >= 2) {
+          locLat = match[0];
+          locLng = match[1];
+        } else {
+          locLat = selectedReportForMedia.location.substring(0, 40);
+        }
+      }
+
+      headerDiv.innerHTML = `
+        <div style="direction: ${isRtl ? 'rtl' : 'ltr'}; font-family: Cairo, 'Tajawal', sans-serif;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #3b82f6; padding-bottom: 20px;">
+            <div style="width: 150px; text-align: ${isRtl ? 'right' : 'left'};">
+              <img src="${partnerLogoB64}" alt="NWC Logo" style="max-width: 100%; max-height: 90px; object-fit: contain;" />
+            </div>
+            <div style="text-align: center; flex: 1; padding: 0 20px;">
+              <h2 style="color: #1e3a8a; margin: 0; font-size: 28px;">${t('reports.pdf.mediaReportDetails', {defaultValue: 'تفاصيل بلاغ الوسائط'})}</h2>
+              <h3 style="color: #3b82f6; margin: 10px 0 0 0; font-size: 20px;">${translateBrandingText(selectedReportForMedia.project || '', isRtl)} - ${translateBrandingText(selectedReportForMedia.governorate || '', isRtl)}</h3>
+            </div>
+            <div style="width: 150px; text-align: ${isRtl ? 'left' : 'right'};">
+              <img src="${companyLogoB64}" alt="Company Logo" style="max-width: 100%; max-height: 90px; object-fit: contain;" />
+            </div>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; margin-top: 20px; font-size: 16px; text-align: center;">
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; width: 25%; text-align: center;">${t('reports.reportNumber', {defaultValue: 'رقم البلاغ'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; width: 25%; text-align: center;">${selectedReportForMedia.report_number || selectedReportForMedia.id || notSpecified}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; width: 25%; text-align: center;">${t('reports.licenseNumber', {defaultValue: 'رقم الرخصة'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; width: 25%; text-align: center;">${selectedReportForMedia.license_number || t('reports.noLicense', {defaultValue: 'بدون رخصة'})}</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.receiveDate', {defaultValue: 'تاريخ الاستلام'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.received_date || selectedReportForMedia.created_at ? new Date(selectedReportForMedia.received_date || selectedReportForMedia.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : notSpecified}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.startDate', {defaultValue: 'تاريخ المباشرة'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.start_date ? new Date(selectedReportForMedia.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : notSpecified}</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.createdBy', {defaultValue: 'اسم المراقب'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${translateBrandingText(selectedReportForMedia.created_by_name || 'غير معروف', isRtl)}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.pdf.systemEngineerLabel', {defaultValue: 'مهندس النظام وتحليل البيانات'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${t('reports.pdf.systemEngineerName', {defaultValue: 'م/ محمود محمد هارون'})}</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.diameter', {defaultValue: 'القطر'})} (${t('reportForm.mm', {defaultValue: 'بالمليمتر'})})</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.diameter_mm || selectedReportForMedia.diameter || notSpecified}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.depth', {defaultValue: 'العمق'})} (${t('reportForm.cm', {defaultValue: 'بالسنتيمتر'})})</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.depth_meters || selectedReportForMedia.depth || notSpecified}</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.latitude', {defaultValue: 'خط العرض'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; direction: ltr; text-align: center;">${locLat}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.longitude', {defaultValue: 'خط الطول'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; direction: ltr; text-align: center;">${locLng}</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.closeDate', {defaultValue: 'تاريخ الإغلاق'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.closed_at ? new Date(selectedReportForMedia.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : (selectedReportForMedia.wfm_closed_at ? new Date(selectedReportForMedia.wfm_closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : t('reports.notClosed', {defaultValue: 'غير مغلق'}))}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.reportType', {defaultValue: 'نوع البلاغ'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${t('reportTypes.' + (selectedReportForMedia.report_type || 'Unknown'), {defaultValue: translateBrandingText(selectedReportForMedia.report_type || notSpecified, isRtl)})}</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.status', {defaultValue: 'حالة الإصلاح'})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${t('statusMap.' + (selectedReportForMedia.status || 'Unknown'), {defaultValue: translateBrandingText(selectedReportForMedia.status || notSpecified, isRtl)})}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; border-bottom: none; border-right: none;" colspan="2"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+      document.body.appendChild(headerDiv);
+      
+      const canvas = await html2canvas(headerDiv, { scale: 2, useCORS: true });
+      const headerImg = canvas.toDataURL('image/jpeg', 1.0);
+      document.body.removeChild(headerDiv);
+      
+      const headerHeight = (canvas.height * pageWidth) / canvas.width;
+      pdf.addImage(headerImg, 'JPEG', 0, 0, pageWidth, headerHeight);
+      
+      let currentY = headerHeight + 10;
+      
+      for (let i = 0; i < selectedImages.length; i++) {
+        const imageData = selectedImages[i];
+        if (isVideo(imageData)) continue;
+        
+        try {
+          const url = resolveImageUrl(imageData);
+          const response = await fetch(url);
+          const blob = await response.blob();
+          const objUrl = window.URL.createObjectURL(blob);
+          
+          const img = new Image();
+          await new Promise((resolve) => {
+             img.onload = resolve;
+             img.onerror = resolve;
+             img.src = objUrl;
+          });
+          
+          if (img.width && img.height) {
+             const imgRatio = img.height / img.width;
+             let imgWidth = pageWidth - 20;
+             let imgHeight = imgWidth * imgRatio;
+             
+             if (imgHeight > pageHeight - 20) {
+                imgHeight = pageHeight - 20;
+                imgWidth = imgHeight / imgRatio;
+             }
+             
+             if (currentY + imgHeight > pageHeight) {
+                pdf.addPage();
+                currentY = 10;
+             }
+             
+             const xPos = (pageWidth - imgWidth) / 2;
+             pdf.addImage(img, 'JPEG', xPos, currentY, imgWidth, imgHeight);
+             currentY += imgHeight + 10;
+          }
+        } catch(e) {
+           console.error('Error loading image for PDF', e);
+        }
+      }
+      
+      // إضافة تذييل باسم المراجع في جميع صفحات الـ PDF
+      const footerDiv = document.createElement('div');
+      footerDiv.style.width = '800px';
+      footerDiv.style.position = 'fixed';
+      footerDiv.style.top = '-9999px';
+      footerDiv.innerHTML = `
+        <div style="direction: ${isRtl ? 'rtl' : 'ltr'}; font-family: Arial, Cairo, 'Tajawal', sans-serif; text-align: center; padding: 20px; background: #f8fafc; border-top: 3px solid #e2e8f0; letter-spacing: 0px !important;">
+          <p style="margin: 0; font-size: 20px; font-weight: bold; color: #1e3a8a;">${t('reports.pdf.systemEngineerLabel', {defaultValue: 'مهندس النظام وتحليل البيانات'})}-${t('reports.pdf.systemEngineerName', {defaultValue: 'م/محمود محمد هارون'})}</p>
+        </div>
+      `;
+      document.body.appendChild(footerDiv);
+      const footerCanvas = await html2canvas(footerDiv, { scale: 2 });
+      const footerImg = footerCanvas.toDataURL('image/jpeg', 1.0);
+      document.body.removeChild(footerDiv);
+      const footerHeightRender = (footerCanvas.height * pageWidth) / footerCanvas.width;
+      
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let j = 1; j <= totalPages; j++) {
+        pdf.setPage(j);
+        pdf.addImage(footerImg, 'JPEG', 0, pageHeight - footerHeightRender - 5, pageWidth, footerHeightRender);
+      }
+      
+      pdf.save(`Report_${selectedReportForMedia.report_number || selectedReportForMedia.id}_Media.pdf`);
+      toast.success(t('reports.pdf.exportSuccess', {defaultValue: 'تم التصدير إلى PDF بنجاح'}));
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error(t('reports.pdf.exportError', {defaultValue: 'حدث خطأ أثناء إنشاء الـ PDF'}));
+    }
   };
 
   const downloadImage = async (imageData, index) => {
@@ -2063,6 +2279,32 @@ const fetchReports = async () => {
                   <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
                 </optgroup>
               </select>
+              
+              {/* فلتر المستخدم في البحث الرئيسي - يظهر لمن لديه الصلاحيات */}
+              {level3Users && level3Users.length > 0 && 
+               (user?.role === 'admin' || user?.can_create_subusers || 
+                (user?.permissions || []).includes('view_all_invoices') ||
+                (user?.permissions || []).includes('reports_review') ||
+                (user?.permissions || []).includes('view_governorate_data') ||
+                Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('reports_review') || (perms || []).includes('view_governorate_data'))
+               ) && (
+                <select 
+                  value={filters.created_by || ''} 
+                  onChange={(e) => setFilters({...filters, created_by: e.target.value})}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">
+                    {((user?.permissions || []).includes('view_governorate_data') || Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('view_governorate_data'))) 
+                      ? (isRtl ? '👤 المهندسين والمراقبين' : '👤 Engineers and Observers')
+                      : `👤 ${t('reports.createdBy', {defaultValue: 'المستخدم'})}`}
+                  </option>
+                  {level3Users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {translateBrandingText(u.full_name, isRtl)}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             
 
@@ -2247,7 +2489,7 @@ const fetchReports = async () => {
                  <select 
                   value={exportFilters.license_status || ''} 
                   onChange={(e) => handleExportFilterChange('license_status', e.target.value)}
-                  className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[200px] font-medium"
+                  className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[150px] font-medium"
                 >
                   <option value="">🔍 {t('reports.allStatuses', {defaultValue: 'جميع الحالات'})}</option>
                   <optgroup label={t('reports.byStatus', {defaultValue: 'حسب الحالة'})}>
@@ -2284,22 +2526,29 @@ const fetchReports = async () => {
                   </optgroup>
                 </select>
               </div>
-              
-              {/* فلتر المستخدم - ديناميكي حسب المشروع والمحافظة، يظهر لمن لديه صلاحية إدارة أو مراجعة */}
+
+              {/* فلتر المستخدم - ديناميكي حسب المشروع والمحافظة، يظهر لمن لديه صلاحية إدارة أو مراجعة أو استثنائية */}
               {level3Users && level3Users.length > 0 && 
                (user?.role === 'admin' || user?.can_create_subusers || 
                 (user?.permissions || []).includes('view_all_invoices') ||
                 (user?.permissions || []).includes('reports_review') ||
-                Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('reports_review'))
+                (user?.permissions || []).includes('view_governorate_data') ||
+                Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('reports_review') || (perms || []).includes('view_governorate_data'))
                ) && (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
-                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">👤 {t('reports.createdBy', {defaultValue: 'المستخدم'})}:</label>
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    👤 {((user?.permissions || []).includes('view_governorate_data') || Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('view_governorate_data'))) ? (isRtl ? 'مراقبين الاستشاري' : 'Consultant Observers') : t('reports.createdBy', {defaultValue: 'المستخدم'})}:
+                  </label>
                   <select 
                     value={exportFilters.created_by || ''} 
                     onChange={(e) => handleExportFilterChange('created_by', e.target.value)}
-                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[180px]"
+                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[130px]"
                   >
-                    <option value="">{t('reports.allUsers', {defaultValue: 'جميع المستخدمين'})}</option>
+                    <option value="">
+                      {((user?.permissions || []).includes('view_governorate_data') || Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('view_governorate_data'))) 
+                        ? (isRtl ? 'المهندسين والمراقبين' : 'Engineers and Observers')
+                        : t('reports.allUsers', {defaultValue: 'جميع المستخدمين'})}
+                    </option>
                     {level3Users.map(u => (
                       <option key={u.id} value={u.id}>
                         {translateBrandingText(u.full_name, isRtl)}
@@ -2308,6 +2557,10 @@ const fetchReports = async () => {
                   </select>
                 </div>
               )}
+            </div>
+
+            {/* الصف الثاني: التواريخ وأزرار الإجراءات */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:flex-wrap gap-3 w-full mt-4">
               
               {/* حقول التاريخ - مجمعة ومنسقة بجوار بعضها */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 border border-gray-200 bg-white p-2 sm:p-3 rounded-lg shadow-sm w-full sm:w-auto flex-wrap">
@@ -2787,9 +3040,9 @@ const fetchReports = async () => {
                                 <button 
                                   onClick={() => {
                                     if (reportImages[report.id]) {
-                                      viewImages(reportImages[report.id]);
+                                      viewImages(reportImages[report.id], report);
                                     } else {
-                                      fetchReportImages(report.id);
+                                      fetchReportImages(report);
                                     }
                                     setActiveDropdown(null);
                                   }} 
@@ -3031,6 +3284,15 @@ const fetchReports = async () => {
                 <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{selectedImages.length}</span>
               </h3>
               <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleDownloadImagesAsPdf}
+                  className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs sm:text-sm transition-colors"
+                >
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">{t('reports.imagesModal.downloadPdf', {defaultValue: 'تحميل الصور PDF'})}</span>
+                </button>
                 <button 
                   onClick={async () => {
                     toast.info(`📥 ${t('reports.imagesModal.downloading', {defaultValue: 'جارِ تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.files', {defaultValue: 'ملف...'})}`);

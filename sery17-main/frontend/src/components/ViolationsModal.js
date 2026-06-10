@@ -58,6 +58,12 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [notePopupAction, setNotePopupAction] = useState('save_only');
 
+  const isLevel3 = user?.role !== 'admin' && !user?.can_create_subusers;
+  const showRedDot = (v) => {
+    if (isLevel3) return v.consultant_note && !v.report_note_processed;
+    return v.consultant_reply && !v.consultant_note_processed;
+  };
+
   const hasPermission = (permKey) => {
     if (user?.role === 'admin') return true;
     if ((user?.permissions || []).includes(permKey)) return true;
@@ -100,6 +106,14 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
     setActiveNotesReportId(violation.id);
     setConsultantNote(violation.consultant_note || '');
     setConsultantReply(violation.consultant_reply || '');
+
+    if (isLevel3 && violation.consultant_note && !violation.report_note_processed) {
+      axios.put(`${API}/violations/${violation.id}`, { report_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      setViolations(prev => prev.map(rep => rep.id === violation.id ? { ...rep, report_note_processed: true } : rep));
+    } else if (!isLevel3 && violation.consultant_reply && !violation.consultant_note_processed) {
+      axios.put(`${API}/violations/${violation.id}`, { consultant_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      setViolations(prev => prev.map(rep => rep.id === violation.id ? { ...rep, consultant_note_processed: true } : rep));
+    }
   };
 
   const handleSaveNote = async () => {
@@ -113,19 +127,19 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
       isProcessed = true;
     }
 
+    const updatePayload = { consultant_note: consultantNote, consultant_reply: consultantReply };
+    if (!isLevel3) updatePayload.report_note_processed = isProcessed;
+    else updatePayload.consultant_note_processed = isProcessed;
+
     try {
-      setViolations(prev => prev.map(rep => rep.id === activeNotesReportId ? { ...rep, consultant_note: consultantNote, consultant_reply: consultantReply, report_note_processed: isProcessed } : rep));
+      setViolations(prev => prev.map(rep => rep.id === activeNotesReportId ? { ...rep, ...updatePayload } : rep));
       toast.success(isRtl ? 'تم حفظ الملاحظة بنجاح' : 'Note saved successfully');
       
       if (notePopupAction === 'save_and_close') {
         setActiveNotesReportId(null);
       }
 
-      await axios.put(`${API}/violations/${activeNotesReportId}`, { 
-        consultant_note: consultantNote,
-        consultant_reply: consultantReply,
-        report_note_processed: isProcessed
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${API}/violations/${activeNotesReportId}`, updatePayload, { headers: { Authorization: `Bearer ${token}` } });
       
       fetchViolations();
     } catch (err) {
@@ -612,7 +626,7 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
                                 className="w-full text-right px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer relative"
                               >
                                 <FileText className="w-4 h-4 text-amber-600" /> {isRtl ? 'اضافة ملاحظة للمخالفة' : 'Add Note to Violation'}
-                                {v.consultant_note && !v.report_note_processed && (
+                                {showRedDot(v) && (
                                   <span className="absolute left-2 top-2 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                                 )}
                               </DropdownMenuItem>
