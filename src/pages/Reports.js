@@ -2947,14 +2947,25 @@ const fetchReports = async () => {
                             : 'bg-slate-800 text-white border-slate-900';
                         }
 
+                        const canToggle = user?.role === 'admin' || hasReportPermission(report, 'consultant_close');
+
                         return (
-                          <div className="flex flex-col items-center gap-0.5">
+                          <div 
+                            className={`flex flex-col items-center gap-0.5 ${canToggle ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
+                            onClick={(e) => {
+                              if (canToggle) {
+                                e.stopPropagation();
+                                handleToggleWFMClosed(report.id, report.wfm_closed);
+                              }
+                            }}
+                            title={canToggle ? t('statusMap.اضغط لتغيير الحالة', {defaultValue: 'اضغط لتغيير الحالة'}) : ''}
+                          >
                             <span className={`px-2 py-0.5 text-[14px] font-black rounded-full border shadow-sm ${colorClass}`}>
                               {statusText}
                             </span>
                             {report.wfm_closed && (
-                              <span className="text-[11px] font-black text-green-700 opacity-80 mt-0.5 block text-center" title={translateBrandingText('م/ مدحت حسين', isRtl)}>
-                                {translateBrandingText('م/ مدحت حسين', isRtl)}
+                              <span className="text-[11px] font-black text-green-700 opacity-80 mt-0.5 block text-center" title={translateBrandingText('م/ مدحت حسين محمد', isRtl)}>
+                                {translateBrandingText('م/ مدحت حسين محمد', isRtl)}
                               </span>
                             )}
                           </div>
@@ -3089,26 +3100,6 @@ const fetchReports = async () => {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                     {t('consultantNoteModal.title', { defaultValue: 'ملاحظات الاستشاري' })}
-                                  </button>
-                                )}
-                                {/* خيار مغلقة بواسطة الاستشاري - يظهر فقط لمن لديه الصلاحية */}
-                                {(user?.role === 'admin' || hasReportPermission(report, 'consultant_close')) && (
-                                  <button 
-                                    onClick={() => {
-                                      console.log('🔘 Closed WFM button clicked for report:', report.id);
-                                      handleToggleWFMClosed(report.id, report.wfm_closed);
-                                      setActiveDropdown(null);
-                                    }} 
-                                    className={`group flex items-center px-4 py-3 text-sm w-full transition-colors font-bold ${isRtl ? 'text-right' : 'text-left'} ${
-                                      report.wfm_closed 
-                                      ? 'text-orange-700 hover:bg-orange-600 hover:text-white' 
-                                      : 'text-green-700 hover:bg-green-600 hover:text-white'
-                                    }`}
-                                  >
-                                    <svg className={`h-5 w-5 group-hover:text-white ${isRtl ? 'ml-3' : 'mr-3'} ${report.wfm_closed ? 'text-orange-600' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                    </svg>
-                                    {report.wfm_closed ? t('statusMap.فتح المعالجة') : t('statusMap.مغلقة بواسطة الاستشاري')}
                                   </button>
                                 )}
                               </div>

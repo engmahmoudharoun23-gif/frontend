@@ -1789,12 +1789,25 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               0%, 49% { background-color: #e53935; box-shadow: inset 0 0 15px rgba(0,0,0,0.15); } 
               50%, 100% { background-color: #7f0000; box-shadow: inset 0 0 25px rgba(0,0,0,0.4); } 
             }
-            @keyframes marqueeScrollRtl { 0% { transform: translateX(-100%); } 100% { transform: translateX(100vw); } }
-            @keyframes marqueeScrollLtr { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+            @keyframes smoothScrollRtl {
+              0% { transform: translate3d(-100%, 0, 0); }
+              100% { transform: translate3d(100vw, 0, 0); }
+            }
+            @keyframes smoothScrollLtr {
+              0% { transform: translate3d(100vw, 0, 0); }
+              100% { transform: translate3d(-100%, 0, 0); }
+            }
           `}</style>
-          <div className="mx-auto py-3 sm:py-4 flex items-center overflow-hidden w-full relative h-12 sm:h-14">
-            <p className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-widest whitespace-nowrap absolute drop-shadow-lg" 
-               style={{ animation: `${isRtl ? 'marqueeScrollRtl' : 'marqueeScrollLtr'} 20s linear infinite`, left: 0, textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>
+          <div className="mx-auto flex items-center overflow-hidden w-full relative h-10 sm:h-12 md:h-14">
+            <p 
+              className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-widest whitespace-nowrap absolute"
+              style={{
+                animation: `${isRtl ? 'smoothScrollRtl' : 'smoothScrollLtr'} 25s linear infinite`,
+                willChange: 'transform',
+                left: 0,
+                textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
+              }}
+            >
               ⚠️ {translateBrandingText(dynamicAnnouncement ? dynamicAnnouncement : branding.global_announcement, isRtl)} ⚠️
             </p>
           </div>
