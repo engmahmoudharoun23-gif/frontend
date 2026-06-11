@@ -617,8 +617,11 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         const res = await axios.get(`${API}/dashboard/badges?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
         const data = res.data || {};
         
-        setPendingSafetyCount(data.safety || 0);
-        setPendingQualityCount((data.quality || 0) + (data.warehouse || 0));
+        const safetyTotal = (data.safety || 0) + (data.safety_notes || 0) + (data.work_permits || 0) + (data.work_permits_notes || 0) + (data.violations || 0) + (data.violations_notes || 0);
+        const qualityTotal = (data.quality || 0) + (data.quality_notes || 0) + (data.warehouse || 0);
+        
+        setPendingSafetyCount(safetyTotal);
+        setPendingQualityCount(qualityTotal);
         setPendingBusinessCount(data.business || 0);
         setPendingConsultantCount(data.consultant || 0);
         
@@ -1262,16 +1265,23 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                         </div>
                         
                         <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-                          <Link
-                            to="/reports?license_status=review_pending"
-                            onClick={() => setNotificationsOpen(false)}
-                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center justify-center gap-1"
+                          <button
+                            onClick={() => {
+                              setNotificationsOpen(false);
+                              const target = `/reports?license_status=review_pending&t=${Date.now()}`;
+                              if (location.pathname === '/reports') {
+                                window.location.href = target;
+                              } else {
+                                navigate(target);
+                              }
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center justify-center gap-1 w-full"
                           >
-                            <span>{isRtl ? 'عرض جميع البلاغات' : 'View all reports'}</span>
+                            <span>{isRtl ? 'عرض جميع البلاغات قيد المراجعة' : 'View all pending review reports'}</span>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
-                          </Link>
+                          </button>
                         </div>
                       </div>
                     </>
@@ -2101,14 +2111,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
               
-              {/* الإعدادات */}
-              {hasPermission('settings') && (
-                <Link to="/settings" onClick={(e) => handleLinkClick(e, "/settings")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/settings') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
-                  <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  {t('sidebar.settings')}
-                </Link>
-              )}
-              
+
               {/* الأرشيف */}
               {user && user.role === 'admin' && (
                 <Link to="/archive" onClick={(e) => handleLinkClick(e, "/archive")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/archive') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -2139,6 +2142,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <Link to="/trash" onClick={(e) => handleLinkClick(e, "/trash")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/trash') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                   {t('sidebar.trash')}
+                </Link>
+              )}
+              
+              {/* الإعدادات */}
+              {hasPermission('settings') && (
+                <Link to="/settings" onClick={(e) => handleLinkClick(e, "/settings")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/settings') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  {t('sidebar.settings')}
                 </Link>
               )}
               
@@ -2499,46 +2510,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               </Link>
             )}
             
-            {/* رسائل الدعم */}
-            {hasPermission('support_messages') && (
-              <Link
-                to="/support-messages" onClick={(e) => handleLinkClick(e, "/support-messages")}
-                className={`sidebar-item ${isActive('/support-messages') ? 'sidebar-item-active' : 'text-gray-700'}`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center">
-                    <div className="sidebar-icon-box">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                    </div>
-                    <span className="sidebar-text">{t('sidebar.supportMessages')}</span>
-                  </div>
-                  {supportMessagesCount > 0 && (
-                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
-                      {supportMessagesCount > 9 ? '9+' : supportMessagesCount}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            )}
-            
-            {/* الإعدادات */}
-            {user && (
-              <Link
-                to="/settings" onClick={(e) => handleLinkClick(e, "/settings")}
-                className={`sidebar-item ${isActive('/settings') ? 'sidebar-item-active' : 'text-gray-700'}`}
-              >
-                <div className="sidebar-icon-box">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <span className="sidebar-text">{t('sidebar.settings')}</span>
-              </Link>
-            )}
-            
+
             {/* الأرشيف */}
             {user && user.role === 'admin' && (
               <Link
@@ -2592,6 +2564,46 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               </Link>
             )}
             
+            {/* رسائل الدعم */}
+            {hasPermission('support_messages') && (
+              <Link
+                to="/support-messages" onClick={(e) => handleLinkClick(e, "/support-messages")}
+                className={`sidebar-item ${isActive('/support-messages') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <div className="sidebar-icon-box">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    </div>
+                    <span className="sidebar-text">{t('sidebar.supportMessages')}</span>
+                  </div>
+                  {supportMessagesCount > 0 && (
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
+                      {supportMessagesCount > 9 ? '9+' : supportMessagesCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )}
+
+            {/* الإعدادات */}
+            {user && (
+              <Link
+                to="/settings" onClick={(e) => handleLinkClick(e, "/settings")}
+                className={`sidebar-item ${isActive('/settings') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="sidebar-icon-box">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <span className="sidebar-text">{t('sidebar.settings')}</span>
+              </Link>
+            )}
+
             {/* زر تغيير اللغة */}
             <button
               onClick={toggleLanguage}
