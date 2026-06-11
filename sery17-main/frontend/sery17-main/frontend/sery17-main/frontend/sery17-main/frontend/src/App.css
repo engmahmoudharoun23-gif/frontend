@@ -1,0 +1,217 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  direction: rtl;
+  text-align: right;
+}
+
+/* CSS Variables for Theming */
+:root {
+  --color-primary: #2563eb;
+  --color-secondary: #3b82f6;
+  --color-accent: #60a5fa;
+  --color-bg-light: #eff6ff;
+  --color-text-primary: #1e40af;
+  --color-hover: #1d4ed8;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f5f5;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease;
+}
+
+/* Dark Mode */
+body.dark-mode {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+body.dark-mode .bg-white {
+  background-color: #1f2937 !important;
+  color: #f3f4f6;
+}
+
+body.dark-mode .bg-gray-50,
+body.dark-mode .bg-gray-100 {
+  background-color: #374151 !important;
+}
+
+body.dark-mode .text-gray-900,
+body.dark-mode .text-gray-800,
+body.dark-mode .text-gray-700 {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .text-gray-600,
+body.dark-mode .text-gray-500 {
+  color: #d1d5db !important;
+}
+
+body.dark-mode .border-gray-200,
+body.dark-mode .border-gray-300 {
+  border-color: #4b5563 !important;
+}
+
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+  background-color: #374151 !important;
+  color: #f3f4f6 !important;
+  border-color: #4b5563 !important;
+}
+
+/* Theme Colors Application */
+.bg-primary {
+  background-color: var(--color-primary) !important;
+}
+
+.bg-primary-hover:hover {
+  background-color: var(--color-hover) !important;
+}
+
+.bg-bg-light {
+  background-color: var(--color-bg-light) !important;
+}
+
+.text-primary {
+  color: var(--color-primary) !important;
+}
+
+.border-primary {
+  border-color: var(--color-primary) !important;
+}
+
+.hover\:bg-primary:hover {
+  background-color: var(--color-primary) !important;
+  opacity: 0.9;
+}
+
+.active-nav-item {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+.active-nav-item svg {
+  color: white !important;
+}
+
+.App {
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+  opacity: 0.5;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-hover);
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Smooth Transitions */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+input,
+select {
+  transition: all 0.2s ease;
+}
+
+/* Responsive Table Utilities */
+@media (max-width: 768px) {
+  .responsive-table {
+    display: block;
+    border: none;
+  }
+
+  .responsive-table thead {
+    display: none;
+  }
+
+  .responsive-table tbody {
+    display: block;
+  }
+
+  .responsive-table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  .responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    text-align: right;
+    padding: 0.5rem 0;
+    border: none;
+  }
+
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: #6b7280;
+    margin-left: 0.5rem;
+  }
+
+  .responsive-table td:last-child {
+    border-bottom: none;
+  }
+}
+
+/* Center Toastify notifications on mobile */
+@media (max-width: 768px) {
+  .Toastify__toast-container {
+    top: 50% !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: translateY(-50%) !important;
+    margin: 0 auto !important;
+    bottom: auto !important;
+    width: 90% !important;
+    max-width: 350px !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .Toastify__toast {
+    border-radius: 12px !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  }
+}

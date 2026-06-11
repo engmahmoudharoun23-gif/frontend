@@ -138,9 +138,17 @@ const BRANDING_TRANSLATIONS_EN = {
   'م/ عبدالحفيظ': 'Eng. Abdel Hafiz',
   ' م / ميهران': 'Eng. Mehran',
   ' م/ أمين مختار': 'Eng. Amin Mokhtar',
+  'م. أمين مختار': 'Eng. Amin Mokhtar',
   'م/ أمين مختار': 'Eng. Amin Mokhtar',
+  'أمين مختار': 'Amin Mukhtar',
+  'د. عبد العاطي': 'DR . Abdel Aty',
+  'د عبدالعاطي': 'DR . Abdel Aty',
+  'م. سالم القحطاني': 'Salem AlQahtani',
+  'م سالم القحطاني': 'Salem AlQahtani',
   'م / ميهران': 'Eng. Mehran',
   'مراقب': 'Supervisor',
+  'مراقب سلامة استشاري': 'Consultant Safety Controller',
+  'مدير التشغيل والصيانة بالمحافظات الغربية': 'Manager التشغيل والصيانة بالمحافظات Western',
   'مراقب الاستشاري': 'Consultant Supervisor',
   'مراقب البلدية': 'Municipality Supervisor',
   'جديد': 'New',
@@ -349,19 +357,22 @@ const translateLocalSmart = (text) => {
 
 const pendingTranslations = new Set();
 
-const triggerAsyncTranslation = (text) => {
-  if (!text || pendingTranslations.has(text) || dynamicTranslationsCache[text]) return;
-  pendingTranslations.add(text);
+const triggerAsyncTranslation = (text, langpair = 'ar|en') => {
+  const cacheKey = `${langpair}_${text}`;
+  if (!text || pendingTranslations.has(cacheKey) || dynamicTranslationsCache[cacheKey] || dynamicTranslationsCache[text]) return;
+  pendingTranslations.add(cacheKey);
   
-  fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ar|en`)
+  fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`)
     .then(res => res.json())
     .then(data => {
       let trans = data?.responseData?.translatedText || data?.matches?.[0]?.translation;
       if (trans && trans !== text) {
-        trans = trans.replace(/\bEngineer\b/gi, 'Eng.').replace(/\bOffice\b/gi, 'Office');
-        dynamicTranslationsCache[text] = trans;
+        if (langpair === 'ar|en') {
+          trans = trans.replace(/\bEngineer\b/gi, 'Eng.').replace(/\bOffice\b/gi, 'Office');
+        }
+        dynamicTranslationsCache[cacheKey] = trans;
         saveDynamicCache();
-        const event = new CustomEvent('wfm_translation_updated', { detail: { text, trans } });
+        const event = new CustomEvent('wfm_translation_updated', { detail: { text, trans, langpair } });
         window.dispatchEvent(event);
       }
     })
@@ -369,7 +380,7 @@ const triggerAsyncTranslation = (text) => {
       console.warn('Dynamic translation failed:', text, err);
     })
     .finally(() => {
-      pendingTranslations.delete(text);
+      pendingTranslations.delete(cacheKey);
     });
 };
 
@@ -391,7 +402,15 @@ export const translateBrandingText = (text, isRtl) => {
     );
     if (matchedKey) return matchedKey;
 
-    // 2. Otherwise return the original text (which is probably already Arabic)
+    // 2. Check dynamic cache for English to Arabic
+    if (dynamicTranslationsCache[`en|ar_${trimmed}`]) return dynamicTranslationsCache[`en|ar_${trimmed}`];
+
+    // 3. If the text seems to be English (contains letters a-z), trigger translation
+    if (/[a-zA-Z]/.test(trimmed)) {
+      triggerAsyncTranslation(trimmed, 'en|ar');
+    }
+
+    // 4. Otherwise return the original text (which is probably already Arabic)
     return trimmed;
   } else {
     // Translation to English if isRtl is false
@@ -406,6 +425,7 @@ export const translateBrandingText = (text, isRtl) => {
     if (matchedKey) return BRANDING_TRANSLATIONS_EN[matchedKey];
     
     // 3. Check dynamic translations cache
+    if (dynamicTranslationsCache[`ar|en_${trimmed}`]) return dynamicTranslationsCache[`ar|en_${trimmed}`];
     if (dynamicTranslationsCache[trimmed]) return dynamicTranslationsCache[trimmed];
     if (dynamicTranslationsCache[normInput]) return dynamicTranslationsCache[normInput];
     
@@ -413,7 +433,7 @@ export const translateBrandingText = (text, isRtl) => {
     const localSmart = translateLocalSmart(trimmed);
     
     // 5. Trigger asynchronous fetch to MyMemory API to update cache in background
-    triggerAsyncTranslation(trimmed);
+    triggerAsyncTranslation(trimmed, 'ar|en');
     
     return localSmart || trimmed;
   }

@@ -1,38 +1,19 @@
 import requests
 
-base_url = "http://localhost:8001"
-
-# 1. Login
-login_data = {
-    "username": "admin",
-    "password": "password" # Assuming password is password, or I can check db
-}
-resp = requests.post(f"{base_url}/api/auth/login", data=login_data)
-if resp.status_code != 200:
-    print("Login failed!", resp.text)
-else:
-    token = resp.json()["access_token"]
-    print("Logged in!")
-
-    # 2. Get reports
+url = "http://localhost:8001/api/auth/login"
+data = {"username": "admin", "password": "123"}
+res = requests.post(url, json=data)
+if res.status_code == 200:
+    token = res.json().get("token")
     headers = {"Authorization": f"Bearer {token}"}
-    params = {
-        "project": "مشروع المحافظات الغربية - القطاع الأوسط",
-        "page": 1,
-        "limit": 10
-    }
     
-    # Also add governorate="جميع المحافظات" which frontend might send
-    params["governorate"] = "جميع المحافظات"
-    params["contractor"] = "جميع المقاولين"
-    params["report_type"] = "جميع الأنواع"
-    params["status"] = "جميع الحالات"
+    projects_res = requests.get("http://localhost:8001/api/projects", headers=headers)
+    print("Projects:", projects_res.json())
     
-    reports_resp = requests.get(f"{base_url}/api/reports", params=params, headers=headers)
-    print("Status:", reports_resp.status_code)
-    try:
-        data = reports_resp.json()
-        print("Total count:", data.get("total_count"))
-        print("Number of reports returned:", len(data.get("reports", [])))
-    except Exception as e:
-        print("Error parsing json:", e)
+    stats_res = requests.get("http://localhost:8001/api/reports/stats?project=مشروع ايصال", headers=headers)
+    print("Stats for 'مشروع ايصال':", stats_res.json())
+    
+    init_all_res = requests.get("http://localhost:8001/api/dashboard/init-all", headers=headers)
+    print("Init All:", init_all_res.status_code, init_all_res.text[:200])
+else:
+    print("Login failed:", res.status_code, res.text)

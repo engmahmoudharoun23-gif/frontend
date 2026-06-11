@@ -1,0 +1,262 @@
+[
+  {
+    "id": "19615f08-566d-438f-a0d8-e90ad8de8ebf",
+    "project": "الشمالية",
+    "cards": [
+      {
+        "id": "21cfa32b-fbcc-497e-910c-4c4bcffeef25",
+        "key": "asphalt_waiting",
+        "label": "عدد البلاغات بانتظار الأسفلت"
+      },
+      {
+        "id": "0d791f2e-3755-416c-bbd6-4bd8e1bc768c",
+        "key": "asphalt_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "4d14c6ac-807f-48e7-aaed-2047bec0399c",
+        "key": "asphalt_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "8b01310a-0c3a-4171-a089-38dd6fafd2e4",
+        "key": "tile_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات البلاط"
+      },
+      {
+        "id": "2319f5ba-c32f-4de2-a644-c73c3c9ff511",
+        "key": "tile_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات البلاط"
+      },
+      {
+        "id": "033741de-3b45-4e36-863f-eb46d9d62f09",
+        "key": "fixed_title",
+        "label": "البلاغات التي تم إصلاحها حسب النوع"
+      },
+      {
+        "id": "a8860321-3e78-4033-b817-947badca487a",
+        "key": "type_terrestrial",
+        "label": "ترابي"
+      },
+      {
+        "id": "86bb8712-1b88-46ce-bef1-afe02ac20be7",
+        "key": "type_tile",
+        "label": "بلاط"
+      },
+      {
+        "id": "7490386a-72c4-46b1-a914-5a780fea9765",
+        "key": "type_asphalt",
+        "label": "أسفلت"
+      }
+    ],
+    "created_at": "2026-05-02T16:18:45.695000"
+  },
+  {
+    "id": "cb510109-1f1c-48ad-9d9a-af91aa8eb83c",
+    "project": "الغربية",
+    "cards": [
+      {
+        "id": "e83a95b6-90c5-4739-8d9c-494dc52f98e4",
+        "key": "asphalt_waiting",
+        "label": "عدد البلاغات بانتظار الأسفلت"
+      },
+      {
+        "id": "c18e4533-7c21-41a6-9492-2bdc9666fa3d",
+        "key": "asphalt_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "26bda3fa-f1a1-4f61-a37c-82aa23916741",
+        "key": "asphalt_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "ad06dc6e-4174-4f12-bf66-d4d0b922540b",
+        "key": "tile_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات البلاط"
+      },
+      {
+        "id": "5eff1c9b-6027-4873-ac41-bdd05c2fcdb8",
+        "key": "tile_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات البلاط"
+      },
+      {
+        "id": "2b65b4c6-0fb5-4a88-a2a9-6016f29a0268",
+        "key": "fixed_title",
+        "label": "البلاغات التي تم إصلاحها حسب النوع"
+      },
+      {
+        "id": "d1ed9e5a-eec8-4e34-9580-3db9d07a00cb",
+        "key": "type_terrestrial",
+        "label": "ترابي"
+      },
+      {
+        "id": "845ac893-f3f9-4311-93bb-35fbe91fb2a6",
+        "key": "type_tile",
+        "label": "بلاط"
+      },
+      {
+        "id": "2a7e1c44-1ae6-4aed-a558-3efb7c688d75",
+        "key": "type_asphalt",
+        "label": "أسفلت"
+      }
+    ],
+    "created_at": "2026-05-02T16:18:45.693000"
+  },
+  {
+    "id": "1ac01996-e57a-40b4-a025-65cd8e09dd0c",
+    "project": "الجنوبية",
+    "cards": [
+      {
+        "id": "39d91126-a479-4f31-98d7-8f41da481966",
+        "key": "asphalt_waiting",
+        "label": "عدد البلاغات بانتظار الأسفلت"
+      },
+      {
+        "id": "3101f49c-a46a-4f66-bba6-50c67a9d57e1",
+        "key": "asphalt_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "6f9fc67a-f62f-4724-aa44-7010fa9b3ce2",
+        "key": "asphalt_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "4565ca00-dc0d-4b9e-a4cd-22dcfe041d0b",
+        "key": "tile_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات البلاط"
+      },
+      {
+        "id": "20e8ee3d-c26e-427d-9b3a-7fa893d31f20",
+        "key": "tile_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات البلاط"
+      },
+      {
+        "id": "02b6a24c-302a-474f-9f87-d574380e410e",
+        "key": "fixed_title",
+        "label": "البلاغات التي تم إصلاحها حسب النوع"
+      },
+      {
+        "id": "1eb2d256-3348-42c9-bf88-8598378dfe32",
+        "key": "type_terrestrial",
+        "label": "ترابي"
+      },
+      {
+        "id": "d5363281-3d2b-4006-967c-4dbbcbb85bee",
+        "key": "type_tile",
+        "label": "بلاط"
+      },
+      {
+        "id": "9d19f032-005e-41dc-b008-e3065b0f73a3",
+        "key": "type_asphalt",
+        "label": "أسفلت"
+      }
+    ],
+    "created_at": "2026-05-02T16:18:45.714000"
+  },
+  {
+    "id": "2788265b-5038-4129-82c8-5b44124dd139",
+    "project": "مشروع ايصال",
+    "cards": [
+      {
+        "id": "ab474af7-9bdc-4841-8b91-4c06ef822392",
+        "key": "asphalt_waiting",
+        "label": "عدد البلاغات بانتظار الأسفلت"
+      },
+      {
+        "id": "1a8c5fa0-451e-4ee2-a3fb-585b1de96e43",
+        "key": "asphalt_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "fbe31f63-2842-40e0-ba32-1b7e83197d11",
+        "key": "asphalt_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "1d7517e9-5bdf-4f95-a266-4bde9d74c038",
+        "key": "tile_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات البلاط"
+      },
+      {
+        "id": "81b08c23-755b-4a5a-9dce-4e3bed8a23e5",
+        "key": "tile_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات البلاط"
+      },
+      {
+        "id": "92feba6b-241b-4e66-80a7-9a40d8e6bffb",
+        "key": "fixed_title",
+        "label": "البلاغات التي تم إصلاحها حسب النوع"
+      },
+      {
+        "id": "1e048862-9e7a-47b8-a237-131aada246e1",
+        "key": "type_terrestrial",
+        "label": "ترابي"
+      },
+      {
+        "id": "5626dfe0-a336-4c4c-958a-dec600f35fa7",
+        "key": "type_tile",
+        "label": "بلاط"
+      },
+      {
+        "id": "973a0a6b-98bf-4e21-9a3e-ab01b016b2a6",
+        "key": "type_asphalt",
+        "label": "أسفلت"
+      }
+    ],
+    "created_at": "2026-05-03T08:34:21.845000"
+  },
+  {
+    "id": "266d27f6-c49c-4166-8117-7375ff5950f0",
+    "project": "الرياض",
+    "cards": [
+      {
+        "id": "c4947684-273e-4656-9ab0-fb025015e72e",
+        "key": "asphalt_waiting",
+        "label": "عدد البلاغات بانتظار الأسفلت"
+      },
+      {
+        "id": "820035c2-54f6-4a1d-ae14-4362fb2670c6",
+        "key": "asphalt_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "d2475a5d-ed41-41f0-bb8a-b3e8a7dacba1",
+        "key": "asphalt_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات الأسفلت"
+      },
+      {
+        "id": "9d42bdba-467d-4424-998c-c6f4786313cc",
+        "key": "tile_licensed",
+        "label": "عدد الرخص الصادرة لبلاغات البلاط"
+      },
+      {
+        "id": "05801884-27f2-4085-bf36-82c3a3b3c975",
+        "key": "tile_unlicensed",
+        "label": "عدد الرخص الغير صادرة لبلاغات البلاط"
+      },
+      {
+        "id": "208fd211-749e-43bb-98dd-287fa9d44aed",
+        "key": "fixed_title",
+        "label": "البلاغات التي تم إصلاحها حسب النوع"
+      },
+      {
+        "id": "3fa3001c-e179-4c11-a4d9-ca68dbacb8f9",
+        "key": "type_terrestrial",
+        "label": "ترابي"
+      },
+      {
+        "id": "f0fa1380-4b17-4451-8f98-f1c0c12177da",
+        "key": "type_tile",
+        "label": "بلاط"
+      },
+      {
+        "id": "b3585df5-3767-4417-a8d3-23247c40aa9b",
+        "key": "type_asphalt",
+        "label": "أسفلت"
+      }
+    ],
+    "created_at": "2026-05-07T07:22:39.044000"
+  }
+]

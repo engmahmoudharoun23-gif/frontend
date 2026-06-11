@@ -17,6 +17,7 @@ function Trash({ user, onLogout }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get('limit')) || 15);
+  const [totalItems, setTotalItems] = useState(0);
 
   const handlePageChange = (newPage) => {
     const newParams = new URLSearchParams(searchParams);
@@ -36,7 +37,7 @@ function Trash({ user, onLogout }) {
 
   useEffect(() => {
     fetchDeletedItems();
-  }, [activeTab]);
+  }, [activeTab, currentPage, itemsPerPage]);
 
   const fetchDeletedItems = async () => {
     // setLoading(true);
@@ -53,11 +54,16 @@ function Trash({ user, onLogout }) {
       else if (activeTab === 'quality_report') endpoint = 'quality-reports-trash';
       else if (activeTab === 'business_report') endpoint = 'business-reports-trash';
       
-      const response = await axios.get(`${API}/${endpoint}`, {
+      const response = await axios.get(`${API}/${endpoint}?page=${currentPage}&limit=${itemsPerPage}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      setData(response.data);
-      setCurrentPage(1);
+      if (response.data && response.data.items !== undefined) {
+        setData(response.data.items);
+        setTotalItems(response.data.total || 0);
+      } else {
+        setData(response.data);
+        setTotalItems(response.data.length);
+      }
     } catch (error) {
       console.error(`Failed to fetch deleted ${activeTab}:`, error);
     } finally {
@@ -148,8 +154,14 @@ function Trash({ user, onLogout }) {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
-  const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  // If data length is less than or equal to itemsPerPage, we assume it's already paginated by backend
+  // But if the total items fit in one page, both data length and totalItems are equal.
+  // We can just check if data.length === totalItems to slice, otherwise it's backend paginated
+  const isFrontendPaginated = data.length === totalItems && totalItems > itemsPerPage;
+  const paginatedData = isFrontendPaginated 
+    ? data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : data;
 
   const formatDate = (d) => {
     if (!d) return '-';
@@ -180,7 +192,7 @@ function Trash({ user, onLogout }) {
           <div className="flex items-center gap-3">
             <div className="px-4 py-2 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center gap-2">
               <span className="text-sm font-bold text-slate-500">{t('trash.total')}: </span>
-              <span className="text-xl font-black text-red-600">{data.length}</span>
+              <span className="text-xl font-black text-red-600">{totalItems}</span>
             </div>
             
             {(user.role === 'admin' || user.username === 'Eng Mahmoud Haroun') && (
@@ -260,7 +272,7 @@ function Trash({ user, onLogout }) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {loading ? (
+                {data.length === 0 && loading ? (
                   <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-bold"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading...' : 'جاري التحميل...'}</span></div></td></tr>
                 ) : data.length === 0 ? (
                   <tr>
@@ -289,7 +301,7 @@ function Trash({ user, onLogout }) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-blue-600">
                         {activeTab === 'reports' ? t('trash.report') : 
                          activeTab === 'safety_report' ? t('trash.safety_reports') :
-                         activeTab === 'quality_report' ? t('trash.quality_reports') :
+                         activeTab === 'quality_report' ? (item.trash_type === 'warehouse_visit' ? t('qualityReports.warehouseVisitsTab') : t('trash.quality_reports')) :
                          activeTab === 'business_report' ? t('trash.business_reports') :
                          activeTab === 'water_connections' ? t('trash.waterConnection') : 
                          activeTab === 'sewage_connections' ? t('trash.sewageConnection') : 

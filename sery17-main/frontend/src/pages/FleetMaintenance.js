@@ -17,6 +17,7 @@ function FleetMaintenance({ user, onLogout }) {
   const isRtl = i18n.dir() === 'rtl';
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCarModal, setShowCarModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -158,6 +159,8 @@ function FleetMaintenance({ user, onLogout }) {
 
   const handleSaveCar = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (editingCar) {
         await axios.put(`${API}/fleet-cars/${editingCar.id}`, carForm);
@@ -171,6 +174,7 @@ function FleetMaintenance({ user, onLogout }) {
       setEditingCar(null);
       resetCarForm();
     } catch { toast.error(t('fleetPage.toast.saveCarError')); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleDeleteCar = async (id) => {
@@ -213,6 +217,8 @@ function FleetMaintenance({ user, onLogout }) {
 
   const handleSaveMaintenance = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       let recordId;
       if (editingRecord) {
@@ -245,6 +251,7 @@ function FleetMaintenance({ user, onLogout }) {
       setPendingImages([]);
       setMaintenanceForm({ maintenance_type: '', description: '', cost: '', workshop: '', date: '', notes: '' });
     } catch { toast.error(t('fleetPage.toast.saveMaintenanceError')); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleDeleteMaintenance = async (id) => {
@@ -697,7 +704,7 @@ function FleetMaintenance({ user, onLogout }) {
                 </div>
                 <div><label className="block text-sm font-medium mb-1">{t('fleetPage.notesLabel')}</label><textarea value={carForm.notes} onChange={e => setCarForm({...carForm, notes: e.target.value})} className="w-full px-3 py-2 border rounded-lg" rows="2" /></div>
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium">{t('fleetPage.save')}</button>
+                  <button type="submit" disabled={isSubmitting} className={`flex-1 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : t('fleetPage.save')}</button>
                   <button type="button" onClick={() => setShowCarModal(false)} className="flex-1 py-2.5 bg-gray-100 rounded-lg hover:bg-gray-200">{t('fleetPage.cancel')}</button>
                 </div>
               </form>
@@ -793,8 +800,8 @@ function FleetMaintenance({ user, onLogout }) {
                 </div>
                 
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-                    {t('fleetPage.save')} {pendingImages.length > 0 ? `(${pendingImages.length})` : ''}
+                  <button type="submit" disabled={isSubmitting} className={`flex-1 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : <>{t('fleetPage.save')} {pendingImages.length > 0 ? `(${pendingImages.length})` : ''}</>}
                   </button>
                   <button type="button" onClick={() => { setShowMaintenanceModal(false); setPendingImages([]); }} className="flex-1 py-2.5 bg-gray-100 rounded-lg hover:bg-gray-200">{t('fleetPage.cancel')}</button>
                 </div>

@@ -1,0 +1,26 @@
+﻿1. ┘à┘ ┘ç┘ê ╪╡╪د╪ص╪ذ ╪د┘╪ذ┘╪د╪║...
+  ╪د┘╪ذ┘╪د╪║ ┘à┘: ╪ث / ╪╣┘à╪▒┘ê ╪ز┘ê┘┘è┘é | role: user | can_create_subusers: False
+
+2. ┘é┘è┘ê╪» ╪د┘┘à╪│╪ز╪«╪»┘à ╪╣╪ذ╪» ╪د┘╪ص┘┘è╪╕ ┘à┘ /auth/me...
+  id: e1e4e8d5-181e-46bb-8703-26227df25807
+  username: Eng Abdul Hafeez
+  projects: ['┘à╪┤╪▒┘ê╪╣ ╪د┘╪ز╪┤┘ê╪ر ╪د┘╪ذ╪╡╪▒┘è', '┘à╪┤╪▒┘ê╪╣ ╪د┘┘à╪ص╪د┘╪╕╪د╪ز ╪د┘╪║╪▒╪ذ┘è╪ر', '┘à╪┤╪▒┘ê╪╣ ┘â╪┤┘ ╪د┘╪ز╪│╪▒╪ذ╪د╪ز ┘ê╪ح╪╡┘╪د╪ص┘ç╪د']
+  governorates: ['╪د┘╪»┘ê╪د╪»┘à┘è', '╪│╪د╪ش╪▒', '╪د┘┘à╪▓╪د╪ص┘à┘è╪ر', '╪┤┘é╪▒╪د╪ة', '╪د┘┘é╪╡╪ذ', '╪╣┘┘è┘', '┘à╪▒╪د╪ز', '╪╢╪▒┘à╪د╪ة', '╪د┘┘é┘ê┘è╪╣┘è╪ر']
+  can_create_subusers: False
+  permissions: []
+  project_permissions: {'┘à╪┤╪▒┘ê╪╣ ╪د┘╪ز╪┤┘ê╪ر ╪د┘╪ذ╪╡╪▒┘è': ['dashboard', 'invoices', 'employee_requests', 'team', 'settings', 'trash', 'quality_reports', 'quality_reports_delete', 'quality_reports_edit', 'projects', 'reports_view', 'business_reports_edit', 'business_reports_delete'], '┘à╪┤╪▒┘ê╪╣ ╪د┘┘à╪ص╪د┘╪╕╪د╪ز ╪د┘╪║╪▒╪ذ┘è╪ر': ['dashboard', 'team', 'invoices', 'employee_requests', 'quality_reports', 'settings', 'trash', 'quality_reports_edit', 'quality_reports_delete', 'reports_view', 'projects'], '┘à╪┤╪▒┘ê╪╣ ┘â╪┤┘ ╪د┘╪ز╪│╪▒╪ذ╪د╪ز ┘ê╪ح╪╡┘╪د╪ص┘ç╪د': ['dashboard', 'team', 'invoices', 'employee_requests', 'settings', 'trash', 'quality_reports', 'quality_reports_edit', 'quality_reports_delete', 'reports_view', 'projects']}
+
+3. ┘é╪د╪خ┘à╪ر ╪د┘╪ذ┘╪د╪║╪د╪ز 24h ┘╪╣╪ذ╪» ╪د┘╪ص┘┘è╪╕ (╪ذ╪»┘ê┘ ┘┘╪ز╪▒)...
+  Status: 200
+  ╪╣╪»╪» ╪د┘╪ذ┘╪د╪║╪د╪ز: 1
+    - CCB-95362525 | gov: ╪╣┘┘è┘ | created_by: de8f29f5-8b4c-4ca9-b1ac-62fd2a3de438
+
+4. ┘é╪د╪خ┘à╪ر 24h ┘à╪╣ base_date=2026-06-04...
+  Status: 200
+  ╪╣╪»╪» ╪د┘╪ذ┘╪د╪║╪د╪ز: 1
+    - CCB-95362525 | gov: ╪╣┘┘è┘ | created_by: de8f29f5-8b4c-4ca9-b1ac-62fd2a3de438
+
+5. governorate-72h-counts ┘╪╣╪ذ╪» ╪د┘╪ص┘┘è╪╕...
+  Status: 200, Data: [{'governorate': '╪╣┘┘è┘', 'project': '┘à╪┤╪▒┘ê╪╣ ╪د┘┘à╪ص╪د┘╪╕╪د╪ز ╪د┘╪║╪▒╪ذ┘è╪ر', 'count': 1}]
+
+╪د┘╪ز┘ç┘ë

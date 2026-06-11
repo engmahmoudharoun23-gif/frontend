@@ -1,20 +1,37 @@
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
+import json
 
-async def check():
-    client = AsyncIOMotorClient('mongodb://localhost:27017')
-    db = client['wfm_reports']
+async def main():
+    client = AsyncIOMotorClient("mongodb+srv://omergehad345_db_user:Test123456789@cluster0.op68vs9.mongodb.net/?appName=Cluster0")
+    db = client["wfm_reports"]
     
-    p1 = "مشروع المحافظات الغربية -القطاع الأوسط"
-    p2 = "مشروع كشف التسربات وإصلاحها"
+    # Distinct governorates for western gov project
+    govs = await db.reports.distinct("governorate", {
+        "project": {"$regex": "محافظات.*غربي", "$options": "i"},
+        "is_deleted": {"$ne": True}
+    })
+    print("Governorates in Western Gov project:")
+    for g in govs:
+        print(f"  - {g}")
     
-    govs1 = await db.reports.distinct('governorate', {"project": p1})
-    govs2 = await db.reports.distinct('governorate', {"project": p2})
+    # Count per governorate
+    pipeline = [
+        {"$match": {"project": {"$regex": "محافظات.*غربي", "$options": "i"}, "is_deleted": {"$ne": True}}},
+        {"$group": {"_id": "$governorate", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    results = await db.reports.aggregate(pipeline).to_list(100)
+    print("\nCounts per governorate:")
+    for r in results:
+        print(f"  {r['_id']}: {r['count']}")
     
-    print(f"Govs Project 1: {govs1}")
-    print(f"Govs Project 2: {govs2}")
-    
-    client.close()
+    # Count reports in الدوادمي specifically
+    count_dawadmi = await db.reports.count_documents({
+        "project": {"$regex": "محافظات.*غربي", "$options": "i"},
+        "is_deleted": {"$ne": True},
+        "governorate": {"$regex": "دوادمي", "$options": "i"}
+    })
+    print(f"\nDawadmi reports in Western Gov: {count_dawadmi}")
 
-if __name__ == "__main__":
-    asyncio.run(check())
+asyncio.run(main())
