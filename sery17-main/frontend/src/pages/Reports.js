@@ -2952,9 +2952,9 @@ const fetchReports = async () => {
                             <span className={`px-2 py-0.5 text-[14px] font-black rounded-full border shadow-sm ${colorClass}`}>
                               {statusText}
                             </span>
-                            {report.wfm_closed && report.wfm_closed_by && (
-                              <span className="text-[11px] font-black text-green-700 opacity-80 mt-0.5 block text-center" title={translateBrandingText(report.wfm_closed_by, isRtl)}>
-                                {translateBrandingText(report.wfm_closed_by, isRtl)}
+                            {report.wfm_closed && (
+                              <span className="text-[11px] font-black text-green-700 opacity-80 mt-0.5 block text-center" title={translateBrandingText('م/ مدحت حسين', isRtl)}>
+                                {translateBrandingText('م/ مدحت حسين', isRtl)}
                               </span>
                             )}
                           </div>
