@@ -1400,7 +1400,9 @@ const fetchReports = async () => {
           ? { 
               ...report, 
               review_status: response.data.review_status,
-              reviewed_by_name: response.data.reviewed_by_name
+              reviewed_by_name: response.data.reviewed_by_name,
+              wfm_closed: response.data.wfm_closed,
+              wfm_closed_by: response.data.wfm_closed_by
             }
           : report
       ));
