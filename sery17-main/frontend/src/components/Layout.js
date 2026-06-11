@@ -1945,29 +1945,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
 
-              {/* تصاريح العمل */}
-              {hasPermission('work_permits') && (
-                <Link to="/work-permits" onClick={(e) => handleLinkClick(e, "/work-permits")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/work-permits') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FileText className="w-4 h-4 text-blue-500 ml-2" />
-                      {i18n.language === 'ar' ? 'تصاريح العمل' : 'Work Permits'}
-                    </div>
-                  </div>
-                </Link>
-              )}
-
-              {/* المخالفات */}
-              {hasPermission('violations') && (
-                <Link to="/violations" onClick={(e) => handleLinkClick(e, "/violations")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/violations') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <AlertTriangle className="w-4 h-4 text-red-500 ml-2" />
-                      {i18n.language === 'ar' ? 'المخالفات الميدانية' : 'Field Violations'}
-                    </div>
-                  </div>
-                </Link>
-              )}
 
               {/* تقارير الجودة */}
               {hasPermission('quality_reports') && (
