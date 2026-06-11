@@ -48,6 +48,11 @@ function WorkPermits({ user, onLogout }) {
   const [consultantReply, setConsultantReply] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [notePopupAction, setNotePopupAction] = useState('save_only');
+  const isLevel3 = user?.role !== 'admin' && !user?.can_create_subusers;
+  const showRedDot = (r) => {
+    if (isLevel3) return r.consultant_note && !r.report_note_processed;
+    return r.consultant_reply && !r.consultant_note_processed;
+  };
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [imagePreview, setImagePreview] = useState('');
@@ -88,6 +93,14 @@ function WorkPermits({ user, onLogout }) {
     setActiveNotesReportId(report.id);
     setConsultantNote(report.consultant_note || '');
     setConsultantReply(report.consultant_reply || '');
+
+    if (isLevel3 && report.consultant_note && !report.report_note_processed) {
+      axios.put(`${API}/work-permits/${report.id}`, { report_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      setReports(prev => prev.map(rep => rep.id === report.id ? { ...rep, report_note_processed: true } : rep));
+    } else if (!isLevel3 && report.consultant_reply && !report.consultant_note_processed) {
+      axios.put(`${API}/work-permits/${report.id}`, { consultant_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      setReports(prev => prev.map(rep => rep.id === report.id ? { ...rep, consultant_note_processed: true } : rep));
+    }
   };
 
   const handleSaveNote = async () => {
@@ -101,19 +114,19 @@ function WorkPermits({ user, onLogout }) {
       isProcessed = true;
     }
 
+    const updatePayload = { consultant_note: consultantNote, consultant_reply: consultantReply };
+    if (!isLevel3) updatePayload.report_note_processed = isProcessed;
+    else updatePayload.consultant_note_processed = isProcessed;
+
     try {
-      setReports(prev => prev.map(rep => rep.id === activeNotesReportId ? { ...rep, consultant_note: consultantNote, consultant_reply: consultantReply, report_note_processed: isProcessed } : rep));
+      setReports(prev => prev.map(rep => rep.id === activeNotesReportId ? { ...rep, ...updatePayload } : rep));
       toast.success(isRtl ? 'تم حفظ الملاحظة بنجاح' : 'Note saved successfully');
       
       if (notePopupAction === 'save_and_close') {
         setActiveNotesReportId(null);
       }
 
-      await axios.put(`${API}/work-permits/${activeNotesReportId}`, { 
-        consultant_note: consultantNote,
-        consultant_reply: consultantReply,
-        report_note_processed: isProcessed
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${API}/work-permits/${activeNotesReportId}`, updatePayload, { headers: { Authorization: `Bearer ${token}` } });
       
       fetchReports();
     } catch (err) {
@@ -743,7 +756,7 @@ function WorkPermits({ user, onLogout }) {
                                       className="w-full text-right px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer relative"
                                     >
                                       <FileText className="w-4 h-4 text-amber-600" /> {isRtl ? 'اضافة ملاحظة للتقرير' : 'Add Note to Report'}
-                                      {r.consultant_note && !r.report_note_processed && (
+                                      {showRedDot(r) && (
                                         <span className="absolute left-2 top-2 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                                       )}
                                     </DropdownMenuItem>

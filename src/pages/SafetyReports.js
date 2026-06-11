@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import imageCompression from 'browser-image-compression';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
-import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle, AlertTriangle, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ViolationsModal from '../components/ViolationsModal';
 import { useTranslation } from 'react-i18next';
@@ -51,9 +51,14 @@ function SafetyReports({ user, onLogout }) {
   const isLevel1 = user?.role === 'admin';
   const isLevel2 = user?.role !== 'admin' && user?.can_create_subusers;
   const isLevel3 = user?.role !== 'admin' && !user?.can_create_subusers;
+  const showRedDot = (r) => {
+    if (isLevel3) return r.consultant_note && !r.report_note_processed;
+    return r.consultant_reply && !r.consultant_note_processed;
+  };
   const canRaiseNote = isLevel1 || isLevel2;
 
   const [loading, setLoading] = useState(false);
+  const [badgesData, setBadgesData] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -178,15 +183,25 @@ function SafetyReports({ user, onLogout }) {
   }
 
   const fetchReports = useCallback(async () => {
-    // setLoading(true);
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/safety-reports`, { headers: { Authorization: `Bearer ${token}` } });
       setReports(res.data || []);
+      
+      try {
+        const bRes = await axios.get(`${API}/dashboard/badges?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
+        setBadgesData(bRes.data || {});
+      } catch (e) {}
+      
       try { localStorage.setItem('cache_SafetyReports.js_reports', JSON.stringify(res.data || [])); } catch(e) {}
-    } catch { toast.error(t('safetyReports.downloadError')); }
-    finally { setLoading(false); }
-  }, [t]);
+    } catch (err) {
+      console.error('Failed to fetch safety reports:', err);
+      toast.error(isRtl ? 'حدث خطأ أثناء تحميل التقارير' : 'Failed to load reports');
+    } finally {
+      setLoading(false);
+    }
+  }, [isRtl]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
@@ -589,15 +604,25 @@ function SafetyReports({ user, onLogout }) {
               <Plus className="w-5 h-5" /> {t('safetyReports.addNew')}
             </button>
             {hasPermission('work_permits') && (
-              <Link to="/work-permits" className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all">
+              <Link to="/work-permits" className="relative flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all">
                 <FileText className="w-5 h-5" /> {t('workPermits.title', { defaultValue: 'تصاريح العمل' })}
+                {((badgesData?.work_permits || 0) > 0 || (badgesData?.work_permits_notes || 0) > 0) && (
+                  <div className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 animate-pulse border-2 border-white shadow-sm flex items-center justify-center">
+                    <Bell className="w-3.5 h-3.5" />
+                  </div>
+                )}
               </Link>
             )}
             <button
               onClick={() => setShowViolations(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium shadow-md transition-all"
+              className="relative flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium shadow-md transition-all"
             >
               <AlertTriangle className="w-5 h-5" /> {isRtl ? 'مخالفات السلامة' : 'Safety Violations'}
+              {((badgesData?.violations || 0) > 0 || (badgesData?.violations_notes || 0) > 0) && (
+                  <div className="absolute -top-3 -right-3 bg-slate-800 text-white rounded-full p-1 animate-pulse border-2 border-white shadow-sm flex items-center justify-center">
+                    <Bell className="w-3.5 h-3.5" />
+                  </div>
+              )}
             </button>
           </div>
         </div>
@@ -737,7 +762,7 @@ function SafetyReports({ user, onLogout }) {
                                   className="p-2 rounded-xl transition-all focus:outline-none hover:bg-gray-100 text-gray-500 hover:text-gray-700 relative"
                                   title={t('safetyReports.actions')}
                                 >
-                                  {r.consultant_note && !r.report_note_processed && (
+                                  {showRedDot(r) && (
                                     <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
@@ -756,11 +781,22 @@ function SafetyReports({ user, onLogout }) {
                                   </DropdownMenuItem>
                                   {(canRaiseNote || (isLevel3 && r.consultant_note)) && (
                                     <DropdownMenuItem
-                                      onClick={() => { setActiveNoteReport(r); setNoteInput(r.consultant_note || ''); setReplyInput(r.consultant_reply || ''); }}
+                                      onClick={() => { 
+                                        setActiveNoteReport(r); 
+                                        setNoteInput(r.consultant_note || ''); 
+                                        setReplyInput(r.consultant_reply || ''); 
+                                        if (isLevel3 && r.consultant_note && !r.report_note_processed) {
+                                          axios.put(`${API}/safety-reports/${r.id}`, { report_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                                          setReports(prev => prev.map(rep => rep.id === r.id ? { ...rep, report_note_processed: true } : rep));
+                                        } else if (!isLevel3 && r.consultant_reply && !r.consultant_note_processed) {
+                                          axios.put(`${API}/safety-reports/${r.id}`, { consultant_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                                          setReports(prev => prev.map(rep => rep.id === r.id ? { ...rep, consultant_note_processed: true } : rep));
+                                        }
+                                      }}
                                       className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-amber-50 hover:text-amber-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                     >
                                       <FileText className="w-4 h-4 text-amber-600" /> {t('safetyReports.notesTitle')}
-                                      {r.consultant_note && !r.report_note_processed && (
+                                      {showRedDot(r) && (
                                         <span className="mx-2 flex h-2 w-2 relative">
                                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                           <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -1042,9 +1078,12 @@ function SafetyReports({ user, onLogout }) {
                     try {
                       const token = localStorage.getItem('token');
                       toast.success(isRtl ? 'تم حفظ وإرسال الملاحظة والرد' : 'Note and reply saved and sent');
-                      setReports(prev => prev.map(rep => rep.id === activeNoteReport.id ? { ...rep, consultant_note: noteInput, consultant_reply: replyInput, report_note_processed: false } : rep));
+                      const updatePayload = { consultant_note: noteInput, consultant_reply: replyInput };
+                      if (!isLevel3) updatePayload.report_note_processed = false;
+                      else updatePayload.consultant_note_processed = false;
+                      setReports(prev => prev.map(rep => rep.id === activeNoteReport.id ? { ...rep, ...updatePayload } : rep));
                       setActiveNoteReport(null);
-                      await axios.put(`${API}/safety-reports/${activeNoteReport.id}`, { consultant_note: noteInput, consultant_reply: replyInput, report_note_processed: false }, { headers: { Authorization: `Bearer ${token}` } });
+                      await axios.put(`${API}/safety-reports/${activeNoteReport.id}`, updatePayload, { headers: { Authorization: `Bearer ${token}` } });
                       fetchReports();
                     } catch (e) {
                       toast.error(isRtl ? 'حدث خطأ' : 'Error');

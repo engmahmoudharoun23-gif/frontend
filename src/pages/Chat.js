@@ -733,12 +733,14 @@ const Chat = ({ user, onLogout }) => {
 
   const formatTime = (dateString) => {
     if (!dateString) return '';
-    return format(new Date(dateString), 'hh:mm a', { locale });
+    const safeDate = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    return format(new Date(safeDate), 'hh:mm a', { locale });
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    return format(new Date(dateString), 'dd MMMM yyyy', { locale });
+    const safeDate = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    return format(new Date(safeDate), 'dd MMMM yyyy', { locale });
   };
 
   return (
@@ -802,7 +804,11 @@ const Chat = ({ user, onLogout }) => {
               contacts.map(contact => (
                 <button
                   key={contact.id}
-                  onClick={() => setSelectedContact(contact)}
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, unread_count: 0 } : c));
+                    window.dispatchEvent(new Event('updateBadges'));
+                  }}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl mb-1 transition-all text-right
                     ${selectedContact?.id === contact.id
                       ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 shadow-sm'

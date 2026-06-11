@@ -186,7 +186,8 @@
     "م / أمين مختار": "Eng. Ameen Mokhtar",
     "م/امين مختار": "Eng. Ameen Mokhtar",
     "م/أمين مختار": "Eng. Ameen Mokhtar",
-    "بيت الخبرة للاستشارات": "Bayt Al-Khibra for Consultations"
+    "بيت الخبرة للاستشارات": "Bayt Al-Khibra for Consultations",
+    "notSpecified": "Not Specified"
   },
   "header": {
     "title": "WFM Reports Management System",
@@ -273,7 +274,8 @@
       "attachment": "Attachment",
       "downloadImage": "Download Image",
       "enlargedImage": "Enlarged Image",
-      "download": "Download"
+      "download": "Download",
+      "downloadPdf": "Download Media PDF"
     },
     "notesModal": {
       "title": "Notes",
@@ -402,7 +404,17 @@
     "exportSelectedCount": "Export {{count}} selected report(s)",
     "exportMatching": "Export all matching reports",
     "selectAllSuccess": "✅ Successfully selected all reports ({{count}} report(s))!\n\nWhen exporting, all reports will be exported according to the current filters.",
-    "page": "Page"
+    "page": "Page",
+    "pdf": {
+      "mediaReportDetails": "Media Report Details",
+      "preparing": "Preparing PDF file... Please wait",
+      "exportSuccess": "Exported to PDF successfully",
+      "exportError": "An error occurred while generating the PDF",
+      "systemEngineerLabel": "System Engineer & Data Analyst",
+      "systemEngineerName": "Eng. Mahmoud Mohamed Haroun"
+    },
+    "noLicense": "No License",
+    "notClosed": "Not Closed"
   },
   "dashboard": {
     "title": "Dashboard and Data Analysis",
@@ -1271,7 +1283,19 @@
     "addStatusSuccess": "Status added successfully",
     "confirmDeleteImage": "Are you sure you want to delete this image?",
     "deleteImageError": "An error occurred while deleting the image",
-    "duplicateNumber": "This number already exists"
+    "duplicateNumber": "This number already exists",
+    "addLocation": "Add Location (Latitude and Longitude)",
+    "locationPastingTip": "You can enter coordinates manually, use the location button, or",
+    "locationPastingTipBold": "copy a Google Maps link and paste it into any box",
+    "locationPastingTipEnd": "to automatically extract coordinates.",
+    "locationExtractedSuccess": "Coordinates extracted successfully!",
+    "autoDetect": "Auto Detect",
+    "cm": "in cm",
+    "mm": "in mm",
+    "updateSuccess": "Report successfully updated!",
+    "addSuccess": "Report successfully added!",
+    "reviewerInfo": "The report is being reviewed by the designated technical team and reviewer Eng. {{name}}",
+    "uploadingBg": "Uploading {{count}} images in background..."
   },
   "contractorsPage": {
     "title": "Contractors",
@@ -2081,5 +2105,15 @@
     "imagesAdded": "Images added successfully",
     "close": "Close",
     "loading": "Loading..."
+  },
+  "reportTypes": {
+    "أسفلت": "Asphalt",
+    "انترلوك": "Interlock",
+    "ترابي": "Dirt",
+    "صبة خرسانية": "Concrete"
+  },
+  "projects": {
+    "مشروع المحافظات الغربية - مرات": "Western Governorates Project - Marat",
+    "مشروع المحافظات الغربية - القطاع الأوسط": "Western Governorates Project - Central Sector"
   }
 }
