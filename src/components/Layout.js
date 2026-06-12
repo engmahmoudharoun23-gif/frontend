@@ -1782,13 +1782,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
 
       {/* Global Announcement Banner */}
       {(showDynamicAnnouncement !== null ? showDynamicAnnouncement : branding.show_announcement) && (dynamicAnnouncement ? dynamicAnnouncement : branding.global_announcement) && (
-        <div className={`w-full z-40 relative border-b-2 overflow-hidden ${branding.flash_announcement !== false ? 'border-[#b71c1c]' : 'border-red-700 bg-red-600'}`}
-             style={branding.flash_announcement !== false ? { animation: 'flashWarning 1s infinite' } : {}}>
+        <div className="w-full z-40 relative border-b-2 border-[#b71c1c] bg-[#e53935] overflow-hidden">
           <style>{`
-            @keyframes flashWarning { 
-              0%, 49% { background-color: #e53935; box-shadow: inset 0 0 15px rgba(0,0,0,0.15); } 
-              50%, 100% { background-color: #7f0000; box-shadow: inset 0 0 25px rgba(0,0,0,0.4); } 
-            }
             @keyframes smoothScrollRtl {
               0% { transform: translate3d(-100%, 0, 0); }
               100% { transform: translate3d(100vw, 0, 0); }
