@@ -532,16 +532,20 @@ function Reports({ user, onLogout }) {
         my_reports: false,
         created_by: searchParams.get('created_by') || '',
         exact: false,
-        date_from: '',
-        date_to: '',
-        start_date_from: '',
-        start_date_to: ''
+        date_from: searchParams.get('date_from') || '',
+        date_to: searchParams.get('date_to') || '',
+        start_date_from: searchParams.get('start_date_from') || '',
+        start_date_to: searchParams.get('start_date_to') || ''
       } : {
         ...filters,
         governorate: governorateFromUrl || filters.governorate,
         license_status: newLicenseStatus || filters.license_status,
         project: projectFromUrl || filters.project,
-        created_by: searchParams.get('created_by') || filters.created_by
+        created_by: searchParams.get('created_by') || filters.created_by,
+        date_from: searchParams.get('date_from') || filters.date_from,
+        date_to: searchParams.get('date_to') || filters.date_to,
+        start_date_from: searchParams.get('start_date_from') || filters.start_date_from,
+        start_date_to: searchParams.get('start_date_to') || filters.start_date_to
       };
       
       setFilters(newFilters);
@@ -553,16 +557,20 @@ function Reports({ user, onLogout }) {
         report_type: '',
         status: '',
         license_status: newLicenseStatus || '',
-        date_from: '',
-        date_to: '',
-        start_date_from: '',
-        start_date_to: '',
+        date_from: searchParams.get('date_from') || '',
+        date_to: searchParams.get('date_to') || '',
+        start_date_from: searchParams.get('start_date_from') || '',
+        start_date_to: searchParams.get('start_date_to') || '',
         created_by: ''
       } : { 
         ...prev, 
         project: projectFromUrl || prev.project, 
         governorate: governorateFromUrl || prev.governorate,
-        license_status: newLicenseStatus || prev.license_status
+        license_status: newLicenseStatus || prev.license_status,
+        date_from: searchParams.get('date_from') || prev.date_from,
+        date_to: searchParams.get('date_to') || prev.date_to,
+        start_date_from: searchParams.get('start_date_from') || prev.start_date_from,
+        start_date_to: searchParams.get('start_date_to') || prev.start_date_to
       });
       
       if (projectChanged) {
@@ -1175,24 +1183,18 @@ const fetchReports = async () => {
       newExportFilters.start_date_from = '';
       newExportFilters.start_date_to = '';
     }
+    
     setExportFilters(newExportFilters);
     
-    // 2. تحديث الفلاتر الرئيسية
-    const newFilters = {...filters, [field]: value};
-    if (field === 'project') {
-      newFilters.governorate = '';
-      newFilters.date_from = '';
-      newFilters.date_to = '';
-      newFilters.start_date_from = '';
-      newFilters.start_date_to = '';
-    }
+    // 2. تحديث الفلاتر الرئيسية بنفس القيم
+    const newFilters = {...filters, ...newExportFilters};
     setFilters(newFilters);
     
     // 3. إعادة تعيين عدد التصدير
     setExportCount(null);
     
-    // 4. تحديث الصفحة
-    handlePageChange(1);
+    // 4. تحديث الصفحة دون تعديل الـ URL لتجنب التداخل مع useEffect
+    setCurrentPage(1);
     
     // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً"
     setLoading(true);
@@ -1352,20 +1354,36 @@ const fetchReports = async () => {
       newFilters.start_date_from = '';
       newFilters.start_date_to = '';
     }
+
+    if (field === 'date_from') {
+      newFilters.date_to = value;
+    }
+    if (field === 'start_date_from') {
+      newFilters.start_date_to = value;
+    }
+    
     setFilters(newFilters);
     
     // Also update export filters so they stay in sync
-    const newExportFilters = {...exportFilters, [field]: value};
-    if (field === 'project') {
-      newExportFilters.governorate = '';
-      newExportFilters.date_from = '';
-      newExportFilters.date_to = '';
-      newExportFilters.start_date_from = '';
-      newExportFilters.start_date_to = '';
-    }
+    const newExportFilters = {...exportFilters, ...newFilters};
     setExportFilters(newExportFilters);
     
-    handlePageChange(1);
+    // تحديث الرابط مباشرة بكل الفلاتر الجديدة حتى يلتقطها useEffect بشكل صحيح
+    const newParams = new URLSearchParams(searchParams);
+    
+    // وضع الفلاتر في الرابط
+    Object.keys(newFilters).forEach(key => {
+      // نتجاهل الحقول التي لا نريد إرسالها للرابط إذا لزم الأمر
+      if (newFilters[key] !== '' && newFilters[key] !== null && newFilters[key] !== undefined) {
+        newParams.set(key, newFilters[key]);
+      } else {
+        newParams.delete(key);
+      }
+    });
+    
+    newParams.set('page', 1);
+    setSearchParams(newParams);
+    setCurrentPage(1);
   };
   
   // تحديد/إلغاء تحديد بلاغ
@@ -1526,23 +1544,46 @@ const fetchReports = async () => {
 
   const handleExport = async (format) => {
     try {
+      if (exportCount === 0 && selectedReports.length === 0) {
+        toast.warning(t('reports.pleaseSelectReportsToExport', {defaultValue: 'يرجى تحديد العدد او البلاغ للتصدير'}));
+        return;
+      }
       toast.info(t('reports.exportPreparing', {defaultValue: 'جاري تجهيز ملف التصدير...'}), { autoClose: 2500 });
       
       const params = new URLSearchParams();
       
-      // إضافة جميع فلاتر التصدير
+      // إضافة جميع فلاتر التصدير مع الاعتماد على الفلاتر الرئيسية كبديل
       const projectToUse = exportFilters.project || filters.project;
       if (projectToUse) params.append('project', projectToUse);
-      if (exportFilters.governorate) params.append('governorate', exportFilters.governorate);
-      if (exportFilters.contractor) params.append('contractor', exportFilters.contractor);
-      if (exportFilters.report_type) params.append('report_type', exportFilters.report_type);
-      if (exportFilters.license_status) params.append('license_status', exportFilters.license_status);
-      if (exportFilters.date_from) params.append('date_from', exportFilters.date_from);
-      if (exportFilters.date_to) params.append('date_to', exportFilters.date_to);
-      if (exportFilters.start_date_from) params.append('start_date_from', exportFilters.start_date_from);
-      if (exportFilters.start_date_to) params.append('start_date_to', exportFilters.start_date_to);
-      if (exportFilters.created_by) params.append('created_by', exportFilters.created_by);
-        params.append('lang', i18n.language || 'ar');
+      
+      const govToUse = exportFilters.governorate || filters.governorate;
+      if (govToUse) params.append('governorate', govToUse);
+      
+      const contractorToUse = exportFilters.contractor || filters.contractor;
+      if (contractorToUse) params.append('contractor', contractorToUse);
+      
+      const typeToUse = exportFilters.report_type || filters.report_type;
+      if (typeToUse) params.append('report_type', typeToUse);
+      
+      const licenseStatusToUse = exportFilters.license_status || filters.license_status;
+      if (licenseStatusToUse) params.append('license_status', licenseStatusToUse);
+      
+      const dateFromToUse = exportFilters.date_from || filters.date_from || filters.date;
+      if (dateFromToUse) params.append('date_from', dateFromToUse);
+      
+      const dateToToUse = exportFilters.date_to || filters.date_to || filters.date;
+      if (dateToToUse) params.append('date_to', dateToToUse);
+      
+      const startDateFromToUse = exportFilters.start_date_from || filters.start_date_from || filters.start_date;
+      if (startDateFromToUse) params.append('start_date_from', startDateFromToUse);
+      
+      const startDateToToUse = exportFilters.start_date_to || filters.start_date_to || filters.start_date;
+      if (startDateToToUse) params.append('start_date_to', startDateToToUse);
+      
+      const createdByToUse = exportFilters.created_by || filters.created_by;
+      if (createdByToUse) params.append('created_by', createdByToUse);
+      
+      params.append('lang', i18n.language || 'ar');
       
       const response = await axios.get(`${API}/reports/export/${format}?${params}`, { 
         responseType: 'blob',
