@@ -1846,9 +1846,9 @@ const fetchReports = async () => {
               </tr>
               <tr>
                 <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.receiveDate', {defaultValue: 'تاريخ الاستلام'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.received_date || selectedReportForMedia.created_at ? new Date(selectedReportForMedia.received_date || selectedReportForMedia.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : notSpecified}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.received_date || selectedReportForMedia.created_at ? new Date(selectedReportForMedia.received_date || selectedReportForMedia.created_at).toLocaleDateString('en-GB') : notSpecified}</td>
                 <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.startDate', {defaultValue: 'تاريخ المباشرة'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.start_date ? new Date(selectedReportForMedia.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : notSpecified}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.start_date ? new Date(selectedReportForMedia.start_date).toLocaleDateString('en-GB') : notSpecified}</td>
               </tr>
               <tr>
                 <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.createdBy', {defaultValue: 'اسم المراقب'})}</td>
@@ -1870,7 +1870,7 @@ const fetchReports = async () => {
               </tr>
               <tr>
                 <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.closeDate', {defaultValue: 'تاريخ الإغلاق'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.closed_at ? new Date(selectedReportForMedia.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : (selectedReportForMedia.wfm_closed_at ? new Date(selectedReportForMedia.wfm_closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : t('reports.notClosed', {defaultValue: 'غير مغلق'}))}</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.closed_at ? new Date(selectedReportForMedia.closed_at).toLocaleDateString('en-GB') : (selectedReportForMedia.wfm_closed_at ? new Date(selectedReportForMedia.wfm_closed_at).toLocaleDateString('en-GB') : t('reports.notClosed', {defaultValue: 'غير مغلق'}))}</td>
                 <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.reportType', {defaultValue: 'نوع البلاغ'})}</td>
                 <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${t('reportTypes.' + (selectedReportForMedia.report_type || 'Unknown'), {defaultValue: translateBrandingText(selectedReportForMedia.report_type || notSpecified, isRtl)})}</td>
               </tr>

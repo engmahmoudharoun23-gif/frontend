@@ -1715,19 +1715,19 @@ function NewDashboard({ user, onLogout }) {
                                 </span>
                               </td>
                               <td className="px-2 py-1 text-gray-600">
-                                {new Date(item.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
+                                {new Date(item.created_at).toLocaleDateString('en-GB')}
                               </td>
                               <td className="px-2 py-1 text-gray-600 font-bold">
                                 {selectedCategory72h === 'reports' ? 
-                                  (item.start_date ? new Date(item.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB') : '-') : 
-                                  (item.created_at ? new Date(item.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB') : '-')}
+                                  (item.start_date ? new Date(item.start_date).toLocaleDateString('en-GB') : '-') : 
+                                  (item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : '-')}
                               </td>
                               <td className="px-2 py-1 text-center text-gray-700 font-semibold">
                                 {translatedType}
                               </td>
                               {selectedCategory72h === 'reports' && (
                                 <td className="px-2 py-1 text-center text-gray-600 font-bold">
-                                  {item.closed_at ? new Date(item.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB') : '-'}
+                                  {item.closed_at ? new Date(item.closed_at).toLocaleDateString('en-GB') : '-'}
                                 </td>
                               )}
                               <td className="px-2 py-1 text-center">
