@@ -1461,6 +1461,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                             markReportAsSeen(report.id, report);
                                             setReportNotificationsOpen(false);
                                             navigate(`/reports?search=${report.report_number}&exact=true&t=${Date.now()}`);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
                                           }}
                                         >
                                           <p className="font-bold text-gray-900 text-sm flex items-center gap-2">
@@ -1518,6 +1520,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                             } catch(e){}
                                             setReportNotificationsOpen(false);
                                             navigate(`/water-connections`);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
                                           }}
                                         >
                                           <p className="font-bold text-gray-900 text-sm flex items-center gap-2">
@@ -1574,6 +1578,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                             } catch(e){}
                                             setReportNotificationsOpen(false);
                                             navigate(`/sewage-connections`);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 500);
                                           }}
                                         >
                                           <p className="font-bold text-gray-900 text-sm flex items-center gap-2">
@@ -1632,6 +1638,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                       onClick={() => {
                                         setReportNotificationsOpen(false);
                                         navigate(`/reports?search=${report.report_number}&exact=true&t=${Date.now()}`);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
                                       }}
                                     >
                                       <p className="font-medium text-gray-700 text-sm flex items-center gap-2">
