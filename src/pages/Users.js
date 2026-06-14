@@ -117,7 +117,7 @@ function Users({ user, onLogout }) {
   // قائمة الصلاحيات المرتبطة بمشروع
   const PROJECT_SCOPED = [
     'support_messages', 'trash', 'settings', 'dashboard', 'reports_view', 'reports_add', 'reports_edit', 'reports_delete',
-    'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes', 'report_notes',
+    'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes', 'report_notes', 'owner_notes',
     'water_connections', 'water_connections_import',
     'sewage_connections', 'sewage_connections_import',
     'invoices', 'review_invoices', 'review_invoices_3', 'view_all_invoices',

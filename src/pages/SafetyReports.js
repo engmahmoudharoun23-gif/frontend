@@ -266,41 +266,36 @@ function SafetyReports({ user, onLogout }) {
     try {
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
+      const token = localStorage.getItem('token');
       
       for (let file of files) {
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        if (isPdf) {
-           const reader = new FileReader();
-           let base64pdf = await new Promise(resolve => {
-             reader.onloadend = () => resolve(reader.result);
-             reader.readAsDataURL(file);
-           });
-           try {
-             const token = localStorage.getItem('token');
-             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-             if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-           } catch (e) { console.error('PDF compression failed', e); }
-           newPreviews.push(base64pdf);
-           newImages.push(base64pdf);
-        } else {
-           const compressed = await compressImage(file);
-           const result = await new Promise(resolve => {
-             const r = new FileReader();
-             r.onloadend = () => resolve(r.result);
-             r.readAsDataURL(compressed);
-           });
-           newPreviews.push(result);
-           newImages.push(result);
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await axios.post(`${API}/storage/upload`, formData, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          if (res.data && res.data.storage_path) {
+            newPreviews.push(res.data.storage_path);
+            newImages.push(res.data.storage_path);
+          }
+        } catch (uploadErr) {
+          console.error('File upload failed', uploadErr);
+          toast.error(isRtl ? 'حدث خطأ أثناء رفع أحد الملفات' : 'Error uploading a file');
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(i18n.language === 'ar' ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+      toast.success(isRtl ? 'تم إضافة الملفات بنجاح' : 'Files added successfully');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
+      toast.error(isRtl ? 'حدث خطأ غير متوقع' : 'Unexpected error');
     }
   };
   const removeImage = (idx) => {
@@ -410,32 +405,44 @@ function SafetyReports({ user, onLogout }) {
         const dataUrl = isString ? fileData : (fileData.data || fileData.url);
         
         if (dataUrl.startsWith('data:')) {
-          const link = document.createElement('a');
-          link.href = dataUrl;
-          let ext = '.jpg';
-          if (dataUrl.startsWith('data:application/pdf')) ext = '.pdf';
-          else if (dataUrl.startsWith('data:image/png')) ext = '.png';
-          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
-          link.download = name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          if (dataUrl.startsWith('data:application/pdf')) {
+            fetch(dataUrl)
+              .then(res => res.blob())
+              .then(blob => {
+                 const blobUrl = URL.createObjectURL(blob);
+                 window.open(blobUrl, '_blank');
+              });
+          } else {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            let ext = '.jpg';
+            if (dataUrl.startsWith('data:image/png')) ext = '.png';
+            const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
         } else {
+          const isPdf = dataUrl.toLowerCase().includes('.pdf');
           const fileUrlParam = encodeURIComponent(dataUrl);
-          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=${isPdf ? '0' : '1'}&auth=${encodeURIComponent(token)}`;
           
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.target = '_blank';
-          let ext = '';
-          if (dataUrl.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-          else if (dataUrl.toLowerCase().endsWith('.png')) ext = '.png';
-          else if (dataUrl.toLowerCase().endsWith('.jpg') || dataUrl.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
-          link.download = name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          if (isPdf) {
+            window.open(downloadUrl, '_blank');
+          } else {
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.target = '_blank';
+            let ext = '';
+            if (dataUrl.toLowerCase().includes('.png')) ext = '.png';
+            else if (dataUrl.toLowerCase().includes('.jpg') || dataUrl.toLowerCase().includes('.jpeg')) ext = '.jpg';
+            const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
         }
       };
 
@@ -551,12 +558,12 @@ function SafetyReports({ user, onLogout }) {
                     <input type="file" accept="image/*,application/pdf" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
                   </label>
                 </div>
-                {uploading && <p className="text-sm text-orange-600 mb-4 font-bold animate-pulse">{t('safetyReports.uploadingImage')}</p>}
+                {uploading && <p className="text-sm text-orange-600 mb-4 font-bold animate-pulse">{isRtl ? 'جاري ضغط ورفع الملفات...' : 'Compressing and uploading...'}</p>}
                 {imagePreviews.length > 0 ? (
                   <div className="mb-4 flex flex-wrap gap-4">
                     {imagePreviews.map((img, idx) => (
                       <div key={idx} className="relative inline-block">
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                        {img.startsWith('data:application/pdf') || img.toLowerCase().includes('.pdf') ? (
                           <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
                             <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
                           </div>
@@ -569,7 +576,7 @@ function SafetyReports({ user, onLogout }) {
                   </div>
                 ) : (imagePreview && (
                   <div className="mb-4 relative inline-block">
-                    {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
+                    {imagePreview.startsWith('data:application/pdf') || imagePreview.toLowerCase().includes('.pdf') ? (
                       <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
                         <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
                       </div>
@@ -1002,12 +1009,17 @@ function SafetyReports({ user, onLogout }) {
                           if (!imgStr) return null;
                           return (
                           <div key={idx}>
-                            {imgStr.startsWith('data:application/pdf') || imgStr.endsWith('.pdf') ? (
+                            {imgStr.startsWith('data:application/pdf') || imgStr.toLowerCase().includes('.pdf') ? (
                               <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
                                 <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
                               </div>
                             ) : (
-                              <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} />
+                              <>
+                                <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
+                                <div style={{ display: 'none' }} className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                                  <span className="text-xs text-gray-600 font-bold text-center">File {idx+1}</span>
+                                </div>
+                              </>
                             )}
                           </div>
                           );

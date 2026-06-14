@@ -258,7 +258,7 @@ function Reports({ user, onLogout }) {
   const hasPermission = (permKey) => {
     if (user.role === 'admin') return true;
     // صلاحيات مرتبطة بالمشروع: نستخدم per-project إذا كان المشروع محدداً
-    const PROJECT_SCOPED = ['reports_view','reports_add','reports_edit','reports_delete','reports_review','reports_import','reports_notifications','consultant_notes'];
+    const PROJECT_SCOPED = ['reports_view','reports_add','reports_edit','reports_delete','reports_review','reports_import','reports_notifications','consultant_notes','owner_notes'];
     if (PROJECT_SCOPED.includes(permKey) && currentProject) {
       const pp = user.project_permissions || {};
       const projSpecific = pp[currentProject] || [];
@@ -346,6 +346,13 @@ function Reports({ user, onLogout }) {
   const [editingBubbleText, setEditingBubbleText] = useState('');
   const [activeBubbleDropdown, setActiveBubbleDropdown] = useState(null);
   const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
+
+  // Owner Notes State
+  const [showOwnerNoteModal, setShowOwnerNoteModal] = useState(false);
+  const [currentOwnerNote, setCurrentOwnerNote] = useState('');
+  const [selectedOwnerReportId, setSelectedOwnerReportId] = useState(null);
+  const [isSavingOwnerNote, setIsSavingOwnerNote] = useState(false);
+
          // الملاحظة الحالية
   const [availableProjects, setAvailableProjects] = useState([]); // المشاريع من قاعدة البيانات
   const [reportTypes, setReportTypes] = useState([]); // أنواع البلاغات الديناميكية
@@ -905,26 +912,81 @@ function Reports({ user, onLogout }) {
   };
 
   
+
+
+  const handleSaveOwnerNote = async () => {
+    if (!currentOwnerNote.trim()) return;
+    setIsSavingOwnerNote(true);
+    try {
+      const token = localStorage.getItem('token');
+      const r = reports.find(rep => rep.id === selectedOwnerReportId);
+      if (!r) return;
+      const userName = user?.full_name || user?.username || '';
+      const prefix = `ملاحظه عن بلاغ رقم ${r.report_number || ''} من المالك ${userName}:\n`;
+      const finalNote = r.notes ? `${r.notes}\n\n${prefix}${currentOwnerNote}` : `${prefix}${currentOwnerNote}`;
+      
+      const response = await axios.put(`${API}/reports/${selectedOwnerReportId}/report-note`, 
+        { notes: finalNote },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setReports(reports.map(rep => 
+          rep.id === selectedOwnerReportId ? { ...rep, notes: finalNote } : rep
+        ));
+        toast.success(t('ownerNoteModal.saveSuccess', { defaultValue: 'تم إضافة ملاحظة المالك بنجاح' }));
+        setShowOwnerNoteModal(false);
+        setCurrentOwnerNote('');
+      }
+    } catch (error) {
+      console.error('Error saving owner note:', error);
+      toast.error(t('ownerNoteModal.saveError', { defaultValue: 'حدث خطأ أثناء حفظ ملاحظة المالك' }));
+    } finally {
+      setIsSavingOwnerNote(false);
+    }
+  };
+
   const handleSaveConsultantNote = async () => {
     if (!selectedConsultantReportId) return;
     setIsSavingConsultantNote(true);
     
     let finalNote = currentConsultantNote;
-    if (showConsultantReplyBox && consultantReplyText.trim()) {
-      finalNote = finalNote + (finalNote ? '\n\n' : '') + 'تعقيب الاستشاري:\n' + consultantReplyText;
-    }
     
     try {
+      const token = localStorage.getItem('token');
       await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note`, {
         consultant_note: finalNote
       }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
+      
+      let finalReplyStr = reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply || '';
+      let finalRepliedBy = reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_replied_by || '';
+      
+      if (showConsultantReplyBox && consultantReplyText.trim()) {
+        const authorName = user?.full_name || user?.username || t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+        const newBubble = `---رد: ---\n${consultantReplyText}`;
+        finalReplyStr = finalReplyStr ? `${finalReplyStr}\n\n${newBubble}` : newBubble;
+        finalRepliedBy = authorName;
+        
+        const replyResponse = await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note_reply`, { reply: finalReplyStr }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (replyResponse.data.success) {
+          finalReplyStr = replyResponse.data.reply;
+          finalRepliedBy = replyResponse.data.replied_by;
+        }
+      }
       
       setReports(reports.map(r => {
         if (r.id === selectedConsultantReportId) {
           const updatedReport = { ...r, consultant_note: finalNote };
-          if (r.consultant_note !== finalNote) {
+          if (showConsultantReplyBox && consultantReplyText.trim()) {
+            updatedReport.consultant_note_reply = finalReplyStr;
+            updatedReport.consultant_note_replied_by = finalRepliedBy;
+          }
+          if (r.consultant_note !== finalNote || (showConsultantReplyBox && consultantReplyText.trim())) {
             updatedReport.consultant_note_processed = false;
           }
           return updatedReport;
@@ -932,11 +994,11 @@ function Reports({ user, onLogout }) {
         return r;
       }));
       
-      toast.success(t('consultantNoteModal.saveSuccess'));
+      toast.success(t('consultantNoteModal.saveSuccess', { defaultValue: 'تم الحفظ بنجاح' }));
       setShowConsultantNoteModal(false);
     } catch (error) {
       console.error('Error saving consultant note:', error);
-      toast.error(t('consultantNoteModal.saveError'));
+      toast.error(t('consultantNoteModal.saveError', { defaultValue: 'حدث خطأ' }));
     } finally {
       setIsSavingConsultantNote(false);
     }
@@ -3122,6 +3184,23 @@ const fetchReports = async () => {
                                   {t('reports.actions.viewNotes')}
                                 </button>
                                 
+                                {/* خيار ملاحظات المالك */}
+                                {hasReportPermission(report, 'owner_notes') && (
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedOwnerReportId(report.id);
+                                      setCurrentOwnerNote('');
+                                      setShowOwnerNoteModal(true);
+                                      setActiveDropdown(null);
+                                    }} 
+                                    className={`group flex items-center px-4 py-3 text-sm text-amber-700 hover:bg-amber-600 hover:text-white w-full transition-colors font-bold ${isRtl ? 'text-right' : 'text-left'}`}
+                                  >
+                                    <svg className={`h-5 w-5 text-amber-500 group-hover:text-white ${isRtl ? 'ml-3' : 'mr-3'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    {t('ownerNoteModal.titleBtn', { defaultValue: 'ملاحظة المالك على البلاغ' })}
+                                  </button>
+                                )}
                                 
                                 {/* خيار ملاحظات الاستشاري */}
                                 {hasReportPermission(report, 'consultant_notes') && 
@@ -3131,7 +3210,7 @@ const fetchReports = async () => {
                                       setSelectedConsultantReportId(report.id);
                                       setCurrentConsultantNote(report.consultant_note || '');
                                       setConsultantReplyText('');
-                                      setShowConsultantReplyBox(false);
+                                      setShowConsultantReplyBox(!report.consultant_note_processed);
                                       setShowConsultantNoteModal(true);
                                       setActiveDropdown(null);
                                     }} 
@@ -3505,9 +3584,9 @@ const fetchReports = async () => {
                 value={currentConsultantNote}
                 onChange={(e) => setCurrentConsultantNote(e.target.value)}
                 placeholder={t('consultantNoteModal.writeNotePlaceholder', { defaultValue: 'اكتب ملاحظات الاستشاري...' })}
-                className="w-full h-40 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none transition-all"
+                className={`w-full h-40 p-4 border border-gray-300 rounded-xl resize-none transition-all ${reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed ? 'bg-gray-50 text-gray-600 focus:ring-0 cursor-not-allowed' : 'focus:ring-2 focus:ring-teal-500 focus:border-teal-500'}`}
                 dir="auto"
-                disabled={!hasReportPermission({ project: reports.find(r => r.id === selectedConsultantReportId)?.project }, 'consultant_notes')}
+                disabled={reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed || !hasReportPermission({ project: reports.find(r => r.id === selectedConsultantReportId)?.project }, 'consultant_notes')}
               ></textarea>
               <p className="text-xs text-gray-500 mt-2">{t('consultantNoteModal.helpText', { defaultValue: 'يمكنك تعديل أو حذف الملاحظة عن طريق مسح النص وحفظه.' })}</p>
             </div>
@@ -3644,7 +3723,14 @@ const fetchReports = async () => {
               </div>
             )}
             
-            {showConsultantReplyBox && (
+            {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed ? (
+              <div className="mb-5 p-5 bg-gray-50 border border-gray-200 rounded-xl text-center font-bold text-gray-500 flex flex-col items-center justify-center gap-3">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                {t('consultantNotesPage.conversationClosed', { defaultValue: 'المحادثة مغلقة' })}
+              </div>
+            ) : showConsultantReplyBox && (
               <div className="mb-5">
                 <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.additionalReplyLabel', { defaultValue: 'تعقيب الاستشاري (إضافي):' })}</label>
                 <textarea
@@ -3664,28 +3750,30 @@ const fetchReports = async () => {
               >
                 {t('consultantNoteModal.cancel', { defaultValue: 'إلغاء' })}
               </button>
-              {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && !showConsultantReplyBox && (
-                <button
-                  onClick={() => setShowConsultantReplyBox(true)}
-                  className="px-5 py-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                  </svg>
-                  {t('consultantNoteModal.replyButton', { defaultValue: 'رد' })}
-                </button>
-              )}
-              {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
-                <button
-                  onClick={handleDeleteReply}
-                  className="px-5 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-bold rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  {t('consultantNoteModal.deleteReply', { defaultValue: 'حذف الرد' })}
-                </button>
-              )}
+              {!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed && (
+                <>
+                  {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && !showConsultantReplyBox && (
+                    <button
+                      onClick={() => setShowConsultantReplyBox(true)}
+                      className="px-5 py-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
+                      {t('consultantNoteModal.replyButton', { defaultValue: 'رد' })}
+                    </button>
+                  )}
+                  {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
+                    <button
+                      onClick={handleDeleteReply}
+                      className="px-5 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-bold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      {t('consultantNoteModal.deleteReply', { defaultValue: 'حذف الرد' })}
+                    </button>
+                  )}
               {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && 
                hasReportPermission(reports.find(r => r.id === selectedConsultantReportId), 'consultant_notes') && 
                (reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.username || reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.full_name || (!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
@@ -3707,6 +3795,7 @@ const fetchReports = async () => {
               >
                 {isSavingConsultantNote ? t('consultantNoteModal.saving', { defaultValue: 'جاري الحفظ...' }) : t('consultantNoteModal.saveAndSend', { defaultValue: 'حفظ وإرسال' })}
               </button>
+              </>)}
             </div>
           </div>
         </div>
@@ -3741,6 +3830,73 @@ const fetchReports = async () => {
           </div>
         </div>
       )}
+
+
+      {showOwnerNoteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowOwnerNoteModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-xl w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5 border-b pb-3">
+              <h3 className="text-xl font-bold text-amber-800 flex items-center gap-2">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                {t('ownerNoteModal.title', { defaultValue: 'إضافة ملاحظة المالك' })}
+              </h3>
+              <button
+                onClick={() => setShowOwnerNoteModal(false)}
+                className="text-gray-400 hover:text-red-500 bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-gray-700 mb-2">{t('ownerNoteModal.writeNoteLabel', { defaultValue: 'اكتب الملاحظة (سيتم إضافتها لملاحظات البلاغ):' })}</label>
+              <textarea
+                value={currentOwnerNote}
+                onChange={(e) => setCurrentOwnerNote(e.target.value)}
+                placeholder={t('ownerNoteModal.writeNotePlaceholder', { defaultValue: 'اكتب ملاحظة على البلاغ...' })}
+                className="w-full h-32 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none transition-all"
+                dir="auto"
+              ></textarea>
+            </div>
+            
+            <div className={`flex justify-end gap-3 pt-3 border-t mt-5`}>
+              <button
+                onClick={() => setShowOwnerNoteModal(false)}
+                className="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold transition-colors"
+              >
+                {t('common.cancel', { defaultValue: 'إلغاء' })}
+              </button>
+              <button
+                onClick={handleSaveOwnerNote}
+                disabled={isSavingOwnerNote || !currentOwnerNote.trim()}
+                className="px-5 py-2.5 text-white bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+              >
+                {isSavingOwnerNote ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {t('ownerNoteModal.sending', { defaultValue: 'جاري الإرسال...' })}
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {t('ownerNoteModal.sendBtn', { defaultValue: 'إرسال الملاحظة' })}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 }
