@@ -35,6 +35,7 @@ import BusinessReports from './pages/BusinessReports';
 import Archive from './pages/Archive';
 import Chat from './pages/Chat';
 import Violations from './pages/Violations';
+import Meetings from './pages/Meetings';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -398,6 +399,10 @@ function App() {
         <Route
           path="/violations"
           element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'violations')) ? <Violations user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
+          path="/meetings"
+          element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'meetings')) ? <Meetings user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         <Route
           path="/quality-reports"

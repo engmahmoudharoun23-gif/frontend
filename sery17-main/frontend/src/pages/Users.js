@@ -117,7 +117,7 @@ function Users({ user, onLogout }) {
   // قائمة الصلاحيات المرتبطة بمشروع
   const PROJECT_SCOPED = [
     'support_messages', 'trash', 'settings', 'dashboard', 'reports_view', 'reports_add', 'reports_edit', 'reports_delete',
-    'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes', 'report_notes',
+    'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes', 'report_notes', 'owner_notes',
     'water_connections', 'water_connections_import',
     'sewage_connections', 'sewage_connections_import',
     'invoices', 'review_invoices', 'review_invoices_3', 'view_all_invoices',
@@ -126,7 +126,7 @@ function Users({ user, onLogout }) {
     'contractors', 'projects', 'users_manage', 'team', 'project_settings',
     'cars', 'cars_manage', 'fleet_maintenance', 'hr_management',
     'safety_reports', 'quality_reports', 'business_reports', 'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit', 'quality_reports_delete', 'business_reports_edit', 'business_reports_delete', 'business_reports_review', 'consultant_close',
-    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations',
+    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations', 'meetings', 'meetings_add'
   ];
   
   // دالة توحيد النص العربي للمقارنة (تعالج اختلافات الهمزات والتاء المربوطة)
@@ -847,7 +847,8 @@ function Users({ user, onLogout }) {
         const projectsRes = await axios.get(`${API}/projects`);
         const project = projectsRes.data.find(p => p.name === projectToDelete);
         if (project) {
-          await axios.delete(`${API}/projects/${project.id}`);
+          const deleteId = project.id || project.name;
+          await axios.delete(`${API}/projects/${encodeURIComponent(deleteId)}`);
         }
         await fetchProjects();
         setSelectedProjects(selectedProjects.filter(p => p !== projectToDelete));
