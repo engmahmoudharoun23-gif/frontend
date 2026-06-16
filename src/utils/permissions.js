@@ -15,7 +15,7 @@ export const PROJECT_SCOPED_PERMISSIONS = new Set([
   'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit',
   'quality_reports_delete', 'business_reports_edit', 'business_reports_delete',
   'business_reports_review',
-  'work_permits', 'work_permits_edit', 'work_permits_delete'
+  'work_permits', 'work_permits_edit', 'work_permits_delete', 'meetings', 'meetings_add'
 ]);
 
 /**

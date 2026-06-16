@@ -126,7 +126,7 @@ function Users({ user, onLogout }) {
     'contractors', 'projects', 'users_manage', 'team', 'project_settings',
     'cars', 'cars_manage', 'fleet_maintenance', 'hr_management',
     'safety_reports', 'quality_reports', 'business_reports', 'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit', 'quality_reports_delete', 'business_reports_edit', 'business_reports_delete', 'business_reports_review', 'consultant_close',
-    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations',
+    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations', 'meetings', 'meetings_add'
   ];
   
   // دالة توحيد النص العربي للمقارنة (تعالج اختلافات الهمزات والتاء المربوطة)
@@ -847,7 +847,8 @@ function Users({ user, onLogout }) {
         const projectsRes = await axios.get(`${API}/projects`);
         const project = projectsRes.data.find(p => p.name === projectToDelete);
         if (project) {
-          await axios.delete(`${API}/projects/${project.id}`);
+          const deleteId = project.id || project.name;
+          await axios.delete(`${API}/projects/${encodeURIComponent(deleteId)}`);
         }
         await fetchProjects();
         setSelectedProjects(selectedProjects.filter(p => p !== projectToDelete));

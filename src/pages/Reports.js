@@ -1246,19 +1246,6 @@ const fetchReports = async () => {
       newExportFilters.start_date_to = '';
     }
     
-    // فلاتر التواريخ الذكية: ملء حقل "إلى" تلقائياً إذا كان فارغاً وتم اختيار "من" والعكس
-    if (field === 'date_from' && value && !newExportFilters.date_to) {
-      newExportFilters.date_to = value;
-    } else if (field === 'date_to' && value && !newExportFilters.date_from) {
-      newExportFilters.date_from = value;
-    }
-    
-    if (field === 'start_date_from' && value && !newExportFilters.start_date_to) {
-      newExportFilters.start_date_to = value;
-    } else if (field === 'start_date_to' && value && !newExportFilters.start_date_from) {
-      newExportFilters.start_date_from = value;
-    }
-    
     setExportFilters(newExportFilters);
     
     // 2. تحديث الفلاتر الرئيسية بنفس القيم
@@ -1429,16 +1416,12 @@ const fetchReports = async () => {
       newFilters.start_date_from = '';
       newFilters.start_date_to = '';
     }
-    // فلاتر التواريخ الذكية
-    if (field === 'date_from' && value && !newFilters.date_to) {
+
+    if (field === 'date_from') {
       newFilters.date_to = value;
-    } else if (field === 'date_to' && value && !newFilters.date_from) {
-      newFilters.date_from = value;
     }
-    if (field === 'start_date_from' && value && !newFilters.start_date_to) {
+    if (field === 'start_date_from') {
       newFilters.start_date_to = value;
-    } else if (field === 'start_date_to' && value && !newFilters.start_date_from) {
-      newFilters.start_date_from = value;
     }
     
     setFilters(newFilters);
@@ -1622,11 +1605,6 @@ const fetchReports = async () => {
   };
 
   const handleExport = async (format) => {
-    if (totalReports === 0 && (!exportCount || exportCount === 0)) {
-      toast.warning(t('reports.noDataToExport', {defaultValue: 'يرجى تحديد العدد أو البلاغ للتصدير'}));
-      return;
-    }
-    
     try {
       if (exportCount === 0 && selectedReports.length === 0) {
         toast.warning(t('reports.pleaseSelectReportsToExport', {defaultValue: 'يرجى تحديد العدد او البلاغ للتصدير'}));
@@ -1637,7 +1615,7 @@ const fetchReports = async () => {
       const params = new URLSearchParams();
       
       // إضافة جميع فلاتر التصدير مع الاعتماد على الفلاتر الرئيسية كبديل
-      const projectToUse = exportFilters.project || filters.project || currentProject;
+      const projectToUse = exportFilters.project || filters.project;
       if (projectToUse) params.append('project', projectToUse);
       
       const govToUse = exportFilters.governorate || filters.governorate;
@@ -1666,8 +1644,6 @@ const fetchReports = async () => {
       
       const createdByToUse = exportFilters.created_by || filters.created_by;
       if (createdByToUse) params.append('created_by', createdByToUse);
-      
-      if (filters.search) params.append('search', filters.search);
       
       params.append('lang', i18n.language || 'ar');
       
