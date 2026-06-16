@@ -1,0 +1,5 @@
+Ne string True: 4
+مشروع المحافظات الغربية - type: <class 'NoneType'> - val: None
+مشروع كشف التسربات وإصلاحها - type: <class 'NoneType'> - val: None
+مشروع التشوة البصري - type: <class 'bool'> - val: False
+مشروع إصلاح شبكات المياة والصرف المقاول الموسي - type: <class 'NoneType'> - val: None

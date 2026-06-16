@@ -1,0 +1,5 @@
+مشروع إصلاح شبكات المياة والصرف المقاول الموسي -- شقراء
+Match: <re.Match object; span=(0, 5), match='شقراء'>
+Mongo count with gov regex: 1
+Mongo count with proj regex: 1
+Mongo count with is_deleted: 1

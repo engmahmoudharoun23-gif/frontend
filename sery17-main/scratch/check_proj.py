@@ -1,14 +1,15 @@
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 
-async def main():
-    MONGO_URL = "mongodb+srv://omergehad345_db_user:Test123456789@cluster0.op68vs9.mongodb.net/?appName=Cluster0"
-    client = AsyncIOMotorClient(MONGO_URL)
-    db = client['wfm_reports']
-    
-    docs = await db.project_governorates.find({}).to_list(100)
-    for d in docs:
-        if d.get('project'):
-            print(d.get('project').encode('utf-8'))
+mongo_url = 'mongodb+srv://omergehad345_db_user:Test123456789@cluster0.op68vs9.mongodb.net/?appName=Cluster0'
+client = AsyncIOMotorClient(mongo_url)
+db = client['wfm_reports']
 
-asyncio.run(main())
+async def check():
+    projs = await db.projects.find().to_list(100)
+    with open('scratch/proj_status.txt', 'w', encoding='utf-8') as f:
+        f.write(f'Total projects in DB: {len(projs)}\n')
+        for p in projs:
+            f.write(f"{p.get('name')} - archived: {p.get('is_archived')}\n")
+
+asyncio.run(check())

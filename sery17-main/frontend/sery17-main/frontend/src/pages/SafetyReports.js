@@ -5,8 +5,9 @@ import Layout from '../components/Layout';
 import imageCompression from 'browser-image-compression';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
-import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle, AlertTriangle, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ViolationsModal from '../components/ViolationsModal';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -47,7 +48,17 @@ function SafetyReports({ user, onLogout }) {
     return Object.values(pp).some(perms => (perms || []).includes(permKey));
   };
 
+  const isLevel1 = user?.role === 'admin';
+  const isLevel2 = user?.role !== 'admin' && user?.can_create_subusers;
+  const isLevel3 = user?.role !== 'admin' && !user?.can_create_subusers;
+  const showRedDot = (r) => {
+    if (isLevel3) return r.consultant_note && !r.report_note_processed;
+    return r.consultant_reply && !r.consultant_note_processed;
+  };
+  const canRaiseNote = isLevel1 || isLevel2;
+
   const [loading, setLoading] = useState(false);
+  const [badgesData, setBadgesData] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -57,7 +68,9 @@ function SafetyReports({ user, onLogout }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
   const [viewReport, setViewReport] = useState(null);
-  const [viewNote, setViewNote] = useState(null);
+  const [activeNoteReport, setActiveNoteReport] = useState(null);
+  const [noteInput, setNoteInput] = useState('');
+  const [replyInput, setReplyInput] = useState('');
   const [activeMenu, setActiveMenu] = useState(null);
   const [projectGovs, setProjectGovs] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,6 +78,7 @@ function SafetyReports({ user, onLogout }) {
   const [tempDate, setTempDate] = useState('');
   const [tempProject, setTempProject] = useState('');
   const [tempGov, setTempGov] = useState('');
+  const [showViolations, setShowViolations] = useState(false);
 
   const [appliedDate, setAppliedDate] = useState('');
   const [appliedProject, setAppliedProject] = useState('');
@@ -169,15 +183,25 @@ function SafetyReports({ user, onLogout }) {
   }
 
   const fetchReports = useCallback(async () => {
-    // setLoading(true);
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/safety-reports`, { headers: { Authorization: `Bearer ${token}` } });
       setReports(res.data || []);
+      
+      try {
+        const bRes = await axios.get(`${API}/dashboard/badges?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
+        setBadgesData(bRes.data || {});
+      } catch (e) {}
+      
       try { localStorage.setItem('cache_SafetyReports.js_reports', JSON.stringify(res.data || [])); } catch(e) {}
-    } catch { toast.error(t('safetyReports.downloadError')); }
-    finally { setLoading(false); }
-  }, [t]);
+    } catch (err) {
+      console.error('Failed to fetch safety reports:', err);
+      toast.error(isRtl ? 'حدث خطأ أثناء تحميل التقارير' : 'Failed to load reports');
+    } finally {
+      setLoading(false);
+    }
+  }, [isRtl]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
@@ -201,10 +225,12 @@ function SafetyReports({ user, onLogout }) {
   const handleReviewReport = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/safety-reports/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'تمت المراجعة', consultant_note: '', consultant_reply: '', report_note_processed: true } : rep));
       toast.success(i18n.language === 'ar' ? 'تم مراجعة البلاغ بنجاح' : 'Report reviewed successfully');
+      await axios.put(`${API}/safety-reports/${reportId}`, { status: 'تمت المراجعة', consultant_note: '', consultant_reply: '', report_note_processed: true }, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch (err) {
+      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
@@ -212,26 +238,28 @@ function SafetyReports({ user, onLogout }) {
   const handleRevertReview = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/safety-reports/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'قيد المراجعة' } : rep));
       toast.success(i18n.language === 'ar' ? 'تم اعادة فتح حالة المراجعة' : 'Review status reopened');
+      await axios.put(`${API}/safety-reports/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
     } catch (err) {
+      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
 
   const compressImage = async (file) => {
     const options = { 
-      maxSizeMB: 0.09, 
-      maxWidthOrHeight: 1024, 
+      maxSizeMB: 0.1,
+      maxWidthOrHeight: 1200, 
       useWebWorker: true,
-      initialQuality: 0.7
+      initialQuality: 0.75
     };
     try { return await imageCompression(file, options); }
     catch { return file; }
   };
 
-    const handleImageSelect = async (e) => {
+  const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
@@ -240,34 +268,36 @@ function SafetyReports({ user, onLogout }) {
       const newImages = [...(form.images || [])];
       
       for (let file of files) {
-        if (file.type === 'application/pdf') {
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
            const reader = new FileReader();
-           await new Promise(resolve => {
-               reader.onloadend = () => {
-                  newPreviews.push(reader.result);
-                  newImages.push(reader.result);
-                  resolve();
-               };
-               reader.readAsDataURL(file);
+           let base64pdf = await new Promise(resolve => {
+             reader.onloadend = () => resolve(reader.result);
+             reader.readAsDataURL(file);
            });
+           try {
+             const token = localStorage.getItem('token');
+             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
+             if (res.data && res.data.pdf) base64pdf = res.data.pdf;
+           } catch (e) { console.error('PDF compression failed', e); }
+           newPreviews.push(base64pdf);
+           newImages.push(base64pdf);
         } else {
            const compressed = await compressImage(file);
-           const reader = new FileReader();
-           await new Promise(resolve => {
-               reader.onloadend = () => {
-                  newPreviews.push(reader.result);
-                  newImages.push(reader.result);
-                  resolve();
-               };
-               reader.readAsDataURL(compressed);
+           const result = await new Promise(resolve => {
+             const r = new FileReader();
+             r.onloadend = () => resolve(r.result);
+             r.readAsDataURL(compressed);
            });
+           newPreviews.push(result);
+           newImages.push(result);
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(t('safetyReports.imageAddSuccess') || 'تم إضافة الملفات بنجاح');
+      toast.success(i18n.language === 'ar' ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
@@ -281,7 +311,38 @@ function SafetyReports({ user, onLogout }) {
   };
 
   const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
-  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '', images: r.images || [] }); setImagePreview(r.image || ''); setImagePreviews(r.images || []); setShowModal(true); setActiveMenu(null); };
+  
+  const handleViewReport = async (r) => {
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      setViewReport(res.data);
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
+    }
+  };
+
+  const openEdit = async (r) => { 
+    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
+      toast.dismiss('loadingReport');
+      const full = res.data;
+      setEditingReport(full); 
+      setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '', images: full.images || [] }); 
+      setImagePreview(full.image || ''); 
+      setImagePreviews(full.images || []); 
+      setShowModal(true); 
+      setActiveMenu(null); 
+    } catch (err) {
+      toast.dismiss('loadingReport');
+      toast.error('Error loading details');
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -290,13 +351,14 @@ function SafetyReports({ user, onLogout }) {
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
-        await axios.put(`${API}/safety-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('safetyReports.updateSuccess'));
+        setShowModal(false);
+        await axios.put(`${API}/safety-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
       } else {
-        await axios.post(`${API}/safety-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('safetyReports.saveSuccess'));
+        setShowModal(false);
+        await axios.post(`${API}/safety-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
       }
-      setShowModal(false);
       fetchReports();
     } catch (err) { toast.error(err.response?.data?.detail || 'حدث خطأ'); }
     finally { setIsSubmitting(false); }
@@ -306,15 +368,36 @@ function SafetyReports({ user, onLogout }) {
     if (!window.confirm(t('safetyReports.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API}/safety-reports/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(prev => prev.filter(rep => rep.id !== id));
       toast.success(t('safetyReports.deleteSuccess'));
+      await axios.delete(`${API}/safety-reports/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchReports();
-    } catch { toast.error(t('safetyReports.deleteError')); }
+    } catch { 
+      fetchReports();
+      toast.error(t('safetyReports.deleteError')); 
+    }
     setActiveMenu(null);
   };
 
   const handleDownloadPDF = async (report, titleText) => {
-    if (!report.image) {
+    let fullReport = report;
+    const hasAnyFile = (r) => r.image || r.file || r.file_url || (r.images && r.images.length > 0) || (r.files && r.files.length > 0);
+    
+    if (!hasAnyFile(fullReport)) {
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/safety-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
+        toast.dismiss('loadingReport');
+        fullReport = res.data;
+      } catch (err) {
+        toast.dismiss('loadingReport');
+        toast.error('Error loading details');
+        return;
+      }
+    }
+
+    if (!hasAnyFile(fullReport)) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -322,34 +405,56 @@ function SafetyReports({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      if (report.image.startsWith('data:')) {
-        const link = document.createElement('a');
-        link.href = report.image;
-        let ext = '.jpg';
-        if (report.image.startsWith('data:application/pdf')) ext = '.pdf';
-        else if (report.image.startsWith('data:image/png')) ext = '.png';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      const downloadSingleFile = (fileData, idx) => {
+        const isString = typeof fileData === 'string';
+        const dataUrl = isString ? fileData : (fileData.data || fileData.url);
+        
+        if (dataUrl.startsWith('data:')) {
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          let ext = '.jpg';
+          if (dataUrl.startsWith('data:application/pdf')) ext = '.pdf';
+          else if (dataUrl.startsWith('data:image/png')) ext = '.png';
+          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          const fileUrlParam = encodeURIComponent(dataUrl);
+          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+          
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.target = '_blank';
+          let ext = '';
+          if (dataUrl.toLowerCase().endsWith('.pdf')) ext = '.pdf';
+          else if (dataUrl.toLowerCase().endsWith('.png')) ext = '.png';
+          else if (dataUrl.toLowerCase().endsWith('.jpg') || dataUrl.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
+          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      };
+
+      const allFiles = [];
+      if (fullReport.images && fullReport.images.length > 0) allFiles.push(...fullReport.images);
+      if (fullReport.files && fullReport.files.length > 0) allFiles.push(...fullReport.files);
+      if (fullReport.image) allFiles.push(fullReport.image);
+      if (fullReport.file) allFiles.push(fullReport.file);
+      if (fullReport.file_url) allFiles.push(fullReport.file_url);
+
+      if (allFiles.length > 0) {
+        allFiles.forEach((img, idx) => {
+          downloadSingleFile(img, idx + 1);
+        });
         toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
       } else {
-        const fileUrlParam = encodeURIComponent(report.image);
-        const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
-        
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_blank';
-        let ext = '';
-        if (report.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-        else if (report.image.toLowerCase().endsWith('.png')) ext = '.png';
-        else if (report.image.toLowerCase().endsWith('.jpg') || report.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-        link.download = `report_attachment_${report.id || 'file'}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       }
+      
     } catch (e) {
       console.error('File download error:', e);
       toast.error(t('safetyReports.downloadError') || 'فشل تحميل الملف');
@@ -357,6 +462,11 @@ function SafetyReports({ user, onLogout }) {
   };
 
   const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
+  useEffect(() => {
+    setAppliedDate(tempDate);
+    setCurrentPage(1);
+  }, [tempDate]);
+
   const indexOfLastReport = currentPage * reportsPerPage;
   const indexOfFirstReport = indexOfLastReport - reportsPerPage;
   const currentReports = filteredReports.slice(indexOfFirstReport, indexOfLastReport);
@@ -364,26 +474,155 @@ function SafetyReports({ user, onLogout }) {
   return (
     <Layout user={user} onLogout={onLogout}>
       <div className="p-4 md:p-6 max-w-7xl mx-auto" dir={isRtl ? 'rtl' : 'ltr'}>
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <span className="p-2 bg-orange-100 rounded-xl"><ShieldAlert className="w-7 h-7 text-orange-600" /></span>
-              {t('safetyReports.title')}
-            </h1>
-            <p className="text-gray-500 text-sm mt-1 mr-12">{t('safetyReports.subTitle')}</p>
+        {showViolations ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-fade-in">
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+              <button onClick={() => setShowViolations(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 text-gray-600 font-bold">
+                <span className="text-2xl leading-none">{isRtl ? '←' : '→'}</span>
+                <span>{isRtl ? 'الرجوع' : 'Back'}</span>
+              </button>
+              <h2 className="text-2xl font-bold text-gray-800 border-r-4 border-red-500 pr-4">
+                {isRtl ? 'المخالفات' : 'Violations'}
+              </h2>
+            </div>
+            <ViolationsModal isFullScreen={true} onClose={() => setShowViolations(false)} user={user} projectGovs={projectGovs} type="safety" />
           </div>
-          <div className="flex gap-3">
-            {hasPermission('work_permits') && (
-              <Link to="/work-permits" className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all">
-                <FileText className="w-5 h-5" /> {t('workPermits.title', { defaultValue: 'تصاريح العمل' })}
-              </Link>
-            )}
+        ) : showModal ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in">
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 text-gray-600 font-bold">
+                <span className="text-2xl leading-none">{isRtl ? '←' : '→'}</span>
+                <span>{isRtl ? 'الرجوع' : 'Back'}</span>
+              </button>
+              <h2 className="text-2xl font-bold text-gray-800 border-r-4 border-orange-500 pr-4">
+                {editingReport ? t('safetyReports.editReport') : t('safetyReports.addNew')}
+              </h2>
+            </div>
+            <form onSubmit={handleSave} className="space-y-6 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('safetyReports.date')} <span className="text-red-500">*</span></label>
+                  <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('safetyReports.governorate')} <span className="text-red-500">*</span></label>
+                  <select
+                    required
+                    value={form.governorate}
+                    onChange={e => setForm({...form, governorate: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none bg-gray-50"
+                    disabled={!form.project}
+                  >
+                    <option value="">{t('safetyReports.selectGov')}</option>
+                    {allowedGovsList.map(g => (
+                      <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">{t('safetyReports.project')} <span className="text-red-500">*</span></label>
+                <select
+                  required
+                  value={form.project}
+                  onChange={e => setForm({...form, project: e.target.value, governorate: ''})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none bg-gray-50"
+                >
+                  <option value="">{t('safetyReports.selectProject')}</option>
+                  {allowedProjectsList.map(p => (
+                    <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">{t('safetyReports.notes')}</label>
+                <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={5} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none resize-none bg-gray-50" />
+              </div>
+              <div className="border-t border-gray-100 pt-6">
+                <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('safetyReports.image')}</label>
+                <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
+                    <Upload className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('safetyReports.selectImage')}</span>
+                    <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                  </label>
+                  <label className="flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors bg-white">
+                    <Camera className="w-6 h-6 text-orange-500" /><span className="text-sm text-orange-700 font-bold">{t('safetyReports.camera')}</span>
+                    <input type="file" accept="image/*,application/pdf" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                  </label>
+                </div>
+                {uploading && <p className="text-sm text-orange-600 mb-4 font-bold animate-pulse">{t('safetyReports.uploadingImage')}</p>}
+                {imagePreviews.length > 0 ? (
+                  <div className="mb-4 flex flex-wrap gap-4">
+                    {imagePreviews.map((img, idx) => (
+                      <div key={idx} className="relative inline-block">
+                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                          <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
+                            <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
+                          </div>
+                        ) : (
+                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in shadow-sm" onClick={() => setZoomedImage(img)} />
+                        )}
+                        <button type="button" onClick={() => removeImage(idx)} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (imagePreview && (
+                  <div className="mb-4 relative inline-block">
+                    {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
+                      <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
+                        <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
+                      </div>
+                    ) : (
+                      <img src={resolveImageUrl(imagePreview)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in shadow-sm" onClick={() => setZoomedImage(imagePreview)} />
+                    )}
+                    <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-4 pt-4 border-t border-gray-100">
+                <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-4 bg-orange-600 text-white rounded-xl font-bold text-lg transition-all shadow-md ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-700 hover:shadow-lg hover:-translate-y-0.5'}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? t('safetyReports.saveChangesBtn') : t('safetyReports.saveBtn')}</button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <span className="p-2 bg-orange-100 rounded-xl"><ShieldAlert className="w-7 h-7 text-orange-600" /></span>
+                  {t('safetyReports.title')}
+                </h1>
+                <p className="text-gray-500 text-sm mt-1 mr-12">{t('safetyReports.subTitle')}</p>
+              </div>
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={openAdd}
               className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-medium shadow-md transition-all"
             >
               <Plus className="w-5 h-5" /> {t('safetyReports.addNew')}
+            </button>
+            {hasPermission('work_permits') && (
+              <Link to="/work-permits" className="relative flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all">
+                <FileText className="w-5 h-5" /> {t('workPermits.title', { defaultValue: 'تصاريح العمل' })}
+                {((badgesData?.work_permits || 0) > 0 || (badgesData?.work_permits_notes || 0) > 0) && (
+                  <div className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 animate-pulse border-2 border-white shadow-sm flex items-center justify-center">
+                    <Bell className="w-3.5 h-3.5" />
+                  </div>
+                )}
+              </Link>
+            )}
+            <button
+              onClick={() => setShowViolations(true)}
+              className="relative flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium shadow-md transition-all"
+            >
+              <AlertTriangle className="w-5 h-5" /> {isRtl ? 'مخالفات السلامة' : 'Safety Violations'}
+              {((badgesData?.violations || 0) > 0 || (badgesData?.violations_notes || 0) > 0) && (
+                  <div className="absolute -top-3 -right-3 bg-slate-800 text-white rounded-full p-1 animate-pulse border-2 border-white shadow-sm flex items-center justify-center">
+                    <Bell className="w-3.5 h-3.5" />
+                  </div>
+              )}
             </button>
           </div>
         </div>
@@ -395,58 +634,63 @@ function SafetyReports({ user, onLogout }) {
               <Filter className="w-5 h-5 text-orange-600 animate-pulse" />
               <span>{t('safetyReports.filterTitle')}</span>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full flex-1 max-w-3xl items-center">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full flex-1">
-                <div>
-                  <input
-                    type="date"
-                    value={tempDate}
-                    onChange={e => setTempDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
-                  />
-                </div>
-                <div>
-                  <select
-                    value={tempProject}
-                    onChange={e => setTempProject(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
-                  >
-                    <option value="">{t('reports.allProjects')}</option>
-                    {projectOptions.map(p => (
-                      <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <select
-                    value={tempGov}
-                    onChange={e => setTempGov(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
-                  >
-                    <option value="">{t('reports.allGovernorates')}</option>
-                    {govOptions.map(g => (
-                      <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
-                    ))}
-                  </select>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full">
+              <input
+                type="date"
+                value={tempDate}
+                onChange={e => setTempDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
+              />
+              <select
+                value={tempProject}
+                onChange={e => {
+                  setTempProject(e.target.value);
+                  setTempGov('');
+                  if (!e.target.value) {
+                    setAppliedProject('');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
+              >
+                <option value="">{t('reports.allProjects')}</option>
+                {projectOptions.map(p => (
+                  <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
+                ))}
+              </select>
+              <select
+                value={tempGov}
+                onChange={e => {
+                  setTempGov(e.target.value);
+                  if (!e.target.value) {
+                    setAppliedGov('');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 outline-none text-sm text-gray-700 bg-white"
+              >
+                <option value="">{t('reports.allGovernorates')}</option>
+                {govOptions.map(g => (
+                  <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSearch}
+                  className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center shrink-0 cursor-pointer text-sm font-bold"
+                  title={t('safetyReports.searchBtn')}
+                >
+                  <Search className="w-4 h-4" />
+                  <span>{t('safetyReports.searchBtn')}</span>
+                </button>
+                {(appliedDate || appliedProject || appliedGov || tempDate || tempProject || tempGov) && (
                   <button
-                    onClick={handleSearch}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center shrink-0 cursor-pointer text-sm font-bold"
-                    title={t('safetyReports.searchBtn')}
+                    onClick={handleReset}
+                    className="px-4 py-2 text-xs text-red-600 hover:text-red-700 font-bold hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-dashed border-red-200 shrink-0"
                   >
-                    <Search className="w-4 h-4" />
-                    <span>{t('safetyReports.searchBtn')}</span>
+                    {t('safetyReports.resetBtn')}
                   </button>
-                </div>
+                )}
               </div>
             </div>
-            {(appliedDate || appliedProject || appliedGov || tempDate || tempProject || tempGov) && (
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 text-xs text-red-600 hover:text-red-700 font-bold hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-dashed border-red-200"
-              >
-                {t('safetyReports.resetBtn')}
-              </button>
-            )}
           </div>
         )}
 
@@ -504,7 +748,7 @@ function SafetyReports({ user, onLogout }) {
                             <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
                               r.status === 'تمت المراجعة'
                                 ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                                : 'bg-slate-700 text-white shadow-sm border border-slate-600'
                             }`}>
                               {translateBrandingText(r.status || 'قيد المراجعة', isRtl)}
                             </span>
@@ -515,26 +759,51 @@ function SafetyReports({ user, onLogout }) {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button
-                                  className="p-2 rounded-xl transition-all focus:outline-none hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                                  className="p-2 rounded-xl transition-all focus:outline-none hover:bg-gray-100 text-gray-500 hover:text-gray-700 relative"
                                   title={t('safetyReports.actions')}
                                 >
+                                  {showRedDot(r) && (
+                                    <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                    </span>
+                                  )}
                                   <MoreVertical className="w-5 h-5" />
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[65]">
                                 <div className="py-1">
                                   <DropdownMenuItem
-                                    onClick={() => setViewReport(r)}
+                                    onClick={() => handleViewReport(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
                                     <Eye className="w-4 h-4 text-orange-600" /> {t('safetyReports.viewDetails')}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => setViewNote(r.notes || 'لا توجد ملاحظات')}
-                                    className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-amber-50 hover:text-amber-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
-                                  >
-                                    <FileText className="w-4 h-4 text-amber-600" /> {t('safetyReports.notesTitle')}
-                                  </DropdownMenuItem>
+                                  {(canRaiseNote || (isLevel3 && r.consultant_note)) && (
+                                    <DropdownMenuItem
+                                      onClick={() => { 
+                                        setActiveNoteReport(r); 
+                                        setNoteInput(r.consultant_note || ''); 
+                                        setReplyInput(r.consultant_reply || ''); 
+                                        if (isLevel3 && r.consultant_note && !r.report_note_processed) {
+                                          axios.put(`${API}/safety-reports/${r.id}`, { report_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                                          setReports(prev => prev.map(rep => rep.id === r.id ? { ...rep, report_note_processed: true } : rep));
+                                        } else if (!isLevel3 && r.consultant_reply && !r.consultant_note_processed) {
+                                          axios.put(`${API}/safety-reports/${r.id}`, { consultant_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                                          setReports(prev => prev.map(rep => rep.id === r.id ? { ...rep, consultant_note_processed: true } : rep));
+                                        }
+                                      }}
+                                      className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-amber-50 hover:text-amber-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
+                                    >
+                                      <FileText className="w-4 h-4 text-amber-600" /> {t('safetyReports.notesTitle')}
+                                      {showRedDot(r) && (
+                                        <span className="mx-2 flex h-2 w-2 relative">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                        </span>
+                                      )}
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem
                                     onClick={() => handleDownloadPDF(r, t('safetyReports.title'))}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
@@ -559,7 +828,7 @@ function SafetyReports({ user, onLogout }) {
                                   )}
                                 </div>
                                 <div className="py-1 bg-slate-50/50 border-t border-slate-100">
-                                  {hasPermission('safety_reports_edit') && (
+                                  {hasPermission('safety_reports_edit') && !(user?.role !== 'admin' && user?.can_create_subusers) && (
                                     <DropdownMenuItem
                                     onClick={() => openEdit(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 hover:text-yellow-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
@@ -567,7 +836,7 @@ function SafetyReports({ user, onLogout }) {
                                     <Edit2 className="w-4 h-4 text-yellow-600" /> {t('safetyReports.edit')}
                                   </DropdownMenuItem>
                                   )}
-                                  {hasPermission('safety_reports_delete') && (
+                                  {hasPermission('safety_reports_delete') && !(user?.role !== 'admin' && user?.can_create_subusers) && (
                                     <DropdownMenuItem
                                     onClick={() => handleDelete(r.id)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-semibold rounded-lg cursor-pointer"
@@ -696,103 +965,7 @@ function SafetyReports({ user, onLogout }) {
           </div>
         )}
 
-        {/* Add/Edit Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="sticky top-0 bg-orange-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
-                <h3 className="text-lg font-bold text-white">{editingReport ? t('safetyReports.editReport') : t('safetyReports.addNew')}</h3>
-                <button onClick={() => setShowModal(false)} className="text-white text-2xl hover:text-orange-200"><X className="w-6 h-6" /></button>
-              </div>
-              <form onSubmit={handleSave} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('safetyReports.date')} <span className="text-red-500">*</span></label>
-                    <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('safetyReports.governorate')} <span className="text-red-500">*</span></label>
-                    <select
-                      required
-                      value={form.governorate}
-                      onChange={e => setForm({...form, governorate: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none"
-                      disabled={!form.project}
-                    >
-                      <option value="">{t('safetyReports.selectGov')}</option>
-                      {allowedGovsList.map(g => (
-                        <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('safetyReports.project')} <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={form.project}
-                    onChange={e => setForm({...form, project: e.target.value, governorate: ''})}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none"
-                  >
-                    <option value="">{t('safetyReports.selectProject')}</option>
-                    {allowedProjectsList.map(p => (
-                      <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('safetyReports.notes')}</label>
-                  <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none resize-none" />
-                </div>
-                {/* Image Upload */}
-                <div className="border-t pt-4">
-                  <label className="block text-sm font-bold text-gray-700 mb-3">📷 {t('safetyReports.image')}</label>
-                  <div className="flex gap-2 mb-3">
-                    <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
-                      <Upload className="w-5 h-5 text-orange-500" /><span className="text-sm text-orange-700 font-medium">{t('safetyReports.selectImage')}</span>
-                      <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleImageSelect} disabled={uploading} />
-                    </label>
-                    <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-orange-300 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
-                      <Camera className="w-5 h-5 text-orange-500" /><span className="text-sm text-orange-700 font-medium">{t('safetyReports.camera')}</span>
-                      <input type="file" accept="image/*,application/pdf" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
-                    </label>
-                  </div>
-                  {uploading && <p className="text-sm text-orange-600 mb-3 animate-pulse">{t('safetyReports.uploadingImage')}</p>}
-                                    {imagePreviews.length > 0 ? (
-                    <div className="mb-3 flex flex-wrap gap-3">
-                      {imagePreviews.map((img, idx) => (
-                        <div key={idx} className="relative inline-block">
-                          {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
-                            <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
-                              <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                            </div>
-                          ) : (
-                            <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in" onClick={() => setZoomedImage(img)} />
-                          )}
-                          <button type="button" onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg">×</button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (imagePreview && (
-                    <div className="mb-3 relative inline-block">
-                      {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
-                        <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
-                          <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                        </div>
-                      ) : (
-                        <img src={resolveImageUrl(imagePreview)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in" onClick={() => setZoomedImage(imagePreview)} />
-                      )}
-                      <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg">×</button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold transition-all ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-700'}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? t('safetyReports.saveChangesBtn') : t('safetyReports.saveBtn')}</button>
-                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium">{t('safetyReports.cancel')}</button>
-                </div>
-              </form>
-            </div>
-          </div>
+          </>
         )}
 
         {/* View Modal */}
@@ -811,35 +984,40 @@ function SafetyReports({ user, onLogout }) {
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
-                {(viewReport.images && viewReport.images.length > 0) ? (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    <div className="flex flex-wrap gap-2">
-                    {viewReport.images.map((img, idx) => (
-                      <div key={idx}>
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
-                          <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: img })}>
-                            <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                {(() => {
+                  const allFiles = [];
+                  if (viewReport.images && viewReport.images.length > 0) allFiles.push(...viewReport.images);
+                  if (viewReport.files && viewReport.files.length > 0) allFiles.push(...viewReport.files);
+                  if (viewReport.image) allFiles.push(viewReport.image);
+                  if (viewReport.file) allFiles.push(viewReport.file);
+                  if (viewReport.file_url) allFiles.push(viewReport.file_url);
+                  
+                  if (allFiles.length > 0) {
+                    return (
+                      <div>
+                        <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
+                        <div className="flex flex-wrap gap-2">
+                        {allFiles.map((fileObj, idx) => {
+                          const imgStr = typeof fileObj === 'string' ? fileObj : (fileObj.data || fileObj.url || '');
+                          if (!imgStr) return null;
+                          return (
+                          <div key={idx}>
+                            {imgStr.startsWith('data:application/pdf') || imgStr.endsWith('.pdf') ? (
+                              <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                                <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                              </div>
+                            ) : (
+                              <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} />
+                            )}
                           </div>
-                        ) : (
-                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(img)} />
-                        )}
+                          );
+                        })}
+                        </div>
                       </div>
-                    ))}
-                    </div>
-                  </div>
-                ) : (viewReport.image && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    {viewReport.image.startsWith('data:application/pdf') || viewReport.image.endsWith('.pdf') ? (
-                      <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: viewReport.image })}>
-                        <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                      </div>
-                    ) : (
-                      <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} />
-                    )}
-                  </div>
-                ))}
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
                   <p>{t('safetyReports.addedBy')}: {viewReport.created_by || '-'} | {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}</p>
                   <button
@@ -855,21 +1033,69 @@ function SafetyReports({ user, onLogout }) {
           </div>
         )}
 
-        {/* View Note Modal */}
-        {viewNote && (
+        {/* Add/View Note Modal */}
+        {activeNoteReport && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-scale-up">
               <div className="bg-amber-500 px-6 py-4 flex justify-between items-center rounded-t-2xl">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <FileText className="w-5 h-5 animate-pulse" /> {t('safetyReports.notesTitle')}
                 </h3>
-                <button onClick={() => setViewNote(null)} className="text-white hover:text-amber-100"><X className="w-6 h-6" /></button>
+                <button onClick={() => setActiveNoteReport(null)} className="text-white hover:text-amber-100"><X className="w-6 h-6" /></button>
               </div>
-              <div className="p-6">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm">{viewNote}</p>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{isRtl ? 'الملاحظة' : 'Note'}</label>
+                  <textarea
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-200 outline-none resize-none bg-gray-50 text-sm disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    rows={3}
+                    placeholder={isRtl ? "اكتب ملاحظتك على التقرير هنا..." : "Type your note here..."}
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    disabled={isLevel3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{isRtl ? 'الرد على الملاحظة' : 'Reply to Note'}</label>
+                  <textarea
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-200 outline-none resize-none bg-amber-50/50 text-sm disabled:opacity-75 disabled:bg-amber-50 disabled:cursor-not-allowed"
+                    rows={3}
+                    placeholder={isRtl ? "اكتب ردك أو تعليقك هنا..." : "Type your reply or comment here..."}
+                    value={replyInput}
+                    onChange={(e) => setReplyInput(e.target.value)}
+                    disabled={!isLevel3}
+                  />
+                </div>
               </div>
-              <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end">
-                <button onClick={() => setViewNote(null)} className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 font-bold transition-colors shadow-md">{t('safetyReports.close')}</button>
+              <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+                <button onClick={() => setActiveNoteReport(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 font-bold transition-colors">
+                  {t('safetyReports.close')}
+                </button>
+                <button
+                  onClick={async () => {
+                    if (isSubmitting) return;
+                    setIsSubmitting(true);
+                    try {
+                      const token = localStorage.getItem('token');
+                      toast.success(isRtl ? 'تم حفظ وإرسال الملاحظة والرد' : 'Note and reply saved and sent');
+                      const updatePayload = { consultant_note: noteInput, consultant_reply: replyInput };
+                      if (!isLevel3) updatePayload.report_note_processed = false;
+                      else updatePayload.consultant_note_processed = false;
+                      setReports(prev => prev.map(rep => rep.id === activeNoteReport.id ? { ...rep, ...updatePayload } : rep));
+                      setActiveNoteReport(null);
+                      await axios.put(`${API}/safety-reports/${activeNoteReport.id}`, updatePayload, { headers: { Authorization: `Bearer ${token}` } });
+                      fetchReports();
+                    } catch (e) {
+                      toast.error(isRtl ? 'حدث خطأ' : 'Error');
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className={`px-4 py-2 bg-amber-500 text-white rounded-xl font-bold transition-all shadow-md flex items-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-amber-600'}`}
+                >
+                  {isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : (isRtl ? 'حفظ وإرسال' : 'Save & Send')}
+                </button>
               </div>
             </div>
           </div>
@@ -883,6 +1109,7 @@ function SafetyReports({ user, onLogout }) {
           </div>
         )}
       </div>
+
     </Layout>
   );
 }

@@ -1,0 +1,172 @@
+<analysis>**original_problem_statement:**
+The user is building بيت الخبرة (Bayt Al-Khibra), an internal management system with complex role-based access control (RBAC). The core requirements revolve around managing reports (بلاغات), utility connections (توصيلات), employee requests, extracts (مستخلصات), and invoices. 
+Recent product requirements include:
+1. Adding a complete HR Management (شؤون الموظفين) module with tabs for Employees, Contracts, and Salaries, including specific features like eye icons to hide/show individual salaries, Add buttons, Pagination, and Excel/PDF exports. 
+2. Creating an exact-match notification routing system so clicking a report notification opens the reports table filtered exactly to that one report.
+3. Implementing a strict multi-level approval workflow for employee requests and invoices (Level 2 does initial approval, Admin does final approval/rejection).
+4. Enabling user-specific theme overrides on top of global admin themes.
+
+**User's preferred language**: العربية (Arabic) - **INSTRUCT NEXT AGENT: You MUST respond to the user in Arabic only.**
+
+**what currently exists?**
+A monolithic full-stack app (React + FastAPI) with a complex permission-based dynamic sidebar. Features currently working include: custom global and user-specific theming, a dynamic connection/reports project hub, an exact-match notification system for reports, and a strict multi-level approval workflow for invoices and employee requests. A new HR Management page has been created but its API endpoints were returning 404s due to incorrect router ordering in the backend, and its frontend functionalities (Add, Export, Pagination) are incomplete.
+
+**Last working item**:
+    - Last item agent was working: Fixing the  errors for the newly created HR Management endpoints in . The endpoints were mistakenly defined *after* . The agent just performed a search/replace to reorder the code, but hasn't verified if the server runs successfully or if the frontend Add/Save, Pagination, and Export features on the HR page work.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? both
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  - Issue 1: (P0) HR Management page functional bugs
+     - Attempted fixes: The agent created the  page and backend endpoints, but UI buttons (Add Employee, Add Contract, Add Salary, Excel, PDF) and Pagination (Next/Prev/Total Pages) do not work or are missing logic. Backend 404s were just patched.
+     - Next debug checklist: 
+       1. Verify  runs without syntax errors after the last edit.
+       2. Implement the frontend modals/logic for adding Employees, Contracts, and Salaries in .
+       3. Implement Pagination controls and state in the HR page.
+       4. Implement Excel and PDF export functions.
+     - Why fix this issue and what will be achieved with the fix? It is the user's most recent explicit request and a core new feature module.
+     - Status: IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on other issue: None
+
+  - Issue 2: (P0) Engineer Medhat's invoices are not showing up
+     - Attempted fixes: None yet. User reported in message 366 (في حساب المهندس مدحت يوجد ثلاث فواتير عهده غير ظاهره).
+     - Next debug checklist: Check the  fetching logic in  ( endpoint) to see if permissions, status filters, or project assignments are filtering out Engineer Medhat's records incorrectly.
+     - Why fix this issue and what will be achieved with the fix? Data visibility is critical for the approval pipeline.
+     - Status: NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on other issue: None
+
+  - Issue 3: (P1) Add  permission to User assignment
+     - Attempted fixes: The HR page is gated by , but there's no way for the Admin to assign this permission in the  modal.
+     - Next debug checklist: Add  to the global permissions list in  and ensure it appears in the  permissions modal.
+     - Why fix this issue and what will be achieved with the fix? Allows the admin to actually delegate HR Management access.
+     - Status: NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on other issue: None
+
+**In progress Task List**:
+  - Task 1: Complete Backend Refactoring
+     - Where to resume: An empty file structure exists in . The monolithic  (11,000+ lines) needs to be migrated to , , and  folders.
+     - What will be achieved with this? Maintainability, scalability, and solving the issue of managing a massive single file.
+     - Status: IN PROGRESS
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on something: Overridden by P0 urgent feature requests.
+
+**Upcoming and Future Tasks**:
+    Upcoming Tasks:
+    - (P1) Image Storage Refactor: Migrate image storage from base64 strings in MongoDB to a proper file storage solution (e.g., ).
+    - (P2) Server-side Pagination: Implement server-side pagination for all major data tables to improve frontend load times.
+    Future Tasks:
+    - (P3) Date filter bug () in the reports API.
+
+**Completed work in this session**
+- Image viewer modals implemented in  and  (DONE)
+- Multi-level approval workflow implemented for invoices/requests (Level 2 = initial, Admin = final/reject) (DONE)
+- Missing  field added to  model (DONE)
+- User-specific personal theme overrides added to  (DONE)
+- Exact-match notification routing (clicking bell notification filters exact report) (DONE)
+- Simplified and fixed Connection Permissions logic (removed complex project-based connections config in favor of global standard permissions) (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+   - Issue 1: Date filter total count in reports API
+     - Debug checklist: Inspect the  aggregation in the  endpoint when date filters are applied.
+     - Why to solve this issue and what will be achieved with this? Ensures accurate pagination and data reporting.
+     - Should Test frontend/backend/both after fix: backend
+     - Is recurring issue? Y
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: Login fails on the custom domain () and the Forgot Password feature is broken (resend integration).
+  - Recurrence count: 3
+  - Status: BLOCKED (Low priority per user requests, focus is on internal logic right now).
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- Frontend: React, , Tailwind CSS, Context API/Props for RBAC.
+- Backend: FastAPI, MongoDB (Motor async driver), Pydantic for validation, JWT auth.
+- RBAC Architecture: Highly granular permissions checked locally on frontend components () and verified securely in backend endpoints.
+
+**key DB schema**
+  - : 
+  - :  (Newly introduced, verify exact schema in )
+  -  & :  (Status values: , , , )
+
+**changes in tech stack**
+  - None
+
+**All files of reference**
+  - : Critical. All backend routing, schemas, and DB queries. Just underwent a sensitive code block reordering for HR endpoints.
+  - : Needs significant UI logic additions (Modals, Pagination, Export).
+  - : Sidebar and Topbar (Notifications).
+  - : Where Admin assigns permissions. Needs the new HR permission added.
+
+**Areas that need refactoring**:
+  - : 11k+ lines long. Highly prone to search/replace context errors. Needs splitting into routers and controllers.
+
+**key api endpoints**
+  -  (GET, POST, PUT, DELETE)
+  -  (GET - specifically check why Medhat's invoices fail)
+  -  &  (Multi-level logic)
+  - 
+
+**Critical Info for New Agent**
+- **ARABIC COMMUNICATION ONLY.** The user strictly communicates in Arabic.
+- The user is extremely specific about UI details (e.g., Eye icon to hide individual salaries, Government colors, exact notifications). Pay close attention to these UX requests.
+- The  file had an issue where  was called *before* the HR endpoints were defined, leading to 404s. The previous agent attempted to fix this. *Check this first thing to ensure the backend actually runs before writing more code.*
+- The HR Management page  exists but is an empty shell regarding actions. You must implement the Add Employee/Contract/Salary logic, Pagination, and Excel/PDF exports.
+
+**documents and test reports created in this job**
+  - 
+
+**Last 10 User Messages and any pending HUMAN messages**
+1. **User (Chat 447):** *PENDING HUMAN MESSAGE* Reports that HR Management buttons (Add, Excel, PDF) don't work, nothing saves, pagination (next/prev/total pages) is missing. Requests adding the  permission so Admin can grant it to specific users.
+2. **User (Chat 366):** Requested the HR Management page, fixing connection permissions, adding project filters to employee requests, and reported a bug where 3 invoices for Engineer Medhat are missing.
+3. **Agent:** Confirmed completion of HR page shell, connection fixes, and project filters.
+4. **User (Chat 291):** Clarified the exact approval workflow: Level 3 creates, Level 2 does initial approval, Admin does final approval/rejection. Rejection means Admin cancelled it, and it stays in history. Asked for deletion confirmation alerts.
+5. **Agent:** Implemented the strict multi-level approval workflows and confirmation modals.
+6. **User (Chat 248):** Reported that clicking a notification searches via regex, showing multiple reports. Wanted an *exact match* filter upon clicking a notification.
+7. **Agent:** Added  parameter and fixed the search logic.
+8. **User (Chat 227):** Clarified that clicking a report notification shouldn't open a separate modal, but should just filter the main reports table to that specific report.
+9. **Agent:** Reverted the modal and implemented the table filtering.
+10. **User (Chat 184):** Requested a Bell icon for new report notifications with specific role permissions.
+
+**Project Health Check:**
+- Broken: HR Management Add/Export/Pagination features. Engineer Medhat's Invoices visibility.
+- Mocked: None
+
+**3rd Party Integrations**
+- , : (Backend) For Excel generation (Required for HR export feature).
+- , : (Frontend) Might be needed for PDF exports.
+
+**Testing status**
+- Testing agent used after significant changes: YES (Used for Themes/Permissions)
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created: None
+- Known regressions: 404 on new HR endpoints (attempted fix, needs verification).
+
+**Credentials to test flow:**
+- Username: admin
+- Password: 123456
+
+**What agent forgot to execute**
+- Did not investigate or fix the missing invoices for Engineer Medhat (Mentioned in Chat 366).
+- Did not implement the actual  checkbox inside  for the admin to assign.
+- Did not finish the Add Modals, Pagination, or Exports for the newly created HR page before user pointed it out.
+
+**Debugging checklist for current issue**
+    Issue: HR Management page functionalities & Endpoints (404 / Non-functional UI)
+
+    Frontend files to check: 
+    - : Look for , Export handlers, and implement pagination state.
+    - : Add  to the permissions lists.
+  
+    Backend files to check:
+    - : Verify that the  for  endpoints is defined correctly and successfully registered.
+    - Check  for Engineer Medhat's issue.</analysis>

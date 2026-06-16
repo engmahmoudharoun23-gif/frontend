@@ -1,0 +1,32 @@
+82: 'م/ مدحت حسين': 'Eng. Medhat Hussein',
+111: const saved = localStorage.getItem('wfm_dynamic_branding_cache');
+120: localStorage.setItem('wfm_dynamic_branding_cache', JSON.stringify(dynamicTranslationsCache));
+210: const event = new CustomEvent('wfm_translation_updated', { detail: { text, trans } });
+364: window.addEventListener('wfm_translation_updated', handleTranslationUpdated);
+365: return () => window.removeEventListener('wfm_translation_updated', handleTranslationUpdated);
+1404: wfm_closed: response.data.wfm_closed,
+1405: wfm_closed_by: response.data.wfm_closed_by
+1431: `${API}/wfm/toggle/${reportId}`,
+1439: if (response.data.wfm_closed) {
+1458: ? { ...report, wfm_closed: response.data.wfm_closed }
+1832: <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.closed_at ? new Date(selectedReportForMedia.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : (selectedReportForMedia.wfm_closed_at ? new Date(selectedReportForMedia.wfm_closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : t('reports.notClosed', {defaultValue: 'غير مغلق'}))}</td>
+2141: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
+2281: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
+2395: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
+2527: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري', {defaultValue: 'مغلقة بواسطة الاستشاري'})}</option>
+2933: statusText = report.wfm_closed
+2937: colorClass = report.wfm_closed
+2941: statusText = report.wfm_closed
+2945: colorClass = report.wfm_closed
+2955: {report.wfm_closed && report.wfm_closed_by && (
+2956: <span className="text-[11px] font-black text-green-700 opacity-80 mt-0.5 block text-center" title={translateBrandingText(report.wfm_closed_by, isRtl)}>
+2957: {translateBrandingText(report.wfm_closed_by, isRtl)}
+3099: handleToggleWFMClosed(report.id, report.wfm_closed);
+3103: report.wfm_closed
+3108: <svg className={`h-5 w-5 group-hover:text-white ${isRtl ? 'ml-3' : 'mr-3'} ${report.wfm_closed ? 'text-orange-600' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+3111: {report.wfm_closed ? t('statusMap.فتح المعالجة') : t('statusMap.مغلقة بواسطة الاستشاري')}
+3504: if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
+3505: return t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+3549: const isConsultant = lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('الاستشاري');
+3556: bubbleName = t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+3659: (reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.username || reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.full_name || (!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (

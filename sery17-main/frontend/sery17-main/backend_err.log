@@ -127,3 +127,5 @@ INFO:     Waiting for application startup.
 2026-05-20 20:31:26,924 - server - INFO - Index created: idx_extracts_created_at
 2026-05-20 20:31:26,924 - server - INFO - Database indexes created successfully
 INFO:     Application startup complete.
+'uvicorn' is not recognized as an internal or external command,
+operable program or batch file.

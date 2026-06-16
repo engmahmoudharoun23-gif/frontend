@@ -1,0 +1,3 @@
+Total: 4
+Ne True: 0
+Ne string true: 0

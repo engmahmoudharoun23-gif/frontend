@@ -1,0 +1,4 @@
+User: MMahmoud | ID: 205810ff-a80c-41bc-88ff-5527517551b9 | Role: user | Manager: None | Perms: []
+User: Mahmoud | ID: a8a3eddc-8a41-4344-8c52-09670e049eab | Role: user | Manager: None | Perms: []
+User: admin | ID: 9e46065b-429c-48b7-af5a-5d0c36470104 | Role: admin | Manager: None | Perms: ['consultant_notes']
+Report: CCB-952952952 | Created By: 205810ff-a80c-41bc-88ff-5527517551b9

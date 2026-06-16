@@ -66,6 +66,7 @@ function EmployeeRequests({ user, onLogout }) {
   const [filteredRequests, setFilteredRequests] = useState(getInitialRequests);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [lockType, setLockType] = useState(false);
@@ -302,6 +303,8 @@ function EmployeeRequests({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     
     // حفظ البيانات فوراً ورفع الصور في الخلفية
     const dataToSend = { ...formData };
@@ -346,11 +349,15 @@ function EmployeeRequests({ user, onLogout }) {
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'حدث خطأ');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEdit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     
     // حفظ البيانات فوراً ورفع الصور في الخلفية
     const existingImages = selectedRequest.images || [];
@@ -398,6 +405,8 @@ function EmployeeRequests({ user, onLogout }) {
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'حدث خطأ');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1218,6 +1227,8 @@ function EmployeeRequests({ user, onLogout }) {
                   <p className="text-blue-700 text-sm font-medium mb-2">إضافة نموذج جديد</p>
                   <form onSubmit={async (e) => {
                     e.preventDefault();
+                    if (isSubmitting) return;
+                    setIsSubmitting(true);
                     const formData = new FormData(e.target);
                     try {
                       await axios.post(`${API}/request-templates`, formData);
@@ -1226,11 +1237,13 @@ function EmployeeRequests({ user, onLogout }) {
                       e.target.reset();
                     } catch (err) {
                       toast.error('حدث خطأ في إضافة النموذج');
+                    } finally {
+                      setIsSubmitting(false);
                     }
                   }} className="flex flex-col gap-2">
                     <input type="text" name="name" placeholder="اسم النموذج" required className="border rounded px-3 py-2 text-sm" />
                     <input type="file" name="file" accept=".pdf,.doc,.docx" required className="border rounded px-3 py-2 text-sm" />
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">إضافة</button>
+                    <button type="submit" disabled={isSubmitting} className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>{isSubmitting ? 'جاري الإضافة...' : 'إضافة'}</button>
                   </form>
                 </div>
               )}
@@ -1340,7 +1353,7 @@ function EmployeeRequests({ user, onLogout }) {
                   )}
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium">{isRtl ? 'إرسال' : 'Submit'}</button>
+                  <button type="submit" disabled={isSubmitting} className={`flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>{isSubmitting ? (isRtl ? 'جاري الإرسال...' : 'Submitting...') : (isRtl ? 'إرسال' : 'Submit')}</button>
                   <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg text-sm">{isRtl ? 'إلغاء' : 'Cancel'}</button>
                 </div>
               </form>
@@ -1396,7 +1409,7 @@ function EmployeeRequests({ user, onLogout }) {
                   )}
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg text-sm font-medium">{isRtl ? 'حفظ' : 'Save'}</button>
+                  <button type="submit" disabled={isSubmitting} className={`flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg text-sm font-medium ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : (isRtl ? 'حفظ' : 'Save')}</button>
                   <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg text-sm">{isRtl ? 'إلغاء' : 'Cancel'}</button>
                 </div>
               </form>

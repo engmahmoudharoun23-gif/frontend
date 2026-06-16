@@ -1,0 +1,74 @@
+[
+  {
+    "id": "9e46065b-429c-48b7-af5a-5d0c36470104",
+    "username": "admin",
+    "name": null,
+    "role": "admin",
+    "permissions": [],
+    "governorates": [],
+    "projects": []
+  },
+  {
+    "id": "f3a9c5ac-ef15-4622-aadb-c80ef2116625",
+    "username": "Eng Medhat Hussien",
+    "name": null,
+    "role": "user",
+    "permissions": [],
+    "governorates": [
+      "شقراء",
+      "القصب",
+      "الدوادمي",
+      "مرات",
+      "ضرماء",
+      "عفيف",
+      "ساجر",
+      "المزاحمية",
+      "القويعية"
+    ],
+    "projects": [
+      "مشروع التشوة البصري",
+      "مشروع المحافظات الغربية - القطاع الأوسط",
+      "مشروع كشف التسربات وإصلاحها"
+    ]
+  },
+  {
+    "id": "94529535-9d8d-4ab6-8894-2c70b764d43d",
+    "username": "Eng Abdelmonem Shamshoom",
+    "name": null,
+    "role": "user",
+    "permissions": [],
+    "governorates": [
+      "الطائف",
+      "مكة"
+    ],
+    "projects": [
+      "مشروع ايصال مكة"
+    ]
+  },
+  {
+    "id": "67c26779-09aa-408b-96d4-68c93e16c3b2",
+    "username": "MMahmoud",
+    "name": null,
+    "role": "user",
+    "permissions": [],
+    "governorates": [
+      "الطائف"
+    ],
+    "projects": [
+      "مشروع ايصال مكة"
+    ]
+  },
+  {
+    "id": "1def0134-f639-4f62-bdb4-dc7158c3bf57",
+    "username": "Mahmoud",
+    "name": null,
+    "role": "user",
+    "permissions": [],
+    "governorates": [
+      "مكة"
+    ],
+    "projects": [
+      "مشروع ايصال مكة"
+    ]
+  }
+]

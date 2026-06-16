@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { hasProjectPermission as hasProjectPermUtil, PROJECT_SCOPED_PERMISSIONS } from '../utils/permissions';
 import { useBranding } from '../hooks/useBranding';
-import { Globe, ShieldAlert, ClipboardCheck, FileBarChart2, Bell, UserCircle } from 'lucide-react';
+import { Globe, ShieldAlert, ClipboardCheck, FileBarChart2, Bell, UserCircle, X, AlertTriangle, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 
@@ -31,6 +31,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const { branding } = useBranding();
+  const location = useLocation();
   const [, setTranslationTick] = useState(0);
   useEffect(() => {
     const handleTranslationUpdate = () => {
@@ -39,29 +40,76 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     window.addEventListener('wfm_translation_updated', handleTranslationUpdate);
     return () => window.removeEventListener('wfm_translation_updated', handleTranslationUpdate);
   }, []);
-  const [projectsOpen, setProjectsOpen] = useState(false);
+  // إبقاء قائمة المشاريع مفتوحة إذا كان المستخدم في مسار متعلق بالمشاريع أو تم فتحها مسبقاً
+  const [projectsOpen, setProjectsOpen] = useState(() => {
+    const isProjectRoute = location.pathname.startsWith('/reports') || location.pathname.startsWith('/connections-hub');
+    if (!isProjectRoute) return false; // إغلاق دائماً إذا كنا خارج أقسام المشاريع
+    
+    const savedState = sessionStorage.getItem('projectsOpen');
+    if (savedState !== null) return savedState === 'true';
+    return true; // مفتوح افتراضياً داخل أقسام المشاريع
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('projectsOpen', projectsOpen);
+  }, [projectsOpen]);
   const [connectionsOpen, setConnectionsOpen] = useState(false); // مشروع إيصال
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pendingReviewCount, setPendingReviewCount] = useState(0);
+  const getCachedCount = (key) => {
+    try {
+      const val = localStorage.getItem(key);
+      return val ? parseInt(val, 10) : 0;
+    } catch(e) { return 0; }
+  };
+
+  const [pendingReviewCount, setPendingReviewCount] = useState(() => getCachedCount('cache_pendingReviewCount'));
   const [notificationsOpen, setNotificationsOpen] = useState(false); // لإظهار dropdown الإشعارات
   const [governorateCounts, setGovernorateCounts] = useState([]); // البلاغات حسب المحافظة
-  const [pendingInvoicesCount, setPendingInvoicesCount] = useState(0); // فواتير العهدة المعلقة
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0); // طلبات الموظفين المعلقة
-  const [signedRequestsCount, setSignedRequestsCount] = useState(0); // طلبات تم توقيعها وبانتظار التأكيد
-  const [supportMessagesCount, setSupportMessagesCount] = useState(0); // رسائل الدعم الجديدة
-  const [pendingExtractsCount, setPendingExtractsCount] = useState(0); // المستخلصات المعلقة
+  const [pendingInvoicesCount, setPendingInvoicesCount] = useState(() => getCachedCount('cache_pendingInvoicesCount')); // فواتير العهدة المعلقة
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(() => getCachedCount('cache_pendingRequestsCount')); // طلبات الموظفين المعلقة
+  const [signedRequestsCount, setSignedRequestsCount] = useState(() => getCachedCount('cache_signedRequestsCount')); // طلبات تم توقيعها وبانتظار التأكيد
+  const [supportMessagesCount, setSupportMessagesCount] = useState(() => getCachedCount('cache_supportMessagesCount')); // رسائل الدعم الجديدة
+  const [pendingExtractsCount, setPendingExtractsCount] = useState(() => getCachedCount('cache_pendingExtractsCount')); // المستخلصات المعلقة
   const [allProjects, setAllProjects] = useState([]); // جميع المشاريع من قاعدة البيانات
   const [projectTypes, setProjectTypes] = useState({}); // نوع كل مشروع (connections أو reports)
-  const [pendingSafetyCount, setPendingSafetyCount] = useState(0);
-  const [pendingQualityCount, setPendingQualityCount] = useState(0);
-  const [pendingBusinessCount, setPendingBusinessCount] = useState(0);
-  const [pendingConsultantCount, setPendingConsultantCount] = useState(0);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
-  
+  const [pendingSafetyCount, setPendingSafetyCount] = useState(() => getCachedCount('cache_pendingSafetyCount'));
+  const [pendingQualityCount, setPendingQualityCount] = useState(() => getCachedCount('cache_pendingQualityCount'));
+  const [pendingBusinessCount, setPendingBusinessCount] = useState(() => getCachedCount('cache_pendingBusinessCount'));
+  const [pendingConsultantCount, setPendingConsultantCount] = useState(() => getCachedCount('cache_pendingConsultantCount'));
+  const [unreadChatCount, setUnreadChatCount] = useState(() => getCachedCount('cache_unreadChatCount'));
+  const [pendingReportNotesCount, setPendingReportNotesCount] = useState(() => getCachedCount('cache_pendingReportNotesCount'));
+  const [showReportNotesPopup, setShowReportNotesPopup] = useState(false);
+  const previousReportNotesCount = useRef(0);
+
+  useEffect(() => {
+    localStorage.setItem('cache_pendingReviewCount', pendingReviewCount);
+    localStorage.setItem('cache_pendingInvoicesCount', pendingInvoicesCount);
+    localStorage.setItem('cache_pendingRequestsCount', pendingRequestsCount);
+    localStorage.setItem('cache_signedRequestsCount', signedRequestsCount);
+    localStorage.setItem('cache_supportMessagesCount', supportMessagesCount);
+    localStorage.setItem('cache_pendingExtractsCount', pendingExtractsCount);
+    localStorage.setItem('cache_pendingSafetyCount', pendingSafetyCount);
+    localStorage.setItem('cache_pendingQualityCount', pendingQualityCount);
+    localStorage.setItem('cache_pendingBusinessCount', pendingBusinessCount);
+    localStorage.setItem('cache_pendingConsultantCount', pendingConsultantCount);
+    localStorage.setItem('cache_unreadChatCount', unreadChatCount);
+    localStorage.setItem('cache_pendingReportNotesCount', pendingReportNotesCount);
+  }, [pendingReviewCount, pendingInvoicesCount, pendingRequestsCount, signedRequestsCount, supportMessagesCount, pendingExtractsCount, pendingSafetyCount, pendingQualityCount, pendingBusinessCount, pendingConsultantCount, unreadChatCount, pendingReportNotesCount]);
+
   const previousSignedCount = useRef(0);
   const previousPendingReviewCount = useRef(0);
   const previousUnreadChatCount = useRef(0);
   
+  const handleLinkClick = (e, path) => {
+    if (location.pathname === path || (path === '/' && location.pathname === '/dashboard')) {
+      e.preventDefault();
+      window.location.reload();
+    } else {
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
+    }
+  };
   // اسم المنصة - يُقرأ من localStorage أولاً لتجنب التأخير
   const [platformName, setPlatformName] = useState(() => {
     return localStorage.getItem('platformName') || 'بيت الخبرة';
@@ -171,36 +219,40 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         audioContext.resume();
       }
       
-      const osc = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      osc.type = 'sine'; // Sine wave is perfect for a whistle sound
-      osc.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
+      const playPop = (freq, startTime, duration) => {
+        const osc1 = audioContext.createOscillator();
+        const osc2 = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        osc1.type = 'triangle'; // Very loud and piercing wave
+        osc2.type = 'sine';
+        
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        osc1.frequency.setValueAtTime(freq, startTime);
+        osc1.frequency.exponentialRampToValueAtTime(freq * 1.5, startTime + duration / 2);
+        
+        osc2.frequency.setValueAtTime(freq, startTime);
+        osc2.frequency.exponentialRampToValueAtTime(freq * 1.5, startTime + duration / 2);
+        
+        gainNode.gain.setValueAtTime(0, startTime);
+        const actualVol = 6.0 * Math.pow(soundVolume, 2); // EXTREME VOLUME
+        gainNode.gain.linearRampToValueAtTime(actualVol, startTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        
+        osc1.start(startTime);
+        osc2.start(startTime);
+        osc1.stop(startTime + duration);
+        osc2.stop(startTime + duration);
+      };
+
       const t = audioContext.currentTime;
-      // نغمة العصفور (واتساب القديم): تدرج التردد للصعود ثم الهبوط
-      const actualVol = 0.5 * Math.pow(soundVolume, 2);
-
-      // الصفرة الأولى (صعود Fwee)
-      osc.frequency.setValueAtTime(1800, t);
-      osc.frequency.linearRampToValueAtTime(2600, t + 0.1);
+      // نغمة فقاعة مزدوجة بصوت حاد جداً وعالي
+      playPop(800, t, 0.08);           
+      playPop(1100, t + 0.12, 0.08);
       
-      gainNode.gain.setValueAtTime(0, t);
-      gainNode.gain.linearRampToValueAtTime(actualVol, t + 0.02);
-      gainNode.gain.setValueAtTime(actualVol, t + 0.08);
-      gainNode.gain.linearRampToValueAtTime(0, t + 0.1);
-
-      // الصفرة الثانية (هبوط Fwoo)
-      osc.frequency.setValueAtTime(2600, t + 0.12);
-      osc.frequency.linearRampToValueAtTime(1600, t + 0.35);
-
-      gainNode.gain.setValueAtTime(0, t + 0.12);
-      gainNode.gain.linearRampToValueAtTime(actualVol, t + 0.15);
-      gainNode.gain.setValueAtTime(actualVol, t + 0.25);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      
-      osc.start(t);
-      osc.stop(t + 0.4);
     } catch (e) {
       console.error('Could not play chat sound:', e);
     }
@@ -290,7 +342,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     });
   }, []);
   
-  const location = useLocation();
   const navigate = useNavigate();
   
   const hasPermission = (permKey) => {
@@ -335,6 +386,65 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   
   // جلب عدد البلاغات بانتظار المراجعة والتفاصيل حسب المحافظة
   useEffect(() => {
+    const fetchChatUnreadCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const chatNotifRes = await axios.get(`${API}/chat/v2/unread-count?t=${new Date().getTime()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const newUnreadCount = chatNotifRes.data.unread_count || 0;
+        
+        const savedUnreadChatCount = parseInt(localStorage.getItem('wfm_last_unread_chat_count') || '0', 10);
+        
+        let shouldPlayChatAlert = false;
+        let chatToastMessage = null;
+
+        if (newUnreadCount > savedUnreadChatCount) {
+          shouldPlayChatAlert = true;
+          chatToastMessage = isRtl ? `لديك رسالة جديدة في الدردشة الفورية 💬` : `You have a new message in Instant Chat 💬`;
+        } else if (!sessionStorage.getItem('wfm_chat_login_sound_played') && newUnreadCount > 0) {
+          shouldPlayChatAlert = true;
+          chatToastMessage = isRtl ? `لديك رسائل غير مقروءة في الدردشة الفورية 💬` : `You have unread messages 💬`;
+        }
+
+        localStorage.setItem('wfm_last_unread_chat_count', newUnreadCount.toString());
+        previousUnreadChatCount.current = newUnreadCount;
+
+        if (location.pathname === '/chat') {
+          setUnreadChatCount(0);
+        } else {
+          setUnreadChatCount(newUnreadCount);
+
+          if (shouldPlayChatAlert) {
+            sessionStorage.setItem('wfm_chat_login_sound_played', 'true');
+            if (soundEnabled) {
+              try {
+                // استخدام جرس التنبيه القوي جداً للرسائل
+                playIphoneAlertSound();
+              } catch (soundErr) {
+                console.error("Error playing chat sound:", soundErr);
+              }
+            }
+            if (chatToastMessage) {
+              try {
+                toast.info(chatToastMessage, {
+                  position: "top-center",
+                  autoClose: 5000,
+                  hideProgressBar: false,
+                  closeOnClick: true,
+                  pauseOnHover: true,
+                  draggable: true,
+                });
+              } catch (toastErr) {
+                console.error("Error showing toast:", toastErr);
+              }
+            }
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+
     const fetchPendingReview = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -439,63 +549,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           } catch (e) { /* silent */ }
         }
         
-        // جلب عدد الرسائل غير المقروءة للدردشة
-        try {
-          const chatNotifRes = await axios.get(`${API}/chat/v2/unread-count?t=${new Date().getTime()}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const newUnreadCount = chatNotifRes.data.unread_count || 0;
-          
-          const savedUnreadChatCount = parseInt(localStorage.getItem('wfm_last_unread_chat_count') || '0', 10);
-          
-          let shouldPlayChatAlert = false;
-          let chatToastMessage = null;
-
-          if (newUnreadCount > savedUnreadChatCount) {
-            // رسالة جديدة وصلت أثناء تشغيل النظام أو تراكم جديد
-            shouldPlayChatAlert = true;
-            chatToastMessage = isRtl ? `لديك رسائل جديدة في الدردشة الفورية 💬` : `You have new messages in Instant Chat 💬`;
-          } else if (!sessionStorage.getItem('wfm_chat_login_sound_played') && newUnreadCount > 0) {
-            // رسائل مخزنة قديمة عند تسجيل الدخول للنظام (لأول مرة في هذه الجلسة)
-            shouldPlayChatAlert = true;
-            chatToastMessage = isRtl ? `لديك رسائل غير مقروءة في الدردشة الفورية 💬` : `You have unread messages 💬`;
-          }
-
-          // تحديث التخزين المحلي فوراً لمنع التكرار حتى لو حدث خطأ لاحقاً
-          localStorage.setItem('wfm_last_unread_chat_count', newUnreadCount.toString());
-          previousUnreadChatCount.current = newUnreadCount;
-
-          if (location.pathname === '/chat') {
-            setUnreadChatCount(0);
-          } else {
-            setUnreadChatCount(newUnreadCount);
-
-            if (shouldPlayChatAlert) {
-              sessionStorage.setItem('wfm_chat_login_sound_played', 'true');
-              if (soundEnabled) {
-                try {
-                  playChatSound();
-                } catch (soundErr) {
-                  console.error("Error playing chat sound:", soundErr);
-                }
-              }
-              if (chatToastMessage) {
-                try {
-                  toast.info(chatToastMessage, {
-                    position: "top-center",
-                    autoClose: 5000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                  });
-                } catch (toastErr) {
-                  console.error("Error showing toast:", toastErr);
-                }
-              }
-            }
-          }
-        } catch (e) { /* silent */ }
         
         // التحقق من الإعلان العام (شريط المناسبات العاجلة)
         try {
@@ -558,37 +611,57 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         console.error('Error fetching pending review:', error);
       }
 
-      // جلب عدد تقارير السلامة والجودة والأعمال قيد المراجعة
+      // جلب جميع العدادات بطلب واحد سريع جداً من الخادم
       try {
         const token = localStorage.getItem('token');
-        const [safetyRes, qualityRes, warehouseRes, businessRes, consultantRes] = await Promise.all([
-          axios.get(`${API}/safety-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
-          axios.get(`${API}/quality-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
-          axios.get(`${API}/warehouse-visits?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
-          axios.get(`${API}/business-reports?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
-          axios.get(`${API}/reports/consultant-notes?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { reports: [] } }))
-        ]);
-        setPendingSafetyCount((safetyRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);
-        const qCount = (qualityRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length;
-        const wCount = (warehouseRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length;
-        setPendingQualityCount(qCount + wCount);
-        setPendingBusinessCount((businessRes.data || []).filter(r => (r.status || 'قيد المراجعة') === 'قيد المراجعة').length);
+        const res = await axios.get(`${API}/dashboard/badges?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = res.data || {};
         
-        // جلب عدد ملاحظات الاستشاري قيد المعالجة
-        if (consultantRes?.data?.reports) {
-          setPendingConsultantCount(consultantRes.data.reports.filter(r => r.consultant_note_processed === false).length);
+        const safetyTotal = (data.safety || 0) + (data.safety_notes || 0) + (data.work_permits || 0) + (data.work_permits_notes || 0) + (data.violations || 0) + (data.violations_notes || 0);
+        const qualityTotal = (data.quality || 0) + (data.quality_notes || 0) + (data.warehouse || 0);
+        
+        setPendingSafetyCount(safetyTotal);
+        setPendingQualityCount(qualityTotal);
+        setPendingBusinessCount(data.business || 0);
+        setPendingConsultantCount(data.consultant || 0);
+        
+        const newReportNotes = data.report_notes || 0;
+        const dismissedCount = parseInt(localStorage.getItem('dismissedReportNotesCount') || '0', 10);
+        
+        if (newReportNotes < dismissedCount) {
+          localStorage.setItem('dismissedReportNotesCount', newReportNotes.toString());
         }
+        
+        if (newReportNotes > dismissedCount && hasPermission('report_notes')) {
+          setShowReportNotesPopup(true);
+        }
+        setPendingReportNotesCount(newReportNotes);
       } catch (e) { /* silent */ }
     };
     
     // جلب البيانات عند التحميل
     fetchPendingReview();
+    fetchChatUnreadCount();
     
-    // تحديث العدد كل 15 ثانية لجعل النظام أسرع في الاستجابة
-    const interval = setInterval(fetchPendingReview, 15000);
+    // التحديث الفوري عند استقبال إشارة من الصفحات الأخرى (الخدعة البرمجية اللحظية)
+    const handleUpdateBadges = () => {
+      fetchPendingReview();
+      fetchChatUnreadCount();
+    };
+    window.addEventListener('updateBadges', handleUpdateBadges);
     
-    return () => clearInterval(interval);
-  }, [user, soundEnabled, playNotificationSound, location.pathname]);
+    // تحديث العدد كل 30 ثانية لتخفيف الضغط على المتصفح والخادم (Smart Polling)
+    const interval = setInterval(fetchPendingReview, 30000);
+    
+    // تحديث الدردشة بشكل أسرع بكثير (كل 3 ثوانٍ) لضمان وصول الإشعار القوي فوراً
+    const chatInterval = setInterval(fetchChatUnreadCount, 3000);
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(chatInterval);
+      window.removeEventListener('updateBadges', handleUpdateBadges);
+    };
+  }, [user, soundEnabled, playNotificationSound, playIphoneAlertSound]);
   
   // نظام التذكير الدوري الهادئ للبلاغات قيد المراجعة
   useEffect(() => {
@@ -1053,7 +1126,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
                 {unreadChatCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse shadow-lg">
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200 shadow-lg">
                     {unreadChatCount > 9 ? '9+' : unreadChatCount}
                   </span>
                 )}
@@ -1076,8 +1149,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     </svg>
                     {/* Badge للعدد */}
                     {pendingReviewCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {pendingReviewCount > 9 ? '9+' : pendingReviewCount}
+                      <span className="absolute -top-1.5 -right-1.5 bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
+                        {pendingReviewCount}
                       </span>
                     )}
                   </button>
@@ -1192,16 +1265,23 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                         </div>
                         
                         <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-                          <Link
-                            to="/reports?license_status=review_pending"
-                            onClick={() => setNotificationsOpen(false)}
-                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center justify-center gap-1"
+                          <button
+                            onClick={() => {
+                              setNotificationsOpen(false);
+                              const target = `/reports?license_status=review_pending&t=${Date.now()}`;
+                              if (location.pathname === '/reports') {
+                                window.location.href = target;
+                              } else {
+                                navigate(target);
+                              }
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center justify-center gap-1 w-full"
                           >
-                            <span>{isRtl ? 'عرض جميع البلاغات' : 'View all reports'}</span>
+                            <span>{isRtl ? 'عرض جميع البلاغات قيد المراجعة' : 'View all pending review reports'}</span>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
-                          </Link>
+                          </button>
                         </div>
                       </div>
                     </>
@@ -1221,7 +1301,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {unseenReportsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 animate-pulse">
+                    <span className="absolute -top-1.5 -right-1.5 bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                       {unseenReportsCount > 99 ? '99+' : unseenReportsCount}
                     </span>
                   )}
@@ -1709,11 +1789,12 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               0%, 49% { background-color: #e53935; box-shadow: inset 0 0 15px rgba(0,0,0,0.15); } 
               50%, 100% { background-color: #7f0000; box-shadow: inset 0 0 25px rgba(0,0,0,0.4); } 
             }
-            @keyframes marqueeScroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+            @keyframes marqueeScrollRtl { 0% { transform: translateX(-100%); } 100% { transform: translateX(100vw); } }
+            @keyframes marqueeScrollLtr { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
           `}</style>
           <div className="mx-auto py-3 sm:py-4 flex items-center overflow-hidden w-full relative h-12 sm:h-14">
             <p className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-widest whitespace-nowrap absolute drop-shadow-lg" 
-               style={{ animation: 'marqueeScroll 20s linear infinite', left: 0, textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>
+               style={{ animation: `${isRtl ? 'marqueeScrollRtl' : 'marqueeScrollLtr'} 20s linear infinite`, left: 0, textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>
               ⚠️ {translateBrandingText(dynamicAnnouncement ? dynamicAnnouncement : branding.global_announcement, isRtl)} ⚠️
             </p>
           </div>
@@ -1750,14 +1831,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               {hasPermission('dashboard') && (
                 <Link 
                   to="/" 
-                  onClick={(e) => {
-                    if (location.pathname === '/' || location.pathname === '/dashboard') {
-                      e.preventDefault();
-                      window.location.reload();
-                    } else {
-                      setSidebarOpen(false);
-                    }
-                  }} 
+                  onClick={(e) => handleLinkClick(e, '/')} 
                   className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/') || isActive('/dashboard') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}
                 >
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -1814,15 +1888,32 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* ملاحظات الاستشاري */}
               {hasPermission('consultant_notes') && (
-                <Link to="/consultant-notes" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/consultant-notes') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/consultant-notes" onClick={(e) => handleLinkClick(e, "/consultant-notes")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/consultant-notes') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       {t('sidebar.consultantNotes', { defaultValue: 'ملاحظات الاستشاري' })}
                     </div>
                     {pendingConsultantCount > 0 && (
-                      <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm min-w-[20px] text-center ml-2">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingConsultantCount > 9 ? '9+' : pendingConsultantCount}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              )}
+              
+              {/* ملاحظات البلاغات */}
+              {hasPermission('report_notes') && (
+                <Link to="/report-notes" onClick={(e) => handleLinkClick(e, "/report-notes")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/report-notes') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      {t('sidebar.reportNotes', { defaultValue: 'ملاحظات البلاغات' })}
+                    </div>
+                    {pendingReportNotesCount > 0 && (
+                      <span className="bg-gradient-to-br from-amber-600 to-amber-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(245,158,11,0.9)] border-[2px] border-white ring-2 ring-amber-200">
+                        {pendingReportNotesCount > 9 ? '9+' : pendingReportNotesCount}
                       </span>
                     )}
                   </div>
@@ -1831,7 +1922,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* المقاولون */}
               {hasPermission('contractors') && (
-                <Link to="/contractors" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/contractors') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/contractors" onClick={(e) => handleLinkClick(e, "/contractors")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/contractors') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                   {t('sidebar.contractors')}
                 </Link>
@@ -1839,14 +1930,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* تقارير السلامة */}
               {hasPermission('safety_reports') && (
-                <Link to="/safety-reports" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/safety-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/safety-reports" onClick={(e) => handleLinkClick(e, "/safety-reports")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/safety-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <ShieldAlert className="w-4 h-4 text-orange-500 ml-2" />
                       {i18n.language === 'ar' ? 'تقارير السلامة' : 'Safety Reports'}
                     </div>
                     {pendingSafetyCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingSafetyCount > 9 ? '9+' : pendingSafetyCount}
                       </span>
                     )}
@@ -1854,16 +1945,17 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
 
+
               {/* تقارير الجودة */}
               {hasPermission('quality_reports') && (
-                <Link to="/quality-reports" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/quality-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/quality-reports" onClick={(e) => handleLinkClick(e, "/quality-reports")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/quality-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <ClipboardCheck className="w-4 h-4 text-teal-500 ml-2" />
                       {i18n.language === 'ar' ? 'تقارير الجودة' : 'Quality Reports'}
                     </div>
                     {pendingQualityCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingQualityCount > 9 ? '9+' : pendingQualityCount}
                       </span>
                     )}
@@ -1873,14 +1965,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* تقارير الأعمال */}
               {hasPermission('business_reports') && (
-                <Link to="/business-reports" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/business-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/business-reports" onClick={(e) => handleLinkClick(e, "/business-reports")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/business-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <FileBarChart2 className="w-4 h-4 text-blue-500 ml-2" />
                       {i18n.language === 'ar' ? 'تقارير الأعمال' : 'Business Reports'}
                     </div>
                     {pendingBusinessCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingBusinessCount > 9 ? '9+' : pendingBusinessCount}
                       </span>
                     )}
@@ -1890,7 +1982,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* المستخلصات */}
               {hasPermission('extracts') && canViewExtracts() && (
-                <Link to="/extracts" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/extracts') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/extracts" onClick={(e) => handleLinkClick(e, "/extracts")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/extracts') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -1898,7 +1990,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     </div>
                     {/* إشعار المستخلصات الواردة - يظهر فقط للأدمن */}
                     {user.role === 'admin' && pendingExtractsCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingExtractsCount > 9 ? '9+' : pendingExtractsCount}
                       </span>
                     )}
@@ -1908,14 +2000,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* الفواتير والعهدة */}
               {hasPermission('invoices') && (
-                <Link to="/invoices" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/invoices') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/invoices" onClick={(e) => handleLinkClick(e, "/invoices")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/invoices') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>
                       {t('sidebar.invoices')}
                     </div>
                     {pendingInvoicesCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingInvoicesCount > 9 ? '9+' : pendingInvoicesCount}
                       </span>
                     )}
@@ -1925,7 +2017,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* طلبات الموظفين */}
               {hasPermission('employee_requests') && (
-                <Link to="/employee-requests" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/employee-requests') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/employee-requests" onClick={(e) => handleLinkClick(e, "/employee-requests")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/employee-requests') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -1933,12 +2025,12 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </div>
                   <div className="flex gap-1">
                     {pendingRequestsCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
                       </span>
                     )}
                     {signedRequestsCount > 0 && (
-                      <span className="bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-blue-600 to-blue-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(59,130,246,0.9)] border-[2px] border-white ring-2 ring-blue-200">
                         {signedRequestsCount > 9 ? '9+' : signedRequestsCount}
                       </span>
                     )}
@@ -1949,7 +2041,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* شؤون الموظفين */}
               {(user?.role === 'admin' || hasPermission('hr_management')) && (
-                <Link to="/hr-management" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/hr-management') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/hr-management" onClick={(e) => handleLinkClick(e, "/hr-management")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/hr-management') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   {t('sidebar.hrManagement')}
                 </Link>
@@ -1957,7 +2049,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* فريق العمل - فوق إدارة المستخدمين */}
               {hasPermission('team') && (
-                <Link to="/team" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/team') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/team" onClick={(e) => handleLinkClick(e, "/team")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/team') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                   {t('sidebar.team')}
                 </Link>
@@ -1965,7 +2057,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* سيارات الشركة */}
               {hasPermission('fleet_maintenance') && (
-                <Link to="/fleet-maintenance" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/fleet-maintenance') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/fleet-maintenance" onClick={(e) => handleLinkClick(e, "/fleet-maintenance")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/fleet-maintenance') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                   {t('sidebar.fleet')}
                 </Link>
@@ -1973,7 +2065,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* إدارة المستخدمين */}
               {hasPermission('users_manage') && (
-                <Link to="/users" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/users') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/users" onClick={(e) => handleLinkClick(e, "/users")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/users') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                   {t('sidebar.users')}
                 </Link>
@@ -1981,14 +2073,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* رسائل الدعم - فوق الإعدادات */}
               {hasPermission('support_messages') && (
-                <Link to="/support-messages" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/support-messages') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/support-messages" onClick={(e) => handleLinkClick(e, "/support-messages")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/support-messages') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                       {t('sidebar.supportMessages')}
                     </div>
                     {supportMessagesCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {supportMessagesCount > 9 ? '9+' : supportMessagesCount}
                       </span>
                     )}
@@ -1996,17 +2088,10 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
               
-              {/* الإعدادات */}
-              {hasPermission('settings') && (
-                <Link to="/settings" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/settings') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
-                  <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  {t('sidebar.settings')}
-                </Link>
-              )}
-              
+
               {/* الأرشيف */}
               {user && user.role === 'admin' && (
-                <Link to="/archive" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/archive') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/archive" onClick={(e) => handleLinkClick(e, "/archive")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/archive') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                   {i18n.language === 'ar' ? 'الأرشيف' : 'Archive'}
                 </Link>
@@ -2023,7 +2108,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               >
                 <span>{isRtl ? '💬 الدردشة الفورية' : '💬 Instant Chat'}</span>
                 {unreadChatCount > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-extrabold animate-pulse">
+                  <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                     {unreadChatCount}
                   </span>
                 )}
@@ -2031,9 +2116,17 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               
               {/* سلة المحذوفات */}
               {hasPermission('trash') && (
-                <Link to="/trash" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/trash') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <Link to="/trash" onClick={(e) => handleLinkClick(e, "/trash")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/trash') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                   {t('sidebar.trash')}
+                </Link>
+              )}
+              
+              {/* الإعدادات */}
+              {hasPermission('settings') && (
+                <Link to="/settings" onClick={(e) => handleLinkClick(e, "/settings")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/settings') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  {t('sidebar.settings')}
                 </Link>
               )}
               
@@ -2110,9 +2203,13 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                       const cleanUrl = (linkTo || `/reports?project=${encodeURIComponent(project.name)}`).replace(/[&?]t=\d+/g, '');
                       return (
                         <Link key={project.id || project.name} to={cleanUrl}
-                          onClick={() => {
-                            // الدروبداون يظل مفتوحاً عند التنقل بين المشاريع (لا نغلقه)
-                            setSidebarOpen(false);
+                          onClick={(e) => {
+                            if (location.pathname === '/reports' && location.search.includes(encodeURIComponent(project.name))) {
+                              e.preventDefault();
+                              window.location.reload();
+                            } else {
+                              if (window.innerWidth < 1024) setSidebarOpen(false);
+                            }
                           }}
                           className={`block px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors ${location.search.includes(encodeURIComponent(project.name)) ? 'bg-bg-light text-primary font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                           <svg className="inline-block w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -2129,8 +2226,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* ملاحظات الاستشاري */}
             {hasPermission('consultant_notes') && (
               <Link
-                to="/consultant-notes"
-                onClick={() => setSidebarOpen(false)}
+                to="/consultant-notes" onClick={(e) => handleLinkClick(e, "/consultant-notes")}
                 className={`sidebar-item ${isActive('/consultant-notes') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="flex items-center justify-between w-full">
@@ -2141,8 +2237,30 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <span className="sidebar-text">{t('sidebar.consultantNotes', { defaultValue: 'ملاحظات الاستشاري' })}</span>
                   </div>
                   {pendingConsultantCount > 0 && (
-                    <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm min-w-[20px] text-center ml-2">
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                       {pendingConsultantCount > 9 ? '9+' : pendingConsultantCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )}
+            
+            {/* ملاحظات البلاغات */}
+            {hasPermission('report_notes') && (
+              <Link
+                to="/report-notes" onClick={(e) => handleLinkClick(e, "/report-notes")}
+                className={`sidebar-item ${isActive('/report-notes') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <div className="sidebar-icon-box">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </div>
+                    <span className="sidebar-text">{t('sidebar.reportNotes', { defaultValue: 'ملاحظات البلاغات' })}</span>
+                  </div>
+                  {pendingReportNotesCount > 0 && (
+                    <span className="bg-gradient-to-br from-amber-600 to-amber-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(245,158,11,0.9)] border-[2px] border-white ring-2 ring-amber-200">
+                      {pendingReportNotesCount > 9 ? '9+' : pendingReportNotesCount}
                     </span>
                   )}
                 </div>
@@ -2152,8 +2270,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* المقاولون */}
             {hasPermission('contractors') && (
               <Link
-                to="/contractors"
-                onClick={() => setSidebarOpen(false)}
+                to="/contractors" onClick={(e) => handleLinkClick(e, "/contractors")}
                 className={`sidebar-item ${isActive('/contractors') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
@@ -2168,8 +2285,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* تقارير السلامة */}
             {hasPermission('safety_reports') && (
               <Link
-                to="/safety-reports"
-                onClick={() => setSidebarOpen(false)}
+                to="/safety-reports" onClick={(e) => handleLinkClick(e, "/safety-reports")}
                 className={`sidebar-item ${isActive('/safety-reports') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="flex items-center justify-between w-full">
@@ -2180,7 +2296,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <span className="sidebar-text">{i18n.language === 'ar' ? 'تقارير السلامة' : 'Safety Reports'}</span>
                   </div>
                   {pendingSafetyCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                       {pendingSafetyCount > 9 ? '9+' : pendingSafetyCount}
                     </span>
                   )}
@@ -2191,8 +2307,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* تقارير الجودة */}
             {hasPermission('quality_reports') && (
               <Link
-                to="/quality-reports"
-                onClick={() => setSidebarOpen(false)}
+                to="/quality-reports" onClick={(e) => handleLinkClick(e, "/quality-reports")}
                 className={`sidebar-item ${isActive('/quality-reports') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="flex items-center justify-between w-full">
@@ -2203,7 +2318,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <span className="sidebar-text">{i18n.language === 'ar' ? 'تقارير الجودة' : 'Quality Reports'}</span>
                   </div>
                   {pendingQualityCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                       {pendingQualityCount > 9 ? '9+' : pendingQualityCount}
                     </span>
                   )}
@@ -2214,8 +2329,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* تقارير الأعمال */}
             {hasPermission('business_reports') && (
               <Link
-                to="/business-reports"
-                onClick={() => setSidebarOpen(false)}
+                to="/business-reports" onClick={(e) => handleLinkClick(e, "/business-reports")}
                 className={`sidebar-item ${isActive('/business-reports') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="flex items-center justify-between w-full">
@@ -2226,7 +2340,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <span className="sidebar-text">{i18n.language === 'ar' ? 'تقارير الأعمال' : 'Business Reports'}</span>
                   </div>
                   {pendingBusinessCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                       {pendingBusinessCount > 9 ? '9+' : pendingBusinessCount}
                     </span>
                   )}
@@ -2237,8 +2351,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* المستخلصات */}
             {hasPermission('extracts') && canViewExtracts() && (
               <Link
-                to="/extracts"
-                onClick={() => setSidebarOpen(false)}
+                to="/extracts" onClick={(e) => handleLinkClick(e, "/extracts")}
                 className={`sidebar-item ${isActive('/extracts') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="flex items-center justify-between w-full">
@@ -2251,7 +2364,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <span className="sidebar-text">{t('sidebar.extracts')}</span>
                   </div>
                   {user.role === 'admin' && pendingExtractsCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                       {pendingExtractsCount > 9 ? '9+' : pendingExtractsCount}
                     </span>
                   )}
@@ -2262,8 +2375,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* الفواتير والعهدة */}
             {hasPermission('invoices') && (
               <Link
-                to="/invoices"
-                onClick={() => setSidebarOpen(false)}
+                to="/invoices" onClick={(e) => handleLinkClick(e, "/invoices")}
                 className={`sidebar-item ${isActive('/invoices') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="flex items-center justify-between w-full">
@@ -2276,7 +2388,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     <span className="sidebar-text">{t('sidebar.invoices')}</span>
                   </div>
                   {pendingInvoicesCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                       {pendingInvoicesCount > 9 ? '9+' : pendingInvoicesCount}
                     </span>
                   )}
@@ -2287,8 +2399,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* طلبات الموظفين */}
             {hasPermission('employee_requests') && (
               <Link
-                to="/employee-requests"
-                onClick={() => setSidebarOpen(false)}
+                to="/employee-requests" onClick={(e) => handleLinkClick(e, "/employee-requests")}
                 className={`sidebar-item ${isActive('/employee-requests') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                   <div className="flex items-center justify-between w-full">
@@ -2302,12 +2413,12 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     </div>
                     <div className="flex gap-1">
                       {pendingRequestsCount > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse" title="طلبات معلقة">
+                        <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200" title="طلبات معلقة">
                           {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
                         </span>
                       )}
                       {signedRequestsCount > 0 && (
-                        <span className="bg-blue-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse border border-white shadow-sm" title="مستندات موقعة جديدة">
+                        <span className="bg-gradient-to-br from-blue-600 to-blue-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(59,130,246,0.9)] border-[2px] border-white ring-2 ring-blue-200 border border-white shadow-sm" title="مستندات موقعة جديدة">
                           {signedRequestsCount > 9 ? '9+' : signedRequestsCount}
                         </span>
                       )}
@@ -2319,8 +2430,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* شؤون الموظفين */}
             {(user?.role === 'admin' || hasPermission('hr_management')) && (
               <Link
-                to="/hr-management"
-                onClick={() => setSidebarOpen(false)}
+                to="/hr-management" onClick={(e) => handleLinkClick(e, "/hr-management")}
                 className={`sidebar-item ${isActive('/hr-management') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
@@ -2335,8 +2445,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* فريق العمل */}
             {hasPermission('team') && (
               <Link
-                to="/team"
-                onClick={() => setSidebarOpen(false)}
+                to="/team" onClick={(e) => handleLinkClick(e, "/team")}
                 className={`sidebar-item ${isActive('/team') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
@@ -2351,8 +2460,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* سيارات الشركة */}
             {hasPermission('fleet_maintenance') && (
               <Link
-                to="/fleet-maintenance"
-                onClick={() => setSidebarOpen(false)}
+                to="/fleet-maintenance" onClick={(e) => handleLinkClick(e, "/fleet-maintenance")}
                 className={`sidebar-item ${isActive('/fleet-maintenance') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
@@ -2367,8 +2475,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* إدارة المستخدمين */}
             {hasPermission('users_manage') && (
               <Link
-                to="/users"
-                onClick={() => setSidebarOpen(false)}
+                to="/users" onClick={(e) => handleLinkClick(e, "/users")}
                 className={`sidebar-item ${isActive('/users') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
@@ -2380,53 +2487,11 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               </Link>
             )}
             
-            {/* رسائل الدعم */}
-            {hasPermission('support_messages') && (
-              <Link
-                to="/support-messages"
-                onClick={() => setSidebarOpen(false)}
-                className={`sidebar-item ${isActive('/support-messages') ? 'sidebar-item-active' : 'text-gray-700'}`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center">
-                    <div className="sidebar-icon-box">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                    </div>
-                    <span className="sidebar-text">{t('sidebar.supportMessages')}</span>
-                  </div>
-                  {supportMessagesCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
-                      {supportMessagesCount > 9 ? '9+' : supportMessagesCount}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            )}
-            
-            {/* الإعدادات */}
-            {user && (
-              <Link
-                to="/settings"
-                onClick={() => setSidebarOpen(false)}
-                className={`sidebar-item ${isActive('/settings') ? 'sidebar-item-active' : 'text-gray-700'}`}
-              >
-                <div className="sidebar-icon-box">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <span className="sidebar-text">{t('sidebar.settings')}</span>
-              </Link>
-            )}
-            
+
             {/* الأرشيف */}
             {user && user.role === 'admin' && (
               <Link
-                to="/archive"
-                onClick={() => setSidebarOpen(false)}
+                to="/archive" onClick={(e) => handleLinkClick(e, "/archive")}
                 className={`sidebar-item ${isActive('/archive') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
@@ -2455,7 +2520,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <span className="sidebar-text font-bold">{isRtl ? 'الدردشة الفورية' : 'Instant Chat'}</span>
               </div>
               {unreadChatCount > 0 && (
-                <span className="ml-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-extrabold animate-pulse">
+                <span className="ml-2 bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                   {unreadChatCount}
                 </span>
               )}
@@ -2464,8 +2529,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             {/* سلة المحذوفات */}
             {hasPermission('trash') && (
               <Link
-                to="/trash"
-                onClick={() => setSidebarOpen(false)}
+                to="/trash" onClick={(e) => handleLinkClick(e, "/trash")}
                 className={`sidebar-item ${isActive('/trash') ? 'sidebar-item-active' : 'text-gray-700'}`}
               >
                 <div className="sidebar-icon-box">
@@ -2477,6 +2541,46 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               </Link>
             )}
             
+            {/* رسائل الدعم */}
+            {hasPermission('support_messages') && (
+              <Link
+                to="/support-messages" onClick={(e) => handleLinkClick(e, "/support-messages")}
+                className={`sidebar-item ${isActive('/support-messages') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <div className="sidebar-icon-box">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    </div>
+                    <span className="sidebar-text">{t('sidebar.supportMessages')}</span>
+                  </div>
+                  {supportMessagesCount > 0 && (
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
+                      {supportMessagesCount > 9 ? '9+' : supportMessagesCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )}
+
+            {/* الإعدادات */}
+            {user && (
+              <Link
+                to="/settings" onClick={(e) => handleLinkClick(e, "/settings")}
+                className={`sidebar-item ${isActive('/settings') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="sidebar-icon-box">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <span className="sidebar-text">{t('sidebar.settings')}</span>
+              </Link>
+            )}
+
             {/* زر تغيير اللغة */}
             <button
               onClick={toggleLanguage}
@@ -2554,6 +2658,42 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           </div>
         </div>
       </footer>
+
+      {/* Report Notes Popup */}
+      {showReportNotesPopup && hasPermission('report_notes') && (
+        <div className={`fixed bottom-6 left-6 z-[100] animate-fade-in`}>
+          <div className="bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] p-5 border-l-4 border-blue-600 w-80 relative flex items-start gap-4">
+            <button 
+              onClick={() => {
+                setShowReportNotesPopup(false);
+                localStorage.setItem('dismissedReportNotesCount', pendingReportNotesCount.toString());
+              }}
+              className={`absolute top-3 ${isRtl ? 'left-3' : 'right-3'} text-gray-400 hover:text-red-500 transition-colors bg-gray-50 hover:bg-red-50 rounded-full p-1`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 shadow-inner">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            </div>
+            <div className="flex-1 pr-2">
+              <h4 className="font-bold text-gray-900 text-sm mb-1.5">{t('sidebar.reportNotes', { defaultValue: 'ملاحظات البلاغات' })}</h4>
+              <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                {isRtl ? 'توجد ملاحظات بلاغات جديدة بانتظار مراجعتك.' : 'There are new report notes waiting for your review.'}
+              </p>
+              <Link 
+                to="/report-notes" 
+                onClick={() => {
+                  setShowReportNotesPopup(false);
+                  localStorage.setItem('dismissedReportNotesCount', pendingReportNotesCount.toString());
+                }}
+                className="flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg"
+              >
+                {isRtl ? 'عرض الملاحظات' : 'View Notes'}
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

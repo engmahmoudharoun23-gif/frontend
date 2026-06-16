@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import Layout from '../components/Layout';
+import { translateBrandingText } from '../utils/brandingTranslation';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
@@ -16,35 +17,41 @@ const playNotificationSound = () => {
     if (!AudioContext) return;
     const ctx = new AudioContext();
 
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    osc.type = 'sine'; // Sine wave is perfect for a whistle sound
-    osc.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
+    const playPop = (freq, startTime, duration) => {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc1.type = 'triangle'; // Very loud and piercing wave
+      osc2.type = 'sine';     // Fills the body of the sound
+      
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      // Sharp pitch sweep for a very aggressive pop
+      osc1.frequency.setValueAtTime(freq, startTime);
+      osc1.frequency.exponentialRampToValueAtTime(freq * 1.5, startTime + duration / 2);
+      
+      osc2.frequency.setValueAtTime(freq, startTime);
+      osc2.frequency.exponentialRampToValueAtTime(freq * 1.5, startTime + duration / 2);
+      
+      // Extreme amplitude envelope
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(5.0, startTime + 0.01); // EXTREME VOLUME
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      
+      osc1.start(startTime);
+      osc2.start(startTime);
+      osc1.stop(startTime + duration);
+      osc2.stop(startTime + duration);
+    };
+
     const t = ctx.currentTime;
-    const actualVol = 0.5;
-
-    // الصفرة الأولى (صعود Fwee)
-    osc.frequency.setValueAtTime(1800, t);
-    osc.frequency.linearRampToValueAtTime(2600, t + 0.1);
+    // نغمة فقاعة مزدوجة (Bubble/Pop) بصوت حاد جداً وعالي
+    playPop(800, t, 0.08);           // Pop 1
+    playPop(1100, t + 0.12, 0.08);    // Pop 2
     
-    gainNode.gain.setValueAtTime(0, t);
-    gainNode.gain.linearRampToValueAtTime(actualVol, t + 0.02);
-    gainNode.gain.setValueAtTime(actualVol, t + 0.08);
-    gainNode.gain.linearRampToValueAtTime(0, t + 0.1);
-
-    // الصفرة الثانية (هبوط Fwoo)
-    osc.frequency.setValueAtTime(2600, t + 0.12);
-    osc.frequency.linearRampToValueAtTime(1600, t + 0.35);
-
-    gainNode.gain.setValueAtTime(0, t + 0.12);
-    gainNode.gain.linearRampToValueAtTime(actualVol, t + 0.15);
-    gainNode.gain.setValueAtTime(actualVol, t + 0.25);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    
-    osc.start(t);
-    osc.stop(t + 0.4);
   } catch (e) {
     // Silently fail if audio not supported
   }
@@ -103,15 +110,41 @@ const Chat = ({ user, onLogout }) => {
   const isRtl = i18n.dir() === 'rtl';
   const locale = isRtl ? ar : enUS;
 
-  const [contacts, setContacts] = useState([]);
+  const [contacts, setContacts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('chat_contacts_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [selectedContact, setSelectedContact] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const inputRef = useRef(null);
-  const [loadingContacts, setLoadingContacts] = useState(true);
+  const [loadingContacts, setLoadingContacts] = useState(() => {
+    return !localStorage.getItem('chat_contacts_cache');
+  });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupMembers, setNewGroupMembers] = useState([]);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupMembers, setEditGroupMembers] = useState([]);
+  const [updatingGroup, setUpdatingGroup] = useState(false);
+  const [newGroupAvatar, setNewGroupAvatar] = useState(null);
+  const [editGroupAvatar, setEditGroupAvatar] = useState(null);
+  const [uploadingGroupAvatar, setUploadingGroupAvatar] = useState(false);
+
+  // حالة ربط المستخدمين (Link Users)
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUser1, setLinkUser1] = useState('');
+  const [linkUser2, setLinkUser2] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [chatLinks, setChatLinks] = useState([]);
+  const [loadingLinks, setLoadingLinks] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojis = [
     // Faces
@@ -168,10 +201,26 @@ const Chat = ({ user, onLogout }) => {
       if (!response.ok) throw new Error();
       const data = await response.json();
       setContacts(data);
+      try { localStorage.setItem('chat_contacts_cache', JSON.stringify(data)); } catch(e) {}
     } catch {
       // silently fail on refresh
     } finally {
       setLoadingContacts(false);
+    }
+  }, []);
+
+  const fetchLinks = useCallback(async () => {
+    setLoadingLinks(true);
+    try {
+      const response = await fetch(`${API}/chat/v2/links`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      setChatLinks(data || []);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingLinks(false);
     }
   }, []);
 
@@ -219,6 +268,12 @@ const Chat = ({ user, onLogout }) => {
   }, [fetchContacts]);
 
   useEffect(() => {
+    if (showLinkModal) {
+      fetchLinks();
+    }
+  }, [showLinkModal, fetchLinks]);
+
+  useEffect(() => {
     if (!selectedContact) return;
 
     prevMessageCountRef.current = 0;
@@ -232,6 +287,85 @@ const Chat = ({ user, onLogout }) => {
 
     return () => clearInterval(interval);
   }, [selectedContact, fetchMessages]);
+
+  const handleCreateGroup = async (e) => {
+    e.preventDefault();
+    if (!newGroupName.trim() || newGroupMembers.length === 0) return;
+    setCreatingGroup(true);
+    try {
+      const response = await fetch(`${API}/chat/v2/groups`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: newGroupName.trim(),
+          members: newGroupMembers,
+          avatar: newGroupAvatar
+        })
+      });
+      if (!response.ok) throw new Error();
+      toast.success(isRtl ? 'تم إنشاء المجموعة بنجاح' : 'Group created successfully');
+      setShowGroupModal(false);
+      setNewGroupName('');
+      setNewGroupMembers([]);
+      setNewGroupAvatar(null);
+      fetchContacts();
+    } catch {
+      toast.error(isRtl ? 'حدث خطأ أثناء إنشاء المجموعة' : 'Error creating group');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const handleUpdateGroup = async (e) => {
+    e.preventDefault();
+    if (!editGroupName.trim() || editGroupMembers.length === 0) return;
+    setUpdatingGroup(true);
+    try {
+      const response = await fetch(`${API}/chat/v2/groups/${selectedContact.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: editGroupName.trim(),
+          members: editGroupMembers,
+          avatar: editGroupAvatar
+        })
+      });
+      if (!response.ok) throw new Error();
+      toast.success(isRtl ? 'تم تحديث المجموعة بنجاح' : 'Group updated successfully');
+      setShowEditGroupModal(false);
+      setSelectedContact(prev => ({...prev, name: editGroupName.trim(), members: editGroupMembers, avatar: editGroupAvatar || prev.avatar}));
+      fetchContacts();
+    } catch {
+      toast.error(isRtl ? 'حدث خطأ أثناء تحديث المجموعة' : 'Error updating group');
+    } finally {
+      setUpdatingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!window.confirm(isRtl ? 'هل أنت متأكد أنك تريد حذف هذه المجموعة نهائياً؟' : 'Are you sure you want to permanently delete this group?')) return;
+    try {
+      const response = await fetch(`${API}/chat/v2/groups/${selectedContact.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!response.ok) throw new Error();
+      toast.success(isRtl ? 'تم حذف المجموعة بنجاح' : 'Group deleted successfully');
+      setShowEditGroupModal(false);
+      setSelectedContact(null);
+      fetchContacts();
+    } catch {
+      toast.error(isRtl ? 'حدث خطأ أثناء حذف المجموعة' : 'Error deleting group');
+    }
+  };
 
   const handleEditMessage = async (messageId) => {
     if (!inputText.trim()) return;
@@ -248,6 +382,7 @@ const Chat = ({ user, onLogout }) => {
         const errData = await response.json();
         throw new Error(errData.detail || isRtl ? 'فشل تعديل الرسالة' : 'Failed to edit message');
       }
+      window.dispatchEvent(new Event('updateBadges'));
       setEditingMessage(null);
       setInputText('');
       fetchMessages(selectedContact?.id, false);
@@ -256,7 +391,34 @@ const Chat = ({ user, onLogout }) => {
     }
   };
 
-  const [pendingAttachment, setPendingAttachment] = useState(null);
+  const [pendingAttachments, setPendingAttachments] = useState([]);
+
+  const handleGroupAvatarUpload = async (e, setAvatarFunc) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingGroupAvatar(true);
+    try {
+      let fileToUpload = file;
+      if (file.type.startsWith('image/')) {
+        fileToUpload = await compressImage(file);
+      }
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
+      const res = await fetch(`${API}/storage/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const url = data.storage_path.startsWith('http') ? data.storage_path : `${API}/storage/files/${encodeURIComponent(data.storage_path)}`;
+      setAvatarFunc(url);
+    } catch (err) {
+      toast.error(isRtl ? 'فشل رفع الصورة' : 'Failed to upload image');
+    } finally {
+      setUploadingGroupAvatar(false);
+    }
+  };
 
   const handleSendMessage = async (imageUrl = null, customText = null) => {
     if (editingMessage) {
@@ -264,66 +426,65 @@ const Chat = ({ user, onLogout }) => {
       return;
     }
 
-    let finalImageUrl = imageUrl;
-    
-    if (pendingAttachment && !finalImageUrl) {
+    if (!selectedContact) return;
+
+    let textToSend = customText || inputText.trim();
+
+    if (pendingAttachments.length > 0) {
       setUploadingImage(true);
       try {
-        const formData = new FormData();
-        formData.append('file', pendingAttachment.file);
-        const uploadRes = await fetch(`${API}/storage/upload`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-          body: formData
-        });
-        if (!uploadRes.ok) throw new Error();
-        const data = await uploadRes.json();
-        if (data.storage_path) {
-          finalImageUrl = data.storage_path.startsWith('http') ? data.storage_path : `${API}/storage/files/${encodeURIComponent(data.storage_path)}`;
-        } else {
-          finalImageUrl = data.url;
+        for (let i = 0; i < pendingAttachments.length; i++) {
+          const attachment = pendingAttachments[i];
+          const formData = new FormData();
+          formData.append('file', attachment.file);
+          
+          const uploadRes = await fetch(`${API}/storage/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: formData
+          });
+          
+          if (!uploadRes.ok) throw new Error();
+          const data = await uploadRes.json();
+          let uploadedUrl = data.storage_path ? (data.storage_path.startsWith('http') ? data.storage_path : `${API}/storage/files/${encodeURIComponent(data.storage_path)}`) : data.url;
+          
+          const msgData = {
+            receiver_id: selectedContact.id,
+            text: i === 0 ? (textToSend || null) : null,
+            image_url: uploadedUrl
+          };
+          
+          await fetch(`${API}/chat/v2/messages`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(msgData)
+          });
         }
-        setPendingAttachment(null);
-      } catch {
-        toast.error(isRtl ? 'فشل رفع المرفق' : 'Failed to upload attachment');
-        setUploadingImage(false);
+        
+        setInputText('');
+        setPendingAttachments([]);
+        fetchMessages(selectedContact.id, true);
         return;
+      } catch {
+        toast.error(isRtl ? 'فشل رفع بعض المرفقات' : 'Failed to upload some attachments');
+      } finally {
+        setUploadingImage(false);
       }
-      setUploadingImage(false);
     }
 
-    const textToSend = customText || inputText.trim();
-
-    if (!textToSend && !finalImageUrl) return;
-    if (!selectedContact) return;
+    if (!textToSend && !imageUrl) return;
 
     const msgData = {
       receiver_id: selectedContact.id,
       text: textToSend || null,
-      image_url: finalImageUrl
+      image_url: imageUrl
     };
-
-    const tempId = `temp-${Date.now()}`;
-    const tempMsg = {
-      id: tempId,
-      sender_id: user.id,
-      receiver_id: selectedContact.id,
-      text: msgData.text,
-      image_url: msgData.image_url,
-      created_at: new Date().toISOString(),
-      is_deleted: false,
-      is_read: false,
-      is_edited: false
-    };
-
-    setMessages(prev => {
-      prevMessageCountRef.current = prev.length + 1;
-      return [...prev, tempMsg];
-    });
-    setInputText('');
-    setTimeout(() => scrollToBottom(), 50);
 
     try {
+      setInputText('');
       const response = await fetch(`${API}/chat/v2/messages`, {
         method: 'POST',
         headers: {
@@ -333,12 +494,9 @@ const Chat = ({ user, onLogout }) => {
         body: JSON.stringify(msgData)
       });
       if (!response.ok) throw new Error();
-      // Refresh to get real message from server
-      fetchMessages(selectedContact.id, false);
-      fetchContacts();
+      fetchMessages(selectedContact.id, true);
     } catch {
       toast.error(isRtl ? 'حدث خطأ أثناء إرسال الرسالة' : 'Error sending message');
-      setMessages(prev => prev.filter(m => m.id !== tempId));
     }
   };
 
@@ -377,6 +535,7 @@ const Chat = ({ user, onLogout }) => {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Failed to delete message');
       }
+      window.dispatchEvent(new Event('updateBadges'));
       
       toast.success(forEveryone ? isRtl ? 'تم حذف الرسالة للجميع' : 'Message deleted for everyone' : isRtl ? 'تم حذف الرسالة من عندك فقط' : 'Message deleted for you');
     } catch (err) {
@@ -393,6 +552,7 @@ const Chat = ({ user, onLogout }) => {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!response.ok) throw new Error();
+      window.dispatchEvent(new Event('updateBadges'));
       setMessages([]);
       fetchContacts();
       toast.success(isRtl ? 'تم حذف المحادثة بالكامل بنجاح' : 'Conversation completely cleared');
@@ -407,32 +567,42 @@ const Chat = ({ user, onLogout }) => {
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+          const targetSizeKB = 100;
           
-          const maxDim = 1200;
-          if (width > height && width > maxDim) {
-            height *= maxDim / width;
-            width = maxDim;
-          } else if (height > maxDim) {
-            width *= maxDim / height;
-            height = maxDim;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
-              resolve(compressedFile);
-            } else {
-              reject(new Error('Compression failed'));
+          const tryCompress = (quality, maxDim) => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > height && width > maxDim) {
+              height *= maxDim / width;
+              width = maxDim;
+            } else if (height > maxDim) {
+              width *= maxDim / height;
+              height = maxDim;
             }
-          }, 'image/jpeg', 0.7); // 70% quality for good compression
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                reject(new Error('Compression failed'));
+                return;
+              }
+              const sizeKB = blob.size / 1024;
+              if (sizeKB > targetSizeKB && quality > 0.1) {
+                tryCompress(quality - 0.15, maxDim * 0.8);
+              } else {
+                const compressedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
+                resolve(compressedFile);
+              }
+            }, 'image/jpeg', quality);
+          };
+          
+          tryCompress(0.8, 1000);
         };
         img.onerror = reject;
         img.src = event.target.result;
@@ -442,39 +612,135 @@ const Chat = ({ user, onLogout }) => {
     });
   };
 
+  const handleLinkUsers = async (e) => {
+    e.preventDefault();
+    if (!linkUser1 || !linkUser2) {
+      toast.error(isRtl ? 'يجب اختيار مستخدمين' : 'You must select two users');
+      return;
+    }
+    if (linkUser1 === linkUser2) {
+      toast.error(isRtl ? 'يجب اختيار مستخدمين مختلفين' : 'You must select different users');
+      return;
+    }
+    setLinkLoading(true);
+    try {
+      const response = await fetch(`${API}/chat/v2/link-users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ user_ids: [linkUser1, linkUser2] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Error linking users');
+      
+      toast.success(isRtl ? 'تم ربط المستخدمين بنجاح' : 'Users linked successfully');
+      setShowLinkModal(false);
+      setLinkUser1('');
+      setLinkUser2('');
+      fetchContacts();
+    } catch (error) {
+      toast.error(error.message || (isRtl ? 'حدث خطأ أثناء الربط' : 'Error linking users'));
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  const handleUnlinkUsers = async () => {
+    if (!linkUser1 || !linkUser2) {
+      toast.error(isRtl ? 'يجب اختيار مستخدمين' : 'You must select two users');
+      return;
+    }
+    if (linkUser1 === linkUser2) {
+      toast.error(isRtl ? 'يجب اختيار مستخدمين مختلفين' : 'You must select different users');
+      return;
+    }
+    setLinkLoading(true);
+    try {
+      const response = await fetch(`${API}/chat/v2/unlink-users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ user_ids: [linkUser1, linkUser2] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Error unlinking users');
+      
+      toast.success(isRtl ? 'تم إلغاء ربط المستخدمين بنجاح' : 'Users unlinked successfully');
+      setShowLinkModal(false);
+      setLinkUser1('');
+      setLinkUser2('');
+      fetchContacts();
+    } catch (error) {
+      toast.error(error.message || (isRtl ? 'حدث خطأ أثناء إلغاء الربط' : 'Error unlinking users'));
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  const handleUnlinkSpecificUsers = async (u1, u2) => {
+    if (!window.confirm(isRtl ? 'هل أنت متأكد من إلغاء الربط؟' : 'Are you sure you want to unlink?')) return;
+    setLinkLoading(true);
+    try {
+      const response = await fetch(`${API}/chat/v2/unlink-users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ user_ids: [u1, u2] })
+      });
+      if (!response.ok) throw new Error();
+      toast.success(isRtl ? 'تم إلغاء الربط بنجاح' : 'Users unlinked successfully');
+      fetchLinks();
+      fetchContacts();
+    } catch {
+      toast.error(isRtl ? 'حدث خطأ أثناء إلغاء الربط' : 'Error unlinking users');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     
     setUploadingImage(true);
     try {
-      let fileToUpload = file;
-      if (file.type.startsWith('image/')) {
-        fileToUpload = await compressImage(file);
-      } else if (file.size > 100 * 1024 * 1024) {
-        toast.error(isRtl ? 'حجم الملف يجب أن لا يتجاوز 100 ميجابايت' : 'File size must not exceed 100MB');
-        setUploadingImage(false);
-        return;
-      }
+      const newAttachments = [];
+      for (const file of files) {
+        let fileToUpload = file;
+        if (file.type.startsWith('image/')) {
+          fileToUpload = await compressImage(file);
+        } else if (file.size > 100 * 1024 * 1024) {
+          toast.error(isRtl ? 'حجم الملف يجب أن لا يتجاوز 100 ميجابايت' : 'File size must not exceed 100MB');
+          continue;
+        }
 
-      const previewUrl = URL.createObjectURL(fileToUpload);
-      setPendingAttachment({ file: fileToUpload, previewUrl, type: file.type });
+        const previewUrl = URL.createObjectURL(fileToUpload);
+        newAttachments.push({ file: fileToUpload, previewUrl, type: file.type });
+      }
+      setPendingAttachments(prev => [...prev, ...newAttachments]);
     } catch {
-      toast.error(isRtl ? 'فشل معالجة الملف' : 'Failed to process file');
+      toast.error(isRtl ? 'فشل معالجة بعض الملفات' : 'Failed to process some files');
     } finally {
       setUploadingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const formatTime = (dateString) => {
     if (!dateString) return '';
-    return format(new Date(dateString), 'hh:mm a', { locale });
+    const safeDate = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    return format(new Date(safeDate), 'hh:mm a', { locale });
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    return format(new Date(dateString), 'dd MMMM yyyy', { locale });
+    const safeDate = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    return format(new Date(safeDate), 'dd MMMM yyyy', { locale });
   };
 
   return (
@@ -498,10 +764,29 @@ const Chat = ({ user, onLogout }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-lg font-bold text-gray-800">{isRtl ? 'الدردشة الفورية' : 'Instant Chat'}</h2>
               <p className="text-xs text-gray-400">{isRtl ? 'محادثات آمنة ومشفرة 🔒' : 'Secure Encrypted Chats 🔒'}</p>
             </div>
+            {/* Add Group Button */}
+            {(user?.role === 'admin' || user?.can_create_subusers) && (
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => setShowLinkModal(true)}
+                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors shadow-sm border border-emerald-100 flex-shrink-0"
+                  title={isRtl ? "ربط شخصين للتحدث المباشر" : "Link two users for direct chat"}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                </button>
+                <button 
+                  onClick={() => setShowGroupModal(true)}
+                  className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors shadow-sm border border-indigo-100 flex-shrink-0"
+                  title={isRtl ? "إنشاء مجموعة جديدة" : "Create New Group"}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Contacts List */}
@@ -519,7 +804,11 @@ const Chat = ({ user, onLogout }) => {
               contacts.map(contact => (
                 <button
                   key={contact.id}
-                  onClick={() => setSelectedContact(contact)}
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, unread_count: 0 } : c));
+                    window.dispatchEvent(new Event('updateBadges'));
+                  }}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl mb-1 transition-all text-right
                     ${selectedContact?.id === contact.id
                       ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 shadow-sm'
@@ -531,7 +820,7 @@ const Chat = ({ user, onLogout }) => {
                       <img src={contact.avatar} alt={contact.name} className="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-200" />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-                        {contact.name?.charAt(0)?.toUpperCase()}
+                        {contact.is_group ? <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg> : contact.name?.charAt(0)?.toUpperCase()}
                       </div>
                     )}
                   </div>
@@ -574,25 +863,45 @@ const Chat = ({ user, onLogout }) => {
                   <img src={selectedContact.avatar} alt={selectedContact.name} className="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 border border-gray-200" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold shadow-sm flex-shrink-0">
-                    {t(`common.${selectedContact.name}`, { defaultValue: selectedContact.name })?.charAt(0)?.toUpperCase()}
+                    {selectedContact.is_group ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg> : t(`common.${selectedContact.name}`, { defaultValue: selectedContact.name })?.charAt(0)?.toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-gray-800 truncate">{t(`common.${selectedContact.name}`, { defaultValue: selectedContact.name })}</div>
                   <div className="text-xs text-emerald-500 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full inline-block animate-pulse"></span>
-                    {isRtl ? 'محادثة خاصة ومشفرة' : 'Private encrypted conversation'}
+                    {selectedContact.is_group 
+                      ? (isRtl ? 'مجموعة دردشة آمنة' : 'Secure Group Chat')
+                      : (isRtl ? 'محادثة خاصة ومشفرة' : 'Private encrypted conversation')}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleClearConversation(selectedContact.id)}
-                  className="p-2 text-red-400 hover:text-white hover:bg-red-500 rounded-full transition-all flex-shrink-0 shadow-sm border border-transparent hover:shadow-md"
-                  title={isRtl ? "حذف جميع رسائل هذه المحادثة (من جهازك فقط، ستبقى لدى الطرف الآخر)" : "Clear conversation (from your device only)"}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                {selectedContact.is_group && (
+                  <button
+                    onClick={() => {
+                      setEditGroupName(selectedContact.name);
+                      setEditGroupMembers(selectedContact.members || []);
+                      setEditGroupAvatar(selectedContact.avatar || null);
+                      setShowEditGroupModal(true);
+                    }}
+                    className="p-2 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-full transition-all flex-shrink-0 shadow-sm border border-transparent hover:shadow-md mx-1"
+                    title={isRtl ? "إدارة المجموعة والأعضاء" : "Manage Group & Members"}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </button>
+                )}
+                {!selectedContact.is_group && (
+                  <button
+                    onClick={() => handleClearConversation(selectedContact.id)}
+                    className="p-2 text-red-400 hover:text-white hover:bg-red-500 rounded-full transition-all flex-shrink-0 shadow-sm border border-transparent hover:shadow-md"
+                    title={isRtl ? "حذف جميع رسائل هذه المحادثة (من جهازك فقط، ستبقى لدى الطرف الآخر)" : "Clear conversation (from your device only)"}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
               {/* ✅ Messages Area - hidden x-scroll, visible y-scroll */}
@@ -767,35 +1076,42 @@ const Chat = ({ user, onLogout }) => {
                   </div>
                 )}
                 
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 transition-all w-full focus-within:border-gray-200">
-                  
-                  {pendingAttachment && (
-                    <div className="p-3 border-b border-gray-100">
-                      <div className="relative inline-block">
-                        <button
-                          onClick={() => setPendingAttachment(null)}
-                          className={`absolute -top-2 ${isRtl ? '-left-2' : '-right-2'} bg-red-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform z-10`}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                        {pendingAttachment.type.startsWith('image/') ? (
-                          <img src={pendingAttachment.previewUrl} alt="Preview" className="h-24 w-auto rounded-lg object-contain shadow-sm border border-gray-200" />
-                        ) : (
-                          <div className="h-24 w-24 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
-                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                          </div>
-                        )}
-                      </div>
+                {pendingAttachments.length > 0 && (
+                  <div className="p-3 bg-slate-50 border-t border-slate-200">
+                    <div className="flex flex-wrap gap-3">
+                      {pendingAttachments.map((att, idx) => (
+                        <div key={idx} className="relative group inline-block">
+                          {att.type.startsWith('image/') ? (
+                            <img src={att.previewUrl} alt="Preview" className="h-20 w-auto rounded-lg object-contain shadow-sm border border-slate-300" />
+                          ) : (
+                            <div className="h-20 w-20 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-slate-300">
+                              <svg className="w-8 h-8 text-indigo-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                              <span className="text-[10px] text-gray-500 truncate w-16 text-center">{att.file.name}</span>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => {
+                              setPendingAttachments(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
+                )}
+
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 transition-all w-full focus-within:border-gray-200">
 
                   <div className="flex items-end gap-2 px-4 py-2">
                     {/* Send Button */}
                     <button
                       onClick={() => handleSendMessage()}
-                      disabled={(!inputText.trim() && !pendingAttachment) || uploadingImage}
+                      disabled={(!inputText.trim() && pendingAttachments.length === 0) || uploadingImage}
                       className={`p-2.5 rounded-full flex-shrink-0 transition-all duration-200
-                        ${(inputText.trim() || pendingAttachment)
+                        ${(inputText.trim() || pendingAttachments.length > 0)
                           ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md hover:shadow-lg hover:scale-105'
                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'}
                       `}
@@ -836,6 +1152,7 @@ const Chat = ({ user, onLogout }) => {
                     accept="image/*,video/*"
                     ref={fileInputRef}
                     className="hidden"
+                    multiple
                     onChange={handleImageUpload}
                   />
                   <button
@@ -970,6 +1287,340 @@ const Chat = ({ user, onLogout }) => {
           </div>
         );
       })()}
+
+      {/* Edit Group Modal */}
+      {showEditGroupModal && selectedContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                {isRtl ? 'إدارة المجموعة والأعضاء' : 'Manage Group & Members'}
+              </h3>
+              <button onClick={() => setShowEditGroupModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleUpdateGroup} className="p-4">
+              <div className="mb-6 flex flex-col items-center">
+                <div className="relative group">
+                  {editGroupAvatar ? (
+                    <img src={editGroupAvatar} alt="Group Avatar" className="w-20 h-20 rounded-full object-cover border-2 border-indigo-100 shadow-sm" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shadow-sm">
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </div>
+                  )}
+                  {user.id === selectedContact?.created_by && (
+                    <label className={`absolute bottom-0 ${isRtl ? 'left-0' : 'right-0'} w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md border border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors`}>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGroupAvatarUpload(e, setEditGroupAvatar)} disabled={uploadingGroupAvatar} />
+                      {uploadingGroupAvatar ? (
+                        <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      )}
+                    </label>
+                  )}
+                </div>
+                {user.id === selectedContact?.created_by && (
+                  <span className="text-xs text-gray-500 mt-2">{isRtl ? 'تغيير صورة المجموعة' : 'Change Group Picture'}</span>
+                )}
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">{isRtl ? 'اسم المجموعة' : 'Group Name'}</label>
+                <input
+                  type="text"
+                  required
+                  disabled={user.id !== selectedContact.created_by}
+                  value={editGroupName}
+                  onChange={(e) => setEditGroupName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-100 disabled:text-gray-500"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-gray-700 mb-2">{isRtl ? 'أعضاء المجموعة' : 'Group Members'}</label>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2 space-y-1">
+                  {contacts.filter(c => !c.is_group).map(c => {
+                    const isCreatorOrAdmin = user.id === selectedContact.created_by;
+                    const isCheckboxDisabled = !isCreatorOrAdmin || c.id === user.id;
+                    return (
+                    <label key={c.id} className={`flex items-center gap-3 p-2 rounded transition-colors border border-transparent ${isCheckboxDisabled ? 'opacity-70' : 'hover:bg-indigo-50 hover:border-indigo-100 cursor-pointer'}`}>
+                      <input
+                        type="checkbox"
+                        disabled={isCheckboxDisabled}
+                        checked={editGroupMembers.includes(c.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setEditGroupMembers([...editGroupMembers, c.id]);
+                          else setEditGroupMembers(editGroupMembers.filter(id => id !== c.id));
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 disabled:opacity-50"
+                      />
+                      <div className="flex items-center gap-2">
+                        {c.avatar ? (
+                          <img src={c.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center text-xs font-bold">
+                            {c.name?.charAt(0)?.toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-sm font-semibold text-gray-800">{t(`common.${c.name}`, { defaultValue: c.name })} {c.id === user.id && (isRtl ? '(أنت)' : '(You)')}</span>
+                      </div>
+                    </label>
+                  )})}
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end w-full">
+                {user.id === selectedContact.created_by && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteGroup}
+                    className="px-4 py-2 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-colors font-bold text-sm ml-0 mr-auto flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    {isRtl ? 'حذف المجموعة' : 'Delete Group'}
+                  </button>
+                )}
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditGroupModal(false)}
+                    className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-bold text-sm"
+                  >
+                    {isRtl ? 'إغلاق' : 'Close'}
+                  </button>
+                  {user.id === selectedContact.created_by && (
+                    <button
+                    type="submit"
+                    disabled={updatingGroup || !editGroupName.trim() || editGroupMembers.length === 0}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-lg transition-colors font-bold text-sm flex items-center gap-2 shadow-sm"
+                  >
+                    {updatingGroup ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                    )}
+                    {isRtl ? 'حفظ التعديلات' : 'Save Changes'}
+                  </button>
+                )}
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Group Modal */}
+      {/* Link Users Modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+            <div className="p-4 border-b border-gray-100 bg-emerald-50 flex justify-between items-center">
+              <h3 className="font-bold text-emerald-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                {isRtl ? 'ربط شخصين للدردشة المباشرة' : 'Link Users for Direct Chat'}
+              </h3>
+              <button onClick={() => setShowLinkModal(false)} className="text-emerald-400 hover:text-emerald-600 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleLinkUsers} className="p-5 space-y-4">
+              <p className="text-sm text-gray-600 mb-2">
+                {isRtl ? 'حدد مستخدمين لربطهما معاً وتمكينهما من رؤية ومحادثة بعضهما البعض.' : 'Select two users to link them together, allowing them to see and chat with each other.'}
+              </p>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{isRtl ? 'المستخدم الأول' : 'First User'}</label>
+                <select
+                  required
+                  value={linkUser1}
+                  onChange={(e) => setLinkUser1(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                >
+                  <option value="" disabled>{isRtl ? 'اختر مستخدماً...' : 'Select a user...'}</option>
+                  <option value={user.id}>{isRtl ? 'أنا (نفسي)' : 'Me (Myself)'}</option>
+                  {contacts.filter(c => !c.is_group).map(c => (
+                    <option key={c.id} value={c.id}>{translateBrandingText(c.name, isRtl)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-center my-2">
+                <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{isRtl ? 'المستخدم الثاني' : 'Second User'}</label>
+                <select
+                  required
+                  value={linkUser2}
+                  onChange={(e) => setLinkUser2(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                >
+                  <option value="" disabled>{isRtl ? 'اختر مستخدماً...' : 'Select a user...'}</option>
+                  <option value={user.id}>{isRtl ? 'أنا (نفسي)' : 'Me (Myself)'}</option>
+                  {contacts.filter(c => !c.is_group).map(c => (
+                    <option key={c.id} value={c.id}>{translateBrandingText(c.name, isRtl)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mt-2 mb-4">
+                {loadingLinks ? (
+                  <div className="flex justify-center p-2"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+                ) : chatLinks.length > 0 && (
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <h4 className="text-xs font-bold text-slate-700 mb-2 px-1">
+                      {isRtl ? 'الارتباطات الحالية:' : 'Current Links:'}
+                    </h4>
+                    <div className="max-h-32 overflow-y-auto space-y-2 pr-1">
+                      {chatLinks.map((link, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white p-2 border border-slate-200 rounded-lg shadow-sm hover:border-emerald-200 transition-colors">
+                          <div className="flex items-center gap-2 text-xs text-gray-700">
+                            <span className="font-bold text-emerald-700 truncate max-w-[100px]">{translateBrandingText(link.user1_name, isRtl)}</span>
+                            <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            <span className="font-bold text-emerald-700 truncate max-w-[100px]">{translateBrandingText(link.user2_name, isRtl)}</span>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => handleUnlinkSpecificUsers(link.user1_id, link.user2_id)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                            title={isRtl ? 'إلغاء الربط' : 'Unlink'}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 flex justify-end gap-2 border-t border-gray-100">
+                <button type="button" onClick={() => setShowLinkModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                  {isRtl ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button type="button" disabled={linkLoading} onClick={handleUnlinkUsers} className="px-4 py-2 text-sm font-bold text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors disabled:bg-red-300 flex items-center gap-2">
+                  {linkLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                  )}
+                  {isRtl ? 'إلغاء الربط' : 'Unlink'}
+                </button>
+                <button type="submit" disabled={linkLoading} className="px-4 py-2 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:bg-emerald-300 flex items-center gap-2">
+                  {linkLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                  )}
+                  {isRtl ? 'تأكيد الربط' : 'Confirm Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showGroupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                {isRtl ? 'إنشاء مجموعة جديدة' : 'Create New Group'}
+              </h3>
+              <button onClick={() => setShowGroupModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleCreateGroup} className="p-4">
+              <div className="mb-6 flex flex-col items-center">
+                <div className="relative group">
+                  {newGroupAvatar ? (
+                    <img src={newGroupAvatar} alt="Group Avatar" className="w-20 h-20 rounded-full object-cover border-2 border-indigo-100 shadow-sm" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shadow-sm">
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </div>
+                  )}
+                  <label className={`absolute bottom-0 ${isRtl ? 'left-0' : 'right-0'} w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md border border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors`}>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGroupAvatarUpload(e, setNewGroupAvatar)} disabled={uploadingGroupAvatar} />
+                    {uploadingGroupAvatar ? (
+                      <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    )}
+                  </label>
+                </div>
+                <span className="text-xs text-gray-500 mt-2">{isRtl ? 'صورة المجموعة (اختياري)' : 'Group Picture (Optional)'}</span>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">{isRtl ? 'اسم المجموعة' : 'Group Name'}</label>
+                <input
+                  type="text"
+                  required
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  placeholder={isRtl ? 'أدخل اسم المجموعة...' : 'Enter group name...'}
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-gray-700 mb-2">{isRtl ? 'اختيار الأعضاء' : 'Select Members'}</label>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2 space-y-1">
+                  {contacts.filter(c => !c.is_group).map(c => (
+                    <label key={c.id} className="flex items-center gap-3 p-2 hover:bg-indigo-50 rounded cursor-pointer transition-colors border border-transparent hover:border-indigo-100">
+                      <input
+                        type="checkbox"
+                        checked={newGroupMembers.includes(c.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setNewGroupMembers([...newGroupMembers, c.id]);
+                          else setNewGroupMembers(newGroupMembers.filter(id => id !== c.id));
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                      />
+                      <div className="flex items-center gap-2">
+                        {c.avatar ? (
+                          <img src={c.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center text-xs font-bold">
+                            {c.name?.charAt(0)?.toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-sm font-semibold text-gray-800">{t(`common.${c.name}`, { defaultValue: c.name })}</span>
+                      </div>
+                    </label>
+                  ))}
+                  {contacts.filter(c => !c.is_group).length === 0 && (
+                    <div className="text-center text-gray-500 text-sm p-4">{isRtl ? 'لا يوجد أعضاء متاحين.' : 'No members available.'}</div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowGroupModal(false)}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-bold text-sm"
+                >
+                  {isRtl ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingGroup || !newGroupName.trim() || newGroupMembers.length === 0}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-lg transition-colors font-bold text-sm flex items-center gap-2 shadow-sm"
+                >
+                  {creatingGroup ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                  )}
+                  {isRtl ? 'إنشاء' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

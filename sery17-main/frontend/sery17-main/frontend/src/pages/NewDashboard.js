@@ -820,6 +820,7 @@ function NewDashboard({ user, onLogout }) {
     sessionStorage.removeItem('dashboard_lastFetchTime');
     sessionStorage.removeItem('dashboard_projectsStats');
     sessionStorage.removeItem('dashboard_monthlyStats');
+    sessionStorage.removeItem('dashboard_projectCardLabels');
 
     const loadMainData = async () => {
       setLoading(true);
@@ -1971,7 +1972,7 @@ function NewDashboard({ user, onLogout }) {
             <h3 className="text-xl font-bold text-gray-900 mb-4">{d('توزيع البلاغات حسب المشاريع', 'Distribution of Reports by Projects')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie isAnimationActive={false} isAnimationActive={false}
+                <Pie isAnimationActive={false}
                   data={pieData}
                   cx="50%"
                   cy="50%"

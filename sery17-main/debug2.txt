@@ -1,0 +1,77 @@
+Line 70: const [supportMessagesCount, setSupportMessagesCount] = useState(() => getCachedCount('cache_supportMessagesCount')); // رسائل الدعم الجديدة
+Line 78: const [unreadChatCount, setUnreadChatCount] = useState(() => getCachedCount('cache_unreadChatCount'));
+Line 88: localStorage.setItem('cache_supportMessagesCount', supportMessagesCount);
+Line 94: localStorage.setItem('cache_unreadChatCount', unreadChatCount);
+Line 96: }, [pendingReviewCount, pendingInvoicesCount, pendingRequestsCount, signedRequestsCount, supportMessagesCount, pendingExtractsCount, pendingSafetyCount, pendingQualityCount, pendingBusinessCount, pendingConsultantCount, unreadChatCount, pendingReportNotesCount]);
+Line 100: const previousUnreadChatCount = useRef(0);
+Line 214: const playChatSound = useCallback(() => {
+Line 256: console.error('Could not play chat sound:', e);
+Line 379: if (location.pathname === '/chat') {
+Line 380: setUnreadChatCount(0);
+Line 388: const fetchChatUnreadCount = async () => {
+Line 392: const chatNotifRes = await axios.get(`${API}/chat/v2/unread-count?t=${new Date().getTime()}`, {
+Line 395: const newUnreadCount = chatNotifRes.data.unread_count || 0;
+Line 397: const savedUnreadChatCount = parseInt(localStorage.getItem('wfm_last_unread_chat_count') || '0', 10);
+Line 399: let shouldPlayChatAlert = false;
+Line 400: let chatToastMessage = null;
+Line 402: if (newUnreadCount > savedUnreadChatCount) {
+Line 403: shouldPlayChatAlert = true;
+Line 404: chatToastMessage = isRtl ? `لديك رسالة جديدة في الدردشة الفورية 💬` : `You have a new message in Instant Chat 💬`;
+Line 405: } else if (!sessionStorage.getItem('wfm_chat_login_sound_played') && newUnreadCount > 0) {
+Line 406: shouldPlayChatAlert = true;
+Line 407: chatToastMessage = isRtl ? `لديك رسائل غير مقروءة في الدردشة الفورية 💬` : `You have unread messages 💬`;
+Line 410: localStorage.setItem('wfm_last_unread_chat_count', newUnreadCount.toString());
+Line 411: previousUnreadChatCount.current = newUnreadCount;
+Line 413: if (location.pathname === '/chat') {
+Line 414: setUnreadChatCount(0);
+Line 416: setUnreadChatCount(newUnreadCount);
+Line 418: if (shouldPlayChatAlert) {
+Line 419: sessionStorage.setItem('wfm_chat_login_sound_played', 'true');
+Line 425: console.error("Error playing chat sound:", soundErr);
+Line 428: if (chatToastMessage) {
+Line 430: toast.info(chatToastMessage, {
+Line 538: // جلب عدد رسائل الدعم الجديدة (لأي مستخدم لديه صلاحية support_messages - عامة أو لكل مشروع)
+Line 539: const hasSupportPerm = user.role === 'admin' ||
+Line 540: (user.permissions || []).includes('support_messages') ||
+Line 541: Object.values(user.project_permissions || {}).some(perms => (perms || []).includes('support_messages'));
+Line 542: if (hasSupportPerm) {
+Line 544: const supportResponse = await axios.get(`${API}/support/messages/count?t=${new Date().getTime()}`, {
+Line 547: setSupportMessagesCount(supportResponse.data.count || 0);
+Line 643: fetchChatUnreadCount();
+Line 648: fetchChatUnreadCount();
+Line 656: const chatInterval = setInterval(fetchChatUnreadCount, 3000);
+Line 660: clearInterval(chatInterval);
+Line 821: const fetchPlatformSettings = async () => {
+Line 832: fetchPlatformSettings();
+Line 895: const hasSettings = hasProjectPermission(project.name, 'settings') || hasProjectPermission(project.name, 'project_settings');
+Line 897: if (user.role !== 'admin' && !hasReportsInProject && !hasConnInProject && !hasUsersManage && !hasSettings) {
+Line 1119: to="/chat"
+Line 1120: onClick={() => setUnreadChatCount(0)}
+Line 1122: title={isRtl ? 'الدردشة الفورية' : 'Instant Chat'}
+Line 1127: {unreadChatCount > 0 && (
+Line 1129: {unreadChatCount > 9 ? '9+' : unreadChatCount}
+Line 2097: {hasPermission('support_messages') && (
+Line 2098: <Link to="/support-messages" onClick={(e) => handleLinkClick(e, "/support-messages")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/support-messages') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+Line 2102: {t('sidebar.supportMessages')}
+Line 2104: {supportMessagesCount > 0 && (
+Line 2106: {supportMessagesCount > 9 ? '9+' : supportMessagesCount}
+Line 2124: to="/chat"
+Line 2127: setUnreadChatCount(0);
+Line 2129: className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-right text-sm transition-colors ${isActive('/chat') ? 'bg-gradient-to-l from-indigo-500 to-purple-600 text-white font-bold shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}
+Line 2131: <span>{isRtl ? '💬 الدردشة الفورية' : '💬 Instant Chat'}</span>
+Line 2132: {unreadChatCount > 0 && (
+Line 2134: {unreadChatCount}
+Line 2513: {hasPermission('support_messages') && (
+Line 2515: to="/support-messages" onClick={(e) => handleLinkClick(e, "/support-messages")}
+Line 2516: className={`sidebar-item ${isActive('/support-messages') ? 'sidebar-item-active' : 'text-gray-700'}`}
+Line 2525: <span className="sidebar-text">{t('sidebar.supportMessages')}</span>
+Line 2527: {supportMessagesCount > 0 && (
+Line 2529: {supportMessagesCount > 9 ? '9+' : supportMessagesCount}
+Line 2553: to="/chat"
+Line 2556: setUnreadChatCount(0);
+Line 2558: className={`sidebar-item ${isActive('/chat') ? 'sidebar-item-active' : 'text-gray-700'} flex items-center justify-between`}
+Line 2561: <div className="sidebar-icon-box" style={{ background: isActive('/chat') ? 'linear-gradient(to bottom right, #8b5cf6, #6366f1)' : '' }}>
+Line 2562: <svg className={`sidebar-icon ${isActive('/chat') ? 'text-white' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+Line 2566: <span className="sidebar-text font-bold">{isRtl ? 'الدردشة الفورية' : 'Instant Chat'}</span>
+Line 2568: {unreadChatCount > 0 && (
+Line 2570: {unreadChatCount}

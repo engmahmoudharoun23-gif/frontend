@@ -1,8 +1,11 @@
-from pymongo import MongoClient
-import json
+import asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 
-client = MongoClient("mongodb://localhost:27017")
-db = client["wfm_reports"]
+async def main():
+    client = AsyncIOMotorClient("mongodb+srv://omergehad345_db_user:Test123456789@cluster0.op68vs9.mongodb.net/?appName=Cluster0")
+    db = client["wfm_reports"]
+    users = await db.users.find({}).to_list(None)
+    for u in users:
+        print(u.get('name', ''), u.get('username', ''), u.get('projects', []))
 
-users = list(db["users"].find({"role": {"$ne": "admin"}}, {"_id": 0, "hashed_password": 0, "permissions": 0}))
-print(json.dumps(users, ensure_ascii=False, indent=2))
+asyncio.run(main())
