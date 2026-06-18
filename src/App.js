@@ -4,6 +4,7 @@ import { hasAnyProjectPermission, hasPermission } from './utils/permissions';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useTranslation } from 'react-i18next';
 import Login from './pages/Login';
 import Dashboard from './pages/NewDashboard';
 import Reports from './pages/Reports';
@@ -71,6 +72,7 @@ axios.interceptors.response.use(
 );
 
 function App() {
+  const { t } = useTranslation();
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
@@ -154,6 +156,56 @@ function App() {
     } else {
       setLoading(false);
     }
+  }, []);
+
+  // مراقبة حالة الإنترنت
+  useEffect(() => {
+    const handleOffline = () => {
+      toast.error(t('network.offline', { defaultValue: '🔴 لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة.' }), {
+        position: "top-center",
+        autoClose: false,
+        toastId: 'offline-toast'
+      });
+    };
+
+    const handleOnline = () => {
+      toast.dismiss('offline-toast');
+      toast.success(t('network.online', { defaultValue: '🟢 عاد الاتصال بالإنترنت بنجاح!' }), {
+        position: "top-center",
+        autoClose: 3000
+      });
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    if (navigator.connection) {
+      const checkConnectionSpeed = () => {
+        const type = navigator.connection.effectiveType;
+        if (type === '2g' || type === 'slow-2g') {
+          toast.warning(t('network.weak', { defaultValue: '⚠️ الاتصال بالإنترنت ضعيف، يرجى تحديث الصفحة إذا واجهت مشاكل.' }), {
+            position: "top-center",
+            toastId: 'weak-internet-toast'
+          });
+        } else {
+          toast.dismiss('weak-internet-toast');
+        }
+      };
+
+      checkConnectionSpeed();
+      navigator.connection.addEventListener('change', checkConnectionSpeed);
+
+      return () => {
+        window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('online', handleOnline);
+        navigator.connection.removeEventListener('change', checkConnectionSpeed);
+      };
+    }
+
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   const fetchUserSilent = async () => {

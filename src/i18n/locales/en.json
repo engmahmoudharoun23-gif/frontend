@@ -2192,5 +2192,10 @@
     "attachPdf": "Attach PDF",
     "selectPdfFiles": "Select PDF Files",
     "saveMeeting": "Save Meeting"
+  },
+  "network": {
+    "offline": "🔴 No internet connection. Please check your network.",
+    "online": "🟢 Internet connection restored successfully!",
+    "weak": "⚠️ Your internet connection is weak, please refresh the page if you face issues."
   }
 }
