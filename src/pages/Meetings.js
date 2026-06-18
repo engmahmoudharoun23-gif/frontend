@@ -408,6 +408,7 @@ function Meetings({ user, onLogout }) {
               <option value="الكل">{t("meetings.allTypes", { defaultValue: "كل أنواع الاجتماعات" })}</option>
               <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
               <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
+              <option value="زيارة للفرع">زيارة للفرع</option>
             </select>
           </div>
         </div>
@@ -449,7 +450,11 @@ function Meetings({ user, onLogout }) {
                     <tr key={meeting.id} className="hover:bg-indigo-50/30 transition-colors">
                       <td className="px-4 py-4 font-bold text-gray-900 text-center">{meeting.title}</td>
                       <td className="px-4 py-4 text-center">
+<<<<<<< HEAD
                         <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+=======
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : meeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+>>>>>>> 3d05622 (feat: reset report type/status defaults, move close date, protect save button, add meeting type زيارة للفرع)
                           {meeting.type === 'أسبوعي' ? t('meetings.weekly', { defaultValue: 'أسبوعي' }) : meeting.type === 'شهري' ? t('meetings.monthly', { defaultValue: 'شهري' }) : meeting.type}
                         </span>
                       </td>
@@ -584,6 +589,10 @@ function Meetings({ user, onLogout }) {
                   <select name="type" required value={formData.type} onChange={handleInputChange} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 focus:bg-white transition-colors font-bold text-gray-700 text-sm">
                     <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
                     <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
+<<<<<<< HEAD
+=======
+                    <option value="زيارة للفرع">زيارة للفرع</option>
+>>>>>>> 3d05622 (feat: reset report type/status defaults, move close date, protect save button, add meeting type زيارة للفرع)
                   </select>
                 </div>
                 <div>
