@@ -408,6 +408,7 @@ function Meetings({ user, onLogout }) {
               <option value="الكل">{t("meetings.allTypes", { defaultValue: "كل أنواع الاجتماعات" })}</option>
               <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
               <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
+              <option value="زيارة للفرع">زيارة للفرع</option>
             </select>
           </div>
         </div>
@@ -449,7 +450,7 @@ function Meetings({ user, onLogout }) {
                     <tr key={meeting.id} className="hover:bg-indigo-50/30 transition-colors">
                       <td className="px-4 py-4 font-bold text-gray-900 text-center">{meeting.title}</td>
                       <td className="px-4 py-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : meeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                           {meeting.type === 'أسبوعي' ? t('meetings.weekly', { defaultValue: 'أسبوعي' }) : meeting.type === 'شهري' ? t('meetings.monthly', { defaultValue: 'شهري' }) : meeting.type}
                         </span>
                       </td>
@@ -461,10 +462,14 @@ function Meetings({ user, onLogout }) {
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-2 flex-wrap">
                           {meeting.images && meeting.images.length > 0 ? (
-                            <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold" title="صور مرفقة">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); openImagesModal(meeting); }} 
+                              className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold hover:bg-emerald-100 transition-colors" 
+                              title="عرض الصور المرفقة"
+                            >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                               {meeting.images.length}
-                            </span>
+                            </button>
                           ) : (
                             <span className="text-gray-300">-</span>
                           )}
@@ -584,6 +589,7 @@ function Meetings({ user, onLogout }) {
                   <select name="type" required value={formData.type} onChange={handleInputChange} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 focus:bg-white transition-colors font-bold text-gray-700 text-sm">
                     <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
                     <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
+                    <option value="زيارة للفرع">زيارة للفرع</option>
                   </select>
                 </div>
                 <div>
