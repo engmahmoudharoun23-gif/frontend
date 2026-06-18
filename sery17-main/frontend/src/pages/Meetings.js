@@ -310,7 +310,11 @@ function Meetings({ user, onLogout }) {
 
     toast.promise(savePromise, {
       pending: 'جاري الحفظ والضغط في الخلفية... ⚡',
-      success: selectedMeeting ? t('meetings.successEdit', { defaultValue: 'تم تعديل الاجتماع بنجاح!' }) : t('meetings.successAdd', { defaultValue: 'تم إضافة الاجتماع بنجاح!' }),
+      success: {
+        render: selectedMeeting ? t('meetings.successEdit', { defaultValue: 'تم تعديل الاجتماع بنجاح!' }) : t('meetings.successAdd', { defaultValue: 'تم إضافة الاجتماع بنجاح!' }),
+        style: { background: '#3b82f6', color: '#ffffff' },
+        icon: '✅'
+      },
       error: {
         render({ data }) {
           return `حدث خطأ: ${data}`;

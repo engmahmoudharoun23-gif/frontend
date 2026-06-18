@@ -1610,7 +1610,7 @@ const fetchReports = async () => {
         toast.warning(t('reports.pleaseSelectReportsToExport', {defaultValue: 'يرجى تحديد العدد او البلاغ للتصدير'}));
         return;
       }
-      toast.info(t('reports.exportPreparing', {defaultValue: 'جاري تجهيز ملف التصدير...'}), { autoClose: 2500 });
+      toast.info(format === 'pdf' ? 'جاري تحضير ملف الـ PDF... الرجاء الانتظار' : 'جاري تحضير ملف الإكسيل... الرجاء الانتظار', { autoClose: 3500 });
       
       const params = new URLSearchParams();
       
