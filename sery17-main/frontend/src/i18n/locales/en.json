@@ -2159,7 +2159,7 @@
     "consultantPlaceholder": "Enter consultant name",
     "dateLabel": "Date *",
     "projectLabel": "Project *",
-    "projectPlaceholder": "Select project",
+    "projectPlaceholder": "Enter project name",
     "governorateLabel": "Governorate",
     "governoratePlaceholder": "Governorate (optional)",
     "detailsLabel": "Details and Outcomes",
@@ -2182,6 +2182,15 @@
     "successDelete": "Meeting deleted successfully",
     "errorFetch": "Error fetching meetings",
     "errorSave": "Error saving meeting",
-    "errorDelete": "Error deleting meeting"
+    "errorDelete": "Error deleting meeting",
+    "branchVisit": "Branch Visit",
+    "projectName": "Project Name *",
+    "descriptionLabel": "Meeting description and minutes",
+    "descriptionPlaceholder": "Write meeting details here...",
+    "attachImages": "Attach Images",
+    "selectImages": "Select Images",
+    "attachPdf": "Attach PDF",
+    "selectPdfFiles": "Select PDF Files",
+    "saveMeeting": "Save Meeting"
   }
 }
