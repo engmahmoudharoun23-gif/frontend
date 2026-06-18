@@ -1686,6 +1686,7 @@ const fetchReports = async () => {
     }
     
     setLoading(true);
+    toast.info(format === 'pdf' ? 'جاري تحضير ملف الـ PDF... الرجاء الانتظار' : 'جاري تحضير ملف الإكسيل... الرجاء الانتظار', { autoClose: 3500 });
     try {
       // إذا تم تحديد "الكل"، استخدم التصدير بالفلاتر (أسرع وأكثر موثوقية)
       if (isAllSelected) {
