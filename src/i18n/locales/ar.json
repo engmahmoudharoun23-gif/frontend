@@ -2053,7 +2053,7 @@
     "consultantPlaceholder": "أدخل اسم الاستشاري",
     "dateLabel": "التاريخ *",
     "projectLabel": "المشروع *",
-    "projectPlaceholder": "اختر المشروع",
+    "projectPlaceholder": "أدخل اسم المشروع",
     "governorateLabel": "المحافظة",
     "governoratePlaceholder": "المحافظة (اختياري)",
     "detailsLabel": "تفاصيل ومخرجات الاجتماع",
@@ -2076,6 +2076,15 @@
     "successDelete": "تم حذف الاجتماع بنجاح",
     "errorFetch": "حدث خطأ في جلب الاجتماعات",
     "errorSave": "حدث خطأ في حفظ الاجتماع",
-    "errorDelete": "حدث خطأ في حذف الاجتماع"
+    "errorDelete": "حدث خطأ في حذف الاجتماع",
+    "branchVisit": "زيارة للفرع",
+    "projectName": "اسم المشروع *",
+    "descriptionLabel": "وصف الاجتماع ومحضر الجلسة",
+    "descriptionPlaceholder": "اكتب تفاصيل الاجتماع هنا...",
+    "attachImages": "إرفاق الصور",
+    "selectImages": "اختيار صور",
+    "attachPdf": "إرفاق PDF",
+    "selectPdfFiles": "اختيار ملفات PDF",
+    "saveMeeting": "حفظ الاجتماع"
   }
 }
