@@ -491,7 +491,7 @@ function QualityReports({ user, onLogout }) {
   const handleDownloadPDF = async (report, titleText) => {
     let fullReport = report;
     if (!fullReport.image && activeTab !== 'warehouse_visits') {
-      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      toast.info(isRtl ? 'جاري تحضير ملف الـ PDF...' : 'Preparing PDF file...', { autoClose: false, toastId: 'loadingReport' });
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/quality-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
