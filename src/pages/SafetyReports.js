@@ -379,7 +379,7 @@ function SafetyReports({ user, onLogout }) {
     const hasAnyFile = (r) => r.image || r.file || r.file_url || (r.images && r.images.length > 0) || (r.files && r.files.length > 0);
     
     if (!hasAnyFile(fullReport)) {
-      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      toast.info(isRtl ? 'جاري تحضير ملف الـ PDF...' : 'Preparing PDF file...', { autoClose: false, toastId: 'loadingReport' });
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/safety-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});

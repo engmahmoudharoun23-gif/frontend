@@ -310,7 +310,11 @@ function Meetings({ user, onLogout }) {
 
     toast.promise(savePromise, {
       pending: 'جاري الحفظ والضغط في الخلفية... ⚡',
-      success: selectedMeeting ? t('meetings.successEdit', { defaultValue: 'تم تعديل الاجتماع بنجاح!' }) : t('meetings.successAdd', { defaultValue: 'تم إضافة الاجتماع بنجاح!' }),
+      success: {
+        render: selectedMeeting ? t('meetings.successEdit', { defaultValue: 'تم تعديل الاجتماع بنجاح!' }) : t('meetings.successAdd', { defaultValue: 'تم إضافة الاجتماع بنجاح!' }),
+        style: { background: '#3b82f6', color: '#ffffff' },
+        icon: '✅'
+      },
       error: {
         render({ data }) {
           return `حدث خطأ: ${data}`;
@@ -406,9 +410,17 @@ function Meetings({ user, onLogout }) {
               className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 text-sm"
             >
               <option value="الكل">{t("meetings.allTypes", { defaultValue: "كل أنواع الاجتماعات" })}</option>
-              <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
-              <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
-              <option value="زيارة للفرع">زيارة للفرع</option>
+              <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "اجتماع أسبوعي" })}</option>
+              <option value="شهري">{t("meetings.monthly", { defaultValue: "اجتماع شهري" })}</option>
+              <option value="زيارة للفرع">{t("meetings.branchVisit", { defaultValue: "اجتماع زيارة للفرع" })}</option>
+              <option value="عيد الأضحى">{t("meetings.eidAlAdha", { defaultValue: "اجتماع عيد الأضحى" })}</option>
+              <option value="عيد الفطر">{t("meetings.eidAlFitr", { defaultValue: "اجتماع عيد الفطر" })}</option>
+              <option value="اليوم الوطني">{t("meetings.nationalDay", { defaultValue: "اجتماع اليوم الوطني" })}</option>
+              <option value="يوم التأسيس">{t("meetings.foundingDay", { defaultValue: "اجتماع يوم التأسيس" })}</option>
+              <option value="الأمن والسلامة">{t("meetings.securityAndSafety", { defaultValue: "اجتماع الأمن والسلامة" })}</option>
+              <option value="متابعة الأعمال">{t("meetings.businessFollowup", { defaultValue: "اجتماع متابعة الأعمال" })}</option>
+              <option value="اجتماع نصف الأسبوع">{t("meetings.midWeek", { defaultValue: "اجتماع نصف الأسبوع" })}</option>
+              <option value="اجتماع طارئ">{t("meetings.emergency", { defaultValue: "اجتماع طارئ" })}</option>
             </select>
           </div>
         </div>
@@ -450,8 +462,8 @@ function Meetings({ user, onLogout }) {
                     <tr key={meeting.id} className="hover:bg-indigo-50/30 transition-colors">
                       <td className="px-4 py-4 font-bold text-gray-900 text-center">{meeting.title}</td>
                       <td className="px-4 py-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : meeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {meeting.type === 'أسبوعي' ? t('meetings.weekly', { defaultValue: 'أسبوعي' }) : meeting.type === 'شهري' ? t('meetings.monthly', { defaultValue: 'شهري' }) : meeting.type}
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : meeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : meeting.type === 'اجتماع طارئ' ? 'bg-red-100 text-red-700' : meeting.type === 'اجتماع نصف الأسبوع' ? 'bg-indigo-100 text-indigo-700' : ['عيد الأضحى', 'عيد الفطر', 'اليوم الوطني', 'يوم التأسيس'].includes(meeting.type) ? 'bg-orange-100 text-orange-700' : meeting.type === 'الأمن والسلامة' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {t(`meetings.${meeting.type === 'أسبوعي' ? 'weekly' : meeting.type === 'شهري' ? 'monthly' : meeting.type === 'زيارة للفرع' ? 'branchVisit' : meeting.type === 'عيد الأضحى' ? 'eidAlAdha' : meeting.type === 'عيد الفطر' ? 'eidAlFitr' : meeting.type === 'اليوم الوطني' ? 'nationalDay' : meeting.type === 'يوم التأسيس' ? 'foundingDay' : meeting.type === 'الأمن والسلامة' ? 'securityAndSafety' : meeting.type === 'متابعة الأعمال' ? 'businessFollowup' : meeting.type === 'اجتماع طارئ' ? 'emergency' : meeting.type === 'اجتماع نصف الأسبوع' ? 'midWeek' : 'unknown'}`, { defaultValue: meeting.type })}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-gray-600 font-bold text-center" dir="ltr">{new Date(meeting.date).toLocaleDateString('en-GB')}</td>
@@ -462,10 +474,14 @@ function Meetings({ user, onLogout }) {
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-2 flex-wrap">
                           {meeting.images && meeting.images.length > 0 ? (
-                            <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold" title="صور مرفقة">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); openImagesModal(meeting); }} 
+                              className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold hover:bg-emerald-100 transition-colors" 
+                              title="عرض الصور المرفقة"
+                            >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                               {meeting.images.length}
-                            </span>
+                            </button>
                           ) : (
                             <span className="text-gray-300">-</span>
                           )}
@@ -583,9 +599,17 @@ function Meetings({ user, onLogout }) {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">{t("meetings.typeLabel", { defaultValue: "نوع الاجتماع *" })}</label>
                   <select name="type" required value={formData.type} onChange={handleInputChange} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 focus:bg-white transition-colors font-bold text-gray-700 text-sm">
-                    <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
-                    <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
-                    <option value="زيارة للفرع">زيارة للفرع</option>
+                    <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "اجتماع أسبوعي" })}</option>
+                    <option value="شهري">{t("meetings.monthly", { defaultValue: "اجتماع شهري" })}</option>
+                    <option value="زيارة للفرع">{t("meetings.branchVisit", { defaultValue: "اجتماع زيارة للفرع" })}</option>
+                    <option value="عيد الأضحى">{t("meetings.eidAlAdha", { defaultValue: "اجتماع عيد الأضحى" })}</option>
+                    <option value="عيد الفطر">{t("meetings.eidAlFitr", { defaultValue: "اجتماع عيد الفطر" })}</option>
+                    <option value="اليوم الوطني">{t("meetings.nationalDay", { defaultValue: "اجتماع اليوم الوطني" })}</option>
+                    <option value="يوم التأسيس">{t("meetings.foundingDay", { defaultValue: "اجتماع يوم التأسيس" })}</option>
+                    <option value="الأمن والسلامة">{t("meetings.securityAndSafety", { defaultValue: "اجتماع الأمن والسلامة" })}</option>
+                    <option value="متابعة الأعمال">{t("meetings.businessFollowup", { defaultValue: "اجتماع متابعة الأعمال" })}</option>
+                    <option value="اجتماع نصف الأسبوع">{t("meetings.midWeek", { defaultValue: "اجتماع نصف الأسبوع" })}</option>
+                    <option value="اجتماع طارئ">{t("meetings.emergency", { defaultValue: "اجتماع طارئ" })}</option>
                   </select>
                 </div>
                 <div>
@@ -601,8 +625,8 @@ function Meetings({ user, onLogout }) {
                 </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">اسم {t("meetings.projectLabel", { defaultValue: "المشروع *" })}</label>
-                  <input type="text" name="project" required value={formData.project} onChange={handleInputChange} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 focus:bg-white transition-colors text-sm" placeholder="أدخل اسم المشروع" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">{t("meetings.projectName", { defaultValue: "اسم المشروع *" })}</label>
+                  <input type="text" name="project" required value={formData.project} onChange={handleInputChange} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 focus:bg-white transition-colors text-sm" placeholder={t("meetings.projectPlaceholder", { defaultValue: "أدخل اسم المشروع" })} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">{t("meetings.governorate", { defaultValue: "المحافظة التي تم فيها الاجتماع" })}</label>
@@ -623,13 +647,13 @@ function Meetings({ user, onLogout }) {
                 <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col justify-between">
                   <h3 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
                     <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    إرفاق الصور
+                    {t("meetings.attachImages", { defaultValue: "إرفاق الصور" })}
                   </h3>
                   <div className="flex flex-col gap-2 flex-grow justify-center">
                     <label className="flex items-center justify-center w-full py-3 px-2 border-2 border-dashed border-blue-300 rounded-xl bg-white hover:bg-blue-50 cursor-pointer transition-colors group">
                       <div className="flex flex-col items-center gap-1 text-blue-500 group-hover:text-blue-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                        <span className="text-sm font-bold">اختيار صور</span>
+                        <span className="text-sm font-bold">{t("meetings.selectImages", { defaultValue: "اختيار صور" })}</span>
                       </div>
                       <input type="file" multiple accept="image/jpeg, image/png, image/jpg" onChange={handleImageSelect} className="hidden" />
                     </label>
@@ -656,14 +680,14 @@ function Meetings({ user, onLogout }) {
                 <div className="bg-red-50/50 p-4 rounded-xl border border-red-100 flex flex-col justify-between">
                   <h3 className="text-sm font-bold text-red-900 mb-3 flex items-center gap-2">
                     <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    إرفاق PDF
+                    {t("meetings.attachPdf", { defaultValue: "إرفاق PDF" })}
                   </h3>
                   
                   <div className="flex flex-col gap-2 flex-grow justify-center">
                     <label className="flex items-center justify-center w-full py-3 px-2 border-2 border-dashed border-red-300 rounded-xl bg-white hover:bg-red-50 cursor-pointer transition-colors group">
                       <div className="flex flex-col items-center gap-1 text-red-500 group-hover:text-red-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                        <span className="text-sm font-bold">اختيار ملفات PDF</span>
+                        <span className="text-sm font-bold">{t("meetings.selectPdfFiles", { defaultValue: "اختيار ملفات PDF" })}</span>
                       </div>
                       <input type="file" multiple accept="application/pdf" onChange={handlePdfSelect} className="hidden" />
                     </label>
@@ -704,7 +728,7 @@ function Meetings({ user, onLogout }) {
 
               <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
                 <button type="button" onClick={() => setShowFormModal(false)} disabled={isSubmitting} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors disabled:opacity-50 text-sm">
-                  إلغاء
+                  {t("common.cancel", { defaultValue: "إلغاء" })}
                 </button>
                 <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors shadow-sm disabled:opacity-70 flex items-center gap-2 text-sm">
                   {isSubmitting ? (
@@ -745,7 +769,9 @@ function Meetings({ user, onLogout }) {
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <span className="block text-xs font-bold text-gray-400 mb-1">{t("meetings.type", { defaultValue: "نوع الاجتماع" })}</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-black inline-block ${selectedMeeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{selectedMeeting.type === 'أسبوعي' ? t('meetings.weekly', { defaultValue: 'أسبوعي' }) : selectedMeeting.type === 'شهري' ? t('meetings.monthly', { defaultValue: 'شهري' }) : selectedMeeting.type}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-black inline-block ${selectedMeeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : selectedMeeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : selectedMeeting.type === 'اجتماع طارئ' ? 'bg-red-100 text-red-700' : selectedMeeting.type === 'اجتماع نصف الأسبوع' ? 'bg-indigo-100 text-indigo-700' : ['عيد الأضحى', 'عيد الفطر', 'اليوم الوطني', 'يوم التأسيس'].includes(selectedMeeting.type) ? 'bg-orange-100 text-orange-700' : selectedMeeting.type === 'الأمن والسلامة' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {t(`meetings.${selectedMeeting.type === 'أسبوعي' ? 'weekly' : selectedMeeting.type === 'شهري' ? 'monthly' : selectedMeeting.type === 'زيارة للفرع' ? 'branchVisit' : selectedMeeting.type === 'عيد الأضحى' ? 'eidAlAdha' : selectedMeeting.type === 'عيد الفطر' ? 'eidAlFitr' : selectedMeeting.type === 'اليوم الوطني' ? 'nationalDay' : selectedMeeting.type === 'يوم التأسيس' ? 'foundingDay' : selectedMeeting.type === 'الأمن والسلامة' ? 'securityAndSafety' : selectedMeeting.type === 'متابعة الأعمال' ? 'businessFollowup' : selectedMeeting.type === 'اجتماع طارئ' ? 'emergency' : selectedMeeting.type === 'اجتماع نصف الأسبوع' ? 'midWeek' : 'unknown'}`, { defaultValue: selectedMeeting.type })}
+                  </span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <span className="block text-xs font-bold text-gray-400 mb-1">{t("meetings.contractor", { defaultValue: "المقاول" })}</span>

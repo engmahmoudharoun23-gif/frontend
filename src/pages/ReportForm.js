@@ -1151,10 +1151,7 @@ function ReportForm({ user, onLogout }) {
       }
       
       let finalMsg = String(errorMsg);
-      if (finalMsg.includes('موجود مسبقا') || finalMsg.includes('already exist') || finalMsg.includes('موجود مسبقاً')) {
-        finalMsg = t('reportForm.duplicateNumber', 'هذا الرقم موجود مسبقاً');
-      }
-      
+
       setErrorMessage(finalMsg);
       toast.error(`❌ ${t('reportForm.saveFailed', 'فشل في حفظ البلاغ!')} ${finalMsg}`, { autoClose: 5000 });
     } finally {
