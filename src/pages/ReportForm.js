@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { toast } from 'react-toastify';
+import Swal from 'sweetalert2';
 import { PROJECT_GOVERNORATES as BASE_PROJECT_GOVERNORATES } from '../utils/projectGovernoratesMap';
 import imageCompression from 'browser-image-compression';
 import { resolveImageUrl, isVideo } from '../utils/imageUrl';
@@ -1144,6 +1145,33 @@ function ReportForm({ user, onLogout }) {
       console.error('Failed to save report:', error);
       
       let errorMsg = error.response?.data?.detail || error.message || t('reportForm.unknownError', 'حدث خطأ غير معروف');
+      
+      // التعامل مع حالة البلاغ المحذوف
+      if (typeof errorMsg === 'string' && errorMsg.startsWith('DELETED_REPORT_CONFLICT:')) {
+        const reportNumber = errorMsg.split(':')[1];
+        const isRtl = i18n.language === 'ar';
+        
+        Swal.fire({
+          icon: 'warning',
+          title: isRtl ? 'البلاغ في سلة المحذوفات' : 'Report in Recycle Bin',
+          text: isRtl 
+            ? `رقم البلاغ (${reportNumber}) موجود حالياً في سلة المحذوفات. لا يمكنك إضافته من جديد إلا إذا قمت باستعادته أو حذفه نهائياً من سلة المحذوفات أولاً.`
+            : `Report number (${reportNumber}) is currently in the recycle bin. You cannot add it again unless you restore it or permanently delete it from the recycle bin first.`,
+          confirmButtonText: isRtl ? 'فهمت' : 'Understood',
+          confirmButtonColor: '#f59e0b',
+          showCancelButton: true,
+          cancelButtonText: isRtl ? 'الذهاب لسلة المحذوفات' : 'Go to Recycle Bin',
+          cancelButtonColor: '#3b82f6'
+        }).then((result) => {
+          if (result.isDismissed) {
+            navigate('/trash');
+          }
+        });
+        
+        setLoading(false);
+        return;
+      }
+
       if (typeof errorMsg === 'object') {
         errorMsg = Array.isArray(errorMsg) 
           ? errorMsg.map(e => e.msg || e.message || JSON.stringify(e)).join(', ')
