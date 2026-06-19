@@ -410,9 +410,17 @@ function Meetings({ user, onLogout }) {
               className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 text-sm"
             >
               <option value="الكل">{t("meetings.allTypes", { defaultValue: "كل أنواع الاجتماعات" })}</option>
-              <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
-              <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
-              <option value="زيارة للفرع">{t("meetings.branchVisit", { defaultValue: "زيارة للفرع" })}</option>
+              <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "اجتماع أسبوعي" })}</option>
+              <option value="شهري">{t("meetings.monthly", { defaultValue: "اجتماع شهري" })}</option>
+              <option value="زيارة للفرع">{t("meetings.branchVisit", { defaultValue: "اجتماع زيارة للفرع" })}</option>
+              <option value="عيد الأضحى">{t("meetings.eidAlAdha", { defaultValue: "اجتماع عيد الأضحى" })}</option>
+              <option value="عيد الفطر">{t("meetings.eidAlFitr", { defaultValue: "اجتماع عيد الفطر" })}</option>
+              <option value="اليوم الوطني">{t("meetings.nationalDay", { defaultValue: "اجتماع اليوم الوطني" })}</option>
+              <option value="يوم التأسيس">{t("meetings.foundingDay", { defaultValue: "اجتماع يوم التأسيس" })}</option>
+              <option value="الأمن والسلامة">{t("meetings.securityAndSafety", { defaultValue: "اجتماع الأمن والسلامة" })}</option>
+              <option value="متابعة الأعمال">{t("meetings.businessFollowup", { defaultValue: "اجتماع متابعة الأعمال" })}</option>
+              <option value="اجتماع نصف الأسبوع">{t("meetings.midWeek", { defaultValue: "اجتماع نصف الأسبوع" })}</option>
+              <option value="اجتماع طارئ">{t("meetings.emergency", { defaultValue: "اجتماع طارئ" })}</option>
             </select>
           </div>
         </div>
@@ -454,8 +462,8 @@ function Meetings({ user, onLogout }) {
                     <tr key={meeting.id} className="hover:bg-indigo-50/30 transition-colors">
                       <td className="px-4 py-4 font-bold text-gray-900 text-center">{meeting.title}</td>
                       <td className="px-4 py-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : meeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {meeting.type === 'أسبوعي' ? t('meetings.weekly', { defaultValue: 'أسبوعي' }) : meeting.type === 'شهري' ? t('meetings.monthly', { defaultValue: 'شهري' }) : meeting.type}
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-black inline-block ${meeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : meeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : meeting.type === 'اجتماع طارئ' ? 'bg-red-100 text-red-700' : meeting.type === 'اجتماع نصف الأسبوع' ? 'bg-indigo-100 text-indigo-700' : ['عيد الأضحى', 'عيد الفطر', 'اليوم الوطني', 'يوم التأسيس'].includes(meeting.type) ? 'bg-orange-100 text-orange-700' : meeting.type === 'الأمن والسلامة' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {t(`meetings.${meeting.type === 'أسبوعي' ? 'weekly' : meeting.type === 'شهري' ? 'monthly' : meeting.type === 'زيارة للفرع' ? 'branchVisit' : meeting.type === 'عيد الأضحى' ? 'eidAlAdha' : meeting.type === 'عيد الفطر' ? 'eidAlFitr' : meeting.type === 'اليوم الوطني' ? 'nationalDay' : meeting.type === 'يوم التأسيس' ? 'foundingDay' : meeting.type === 'الأمن والسلامة' ? 'securityAndSafety' : meeting.type === 'متابعة الأعمال' ? 'businessFollowup' : meeting.type === 'اجتماع طارئ' ? 'emergency' : meeting.type === 'اجتماع نصف الأسبوع' ? 'midWeek' : 'unknown'}`, { defaultValue: meeting.type })}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-gray-600 font-bold text-center" dir="ltr">{new Date(meeting.date).toLocaleDateString('en-GB')}</td>
@@ -591,9 +599,17 @@ function Meetings({ user, onLogout }) {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">{t("meetings.typeLabel", { defaultValue: "نوع الاجتماع *" })}</label>
                   <select name="type" required value={formData.type} onChange={handleInputChange} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 focus:bg-white transition-colors font-bold text-gray-700 text-sm">
-                    <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "أسبوعي" })}</option>
-                    <option value="شهري">{t("meetings.monthly", { defaultValue: "شهري" })}</option>
-                    <option value="زيارة للفرع">{t("meetings.branchVisit", { defaultValue: "زيارة للفرع" })}</option>
+                    <option value="أسبوعي">{t("meetings.weekly", { defaultValue: "اجتماع أسبوعي" })}</option>
+                    <option value="شهري">{t("meetings.monthly", { defaultValue: "اجتماع شهري" })}</option>
+                    <option value="زيارة للفرع">{t("meetings.branchVisit", { defaultValue: "اجتماع زيارة للفرع" })}</option>
+                    <option value="عيد الأضحى">{t("meetings.eidAlAdha", { defaultValue: "اجتماع عيد الأضحى" })}</option>
+                    <option value="عيد الفطر">{t("meetings.eidAlFitr", { defaultValue: "اجتماع عيد الفطر" })}</option>
+                    <option value="اليوم الوطني">{t("meetings.nationalDay", { defaultValue: "اجتماع اليوم الوطني" })}</option>
+                    <option value="يوم التأسيس">{t("meetings.foundingDay", { defaultValue: "اجتماع يوم التأسيس" })}</option>
+                    <option value="الأمن والسلامة">{t("meetings.securityAndSafety", { defaultValue: "اجتماع الأمن والسلامة" })}</option>
+                    <option value="متابعة الأعمال">{t("meetings.businessFollowup", { defaultValue: "اجتماع متابعة الأعمال" })}</option>
+                    <option value="اجتماع نصف الأسبوع">{t("meetings.midWeek", { defaultValue: "اجتماع نصف الأسبوع" })}</option>
+                    <option value="اجتماع طارئ">{t("meetings.emergency", { defaultValue: "اجتماع طارئ" })}</option>
                   </select>
                 </div>
                 <div>
@@ -753,7 +769,9 @@ function Meetings({ user, onLogout }) {
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <span className="block text-xs font-bold text-gray-400 mb-1">{t("meetings.type", { defaultValue: "نوع الاجتماع" })}</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-black inline-block ${selectedMeeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{selectedMeeting.type === 'أسبوعي' ? t('meetings.weekly', { defaultValue: 'أسبوعي' }) : selectedMeeting.type === 'شهري' ? t('meetings.monthly', { defaultValue: 'شهري' }) : selectedMeeting.type}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-black inline-block ${selectedMeeting.type === 'شهري' ? 'bg-purple-100 text-purple-700' : selectedMeeting.type === 'زيارة للفرع' ? 'bg-green-100 text-green-700' : selectedMeeting.type === 'اجتماع طارئ' ? 'bg-red-100 text-red-700' : selectedMeeting.type === 'اجتماع نصف الأسبوع' ? 'bg-indigo-100 text-indigo-700' : ['عيد الأضحى', 'عيد الفطر', 'اليوم الوطني', 'يوم التأسيس'].includes(selectedMeeting.type) ? 'bg-orange-100 text-orange-700' : selectedMeeting.type === 'الأمن والسلامة' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {t(`meetings.${selectedMeeting.type === 'أسبوعي' ? 'weekly' : selectedMeeting.type === 'شهري' ? 'monthly' : selectedMeeting.type === 'زيارة للفرع' ? 'branchVisit' : selectedMeeting.type === 'عيد الأضحى' ? 'eidAlAdha' : selectedMeeting.type === 'عيد الفطر' ? 'eidAlFitr' : selectedMeeting.type === 'اليوم الوطني' ? 'nationalDay' : selectedMeeting.type === 'يوم التأسيس' ? 'foundingDay' : selectedMeeting.type === 'الأمن والسلامة' ? 'securityAndSafety' : selectedMeeting.type === 'متابعة الأعمال' ? 'businessFollowup' : selectedMeeting.type === 'اجتماع طارئ' ? 'emergency' : selectedMeeting.type === 'اجتماع نصف الأسبوع' ? 'midWeek' : 'unknown'}`, { defaultValue: selectedMeeting.type })}
+                  </span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <span className="block text-xs font-bold text-gray-400 mb-1">{t("meetings.contractor", { defaultValue: "المقاول" })}</span>

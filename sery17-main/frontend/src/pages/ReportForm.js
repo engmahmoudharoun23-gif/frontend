@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { toast } from 'react-toastify';
+import Swal from 'sweetalert2';
 import { PROJECT_GOVERNORATES as BASE_PROJECT_GOVERNORATES } from '../utils/projectGovernoratesMap';
 import imageCompression from 'browser-image-compression';
 import { resolveImageUrl, isVideo } from '../utils/imageUrl';
@@ -273,7 +274,7 @@ function ReportForm({ user, onLogout }) {
 
   const [formData, setFormData] = useState({
     report_number: '', license_number: '', report_type: '',
-    status: 'تم الإصلاح', 
+    status: '', 
     governorate: id ? (location.state?.governorate || '') : '', 
     project: getDefaultProject(),
     depth_meters: '', diameter_mm: '', contractor: '',
@@ -488,10 +489,8 @@ function ReportForm({ user, onLogout }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       setReportTypes(response.data);
-      // تعيين النوع الأول كافتراضي إذا لم يكن محدد
-      if (!formData.report_type && response.data.length > 0) {
-        setFormData(prev => ({...prev, report_type: response.data[0].name}));
-      }
+      // في وضع التعديل فقط: إذا لم يُحدَّد نوع بعد، ننتظر المستخدم ليختار
+      // في وضع الإنشاء: لا نضع قيمة افتراضية - المستخدم يختار من القائمة
     } catch (error) {
       console.error('Failed to fetch report types:', error);
       setReportTypes([{ name: 'ترابي' }, { name: 'بلاط' }, { name: 'أسفلت' }]);
@@ -1055,7 +1054,8 @@ function ReportForm({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // setLoading(true);
+    if (loading) return; // منع التكرار
+    setLoading(true);
     setErrorMessage('');
 
     try {
@@ -1145,6 +1145,33 @@ function ReportForm({ user, onLogout }) {
       console.error('Failed to save report:', error);
       
       let errorMsg = error.response?.data?.detail || error.message || t('reportForm.unknownError', 'حدث خطأ غير معروف');
+      
+      // التعامل مع حالة البلاغ المحذوف
+      if (typeof errorMsg === 'string' && errorMsg.startsWith('DELETED_REPORT_CONFLICT:')) {
+        const reportNumber = errorMsg.split(':')[1];
+        const isRtl = i18n.language === 'ar';
+        
+        Swal.fire({
+          icon: 'warning',
+          title: isRtl ? 'البلاغ في سلة المحذوفات' : 'Report in Recycle Bin',
+          text: isRtl 
+            ? `رقم البلاغ (${reportNumber}) موجود حالياً في سلة المحذوفات. لا يمكنك إضافته من جديد إلا إذا قمت باستعادته أو حذفه نهائياً من سلة المحذوفات أولاً.`
+            : `Report number (${reportNumber}) is currently in the recycle bin. You cannot add it again unless you restore it or permanently delete it from the recycle bin first.`,
+          confirmButtonText: isRtl ? 'فهمت' : 'Understood',
+          confirmButtonColor: '#f59e0b',
+          showCancelButton: true,
+          cancelButtonText: isRtl ? 'الذهاب لسلة المحذوفات' : 'Go to Recycle Bin',
+          cancelButtonColor: '#3b82f6'
+        }).then((result) => {
+          if (result.isDismissed) {
+            navigate('/trash');
+          }
+        });
+        
+        setLoading(false);
+        return;
+      }
+
       if (typeof errorMsg === 'object') {
         errorMsg = Array.isArray(errorMsg) 
           ? errorMsg.map(e => e.msg || e.message || JSON.stringify(e)).join(', ')
@@ -1152,10 +1179,7 @@ function ReportForm({ user, onLogout }) {
       }
       
       let finalMsg = String(errorMsg);
-      if (finalMsg.includes('موجود مسبقا') || finalMsg.includes('already exist') || finalMsg.includes('موجود مسبقاً')) {
-        finalMsg = t('reportForm.duplicateNumber', 'هذا الرقم موجود مسبقاً');
-      }
-      
+
       setErrorMessage(finalMsg);
       toast.error(`❌ ${t('reportForm.saveFailed', 'فشل في حفظ البلاغ!')} ${finalMsg}`, { autoClose: 5000 });
     } finally {
@@ -1602,13 +1626,13 @@ function ReportForm({ user, onLogout }) {
                 </div>
               )}
 
-              <div className="hidden md:block"></div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.closeDate')}</label>
                 <input type="date" value={formData.closed_at} onChange={(e) => setFormData({...formData, closed_at: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <p className="text-xs text-gray-500 mt-1">{t('reportForm.closeDateTip')}</p>
               </div>
+
+              <div className="hidden md:block"></div>
               
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">
@@ -1825,8 +1849,13 @@ function ReportForm({ user, onLogout }) {
             </div>
             
             <div className="flex gap-4">
-              <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50">
-                {loading ? (id ? t('reportForm.updating') : t('reportForm.saving')) : id ? t('reportForm.updateBtn') : t('reportForm.saveBtn')}
+              <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                    {id ? t('reportForm.updating') : t('reportForm.saving')}
+                  </span>
+                ) : id ? t('reportForm.updateBtn') : t('reportForm.saveBtn')}
               </button>
               <button 
                 type="button" 

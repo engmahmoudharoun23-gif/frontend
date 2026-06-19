@@ -152,6 +152,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const [seenReportsCount, setSeenReportsCount] = useState(0);
   const [unseenWaterConnections, setUnseenWaterConnections] = useState([]);
   const [unseenSewageConnections, setUnseenSewageConnections] = useState([]);
+  const [expandNotifications, setExpandNotifications] = useState(false);
   
   // نظام التنبيهات الصوتية
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -445,126 +446,98 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       } catch (e) { /* silent */ }
     };
 
-    const fetchPendingReview = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        
-        // جلب العدد الإجمالي
-        const countResponse = await axios.get(`${API}/reports/pending-review-count?t=${new Date().getTime()}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const newPendingReviewCount = countResponse.data.count || 0;
-        
-        // تشغيل النغمة لعدد بلاغات قيد المراجعة بناءً على طلب المستخدم
-        if (!isFirstLoad.current && soundEnabled && newPendingReviewCount > previousPendingReviewCount.current) {
-          playNotificationSound();
-        }
-        previousPendingReviewCount.current = newPendingReviewCount;
-        setPendingReviewCount(newPendingReviewCount);
-        
-        // جلب التفاصيل حسب المحافظة
-        const govResponse = await axios.get(`${API}/reports/pending-review-by-governorate?t=${new Date().getTime()}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setGovernorateCounts(govResponse.data.data || []);
-        
-        // جلب عدد الفواتير والطلبات المعلقة
-        const notifResponse = await axios.get(`${API}/notifications/pending-count?t=${new Date().getTime()}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const newInvoicesCount = notifResponse.data.pending_invoices || 0;
-        const newRequestsCount = notifResponse.data.pending_requests || 0;
-        const newExtractsCount = notifResponse.data.pending_extracts || 0;
-        const newSignedCount = notifResponse.data.signed_requests || 0;
-        
-        // تشغيل صوت التنبيه للفواتير الجديدة
-        if (!isFirstLoad.current && soundEnabled && newInvoicesCount > previousInvoicesCount.current) {
-          playNotificationSound();
-        }
-        
-        // تشغيل صوت التنبيه للطلبات الجديدة
-        if (!isFirstLoad.current && soundEnabled && newRequestsCount > previousRequestsCount.current) {
-          playNotificationSound();
-        }
+    const fetchPendingReview = () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const timeParam = new Date().getTime();
+      const headers = { Authorization: `Bearer ${token}` };
 
-        // تشغيل صوت التنبيه للمستندات الموقعة الجديدة
-        if (!isFirstLoad.current && soundEnabled && newSignedCount > previousSignedCount.current) {
-          playNotificationSound();
-        }
-        
-        // تشغيل صوت التنبيه للمستخلصات الجديدة
-        if (!isFirstLoad.current && soundEnabled && newExtractsCount > previousExtractsCount.current) {
-          playNotificationSound();
-        }
-        
-        // جلب البلاغات الجديدة (غير المرئية)
-        const unseenResponse = await axios.get(`${API}/reports/notifications/unseen?t=${new Date().getTime()}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const newUnseenCount = unseenResponse.data.total || 0;
-        
-        // استخدام localStorage لمعرفة هل زاد العدد حتى لو تم الانتقال لصفحة أخرى (لأن Layout يعاد تحميله)
-        const savedUnseenCount = parseInt(localStorage.getItem('wfm_last_unseen_count') || '0', 10);
-        
-        // تشغيل الأصوات
-        if (soundEnabled) {
-          if (newUnseenCount > savedUnseenCount) {
-            // تنبيه واحد فقط عند ورود إشعارات جديدة لتجنب الإزعاج
-            playNotificationSound();
-          } else if (!sessionStorage.getItem('wfm_login_sound_played') && newUnseenCount > 0) {
-            // تنبيه واحد فقط عند الدخول في حال وجود إشعارات سابقة غير مقروءة
-            sessionStorage.setItem('wfm_login_sound_played', 'true');
+      // 1. Pending Review Count
+      axios.get(`${API}/reports/pending-review-count?t=${timeParam}`, { headers })
+        .then(countResponse => {
+          const newPendingReviewCount = countResponse.data.count || 0;
+          if (!isFirstLoad.current && soundEnabled && newPendingReviewCount > previousPendingReviewCount.current) {
             playNotificationSound();
           }
-        }
-        
-        // تحديث القيمة في التخزين المحلي والذاكرة
-        localStorage.setItem('wfm_last_unseen_count', newUnseenCount.toString());
-        
-        // تحديث القيم القديمة
-        isFirstLoad.current = false;
-        previousPendingReviewCount.current = newPendingReviewCount;
-        previousInvoicesCount.current = newInvoicesCount;
-        previousRequestsCount.current = newRequestsCount;
-        previousExtractsCount.current = newExtractsCount;
-        previousSignedCount.current = newSignedCount;
-        previousUnseenCount.current = newUnseenCount;
-        
-        setPendingInvoicesCount(newInvoicesCount);
-        setPendingRequestsCount(newRequestsCount);
-        setPendingExtractsCount(newExtractsCount);
-        setSignedRequestsCount(newSignedCount);
-        setUnseenReportsCount(newUnseenCount);
-        
-        // جلب عدد رسائل الدعم الجديدة (لأي مستخدم لديه صلاحية support_messages - عامة أو لكل مشروع)
-        const hasSupportPerm = user.role === 'admin' ||
-          (user.permissions || []).includes('support_messages') ||
-          Object.values(user.project_permissions || {}).some(perms => (perms || []).includes('support_messages'));
-        if (hasSupportPerm) {
-          try {
-            const supportResponse = await axios.get(`${API}/support/messages/count?t=${new Date().getTime()}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            setSupportMessagesCount(supportResponse.data.count || 0);
-          } catch (e) { /* silent */ }
-        }
-        
-        
-        // التحقق من الإعلان العام (شريط المناسبات العاجلة)
-        try {
-          const settingsRes = await axios.get(`${API}/settings/platform`);
-          const { show_announcement, global_announcement, flash_announcement } = settingsRes.data;
+          previousPendingReviewCount.current = newPendingReviewCount;
+          setPendingReviewCount(newPendingReviewCount);
+        }).catch(e => console.error(e));
+
+      // 2. Governorate Counts
+      axios.get(`${API}/reports/pending-review-by-governorate?t=${timeParam}`, { headers })
+        .then(govResponse => setGovernorateCounts(govResponse.data.data || []))
+        .catch(e => console.error(e));
+
+      // 3. Notifications Pending Count
+      axios.get(`${API}/notifications/pending-count?t=${timeParam}`, { headers })
+        .then(notifResponse => {
+          const newInvoicesCount = notifResponse.data.pending_invoices || 0;
+          const newRequestsCount = notifResponse.data.pending_requests || 0;
+          const newExtractsCount = notifResponse.data.pending_extracts || 0;
+          const newSignedCount = notifResponse.data.signed_requests || 0;
           
+          if (!isFirstLoad.current && soundEnabled) {
+            if (newInvoicesCount > previousInvoicesCount.current) playNotificationSound();
+            if (newRequestsCount > previousRequestsCount.current) playNotificationSound();
+            if (newSignedCount > previousSignedCount.current) playNotificationSound();
+            if (newExtractsCount > previousExtractsCount.current) playNotificationSound();
+          }
+          
+          previousInvoicesCount.current = newInvoicesCount;
+          previousRequestsCount.current = newRequestsCount;
+          previousExtractsCount.current = newExtractsCount;
+          previousSignedCount.current = newSignedCount;
+          
+          setPendingInvoicesCount(newInvoicesCount);
+          setPendingRequestsCount(newRequestsCount);
+          setPendingExtractsCount(newExtractsCount);
+          setSignedRequestsCount(newSignedCount);
+        }).catch(e => console.error(e));
+
+      // 4. Unseen Reports
+      axios.get(`${API}/reports/notifications/unseen?t=${timeParam}`, { headers })
+        .then(unseenResponse => {
+          const newUnseenCount = unseenResponse.data.total || 0;
+          const savedUnseenCount = parseInt(localStorage.getItem('wfm_last_unseen_count') || '0', 10);
+          
+          if (soundEnabled) {
+            if (newUnseenCount > savedUnseenCount) {
+              playNotificationSound();
+            } else if (!sessionStorage.getItem('wfm_login_sound_played') && newUnseenCount > 0) {
+              sessionStorage.setItem('wfm_login_sound_played', 'true');
+              playNotificationSound();
+            }
+          }
+          
+          localStorage.setItem('wfm_last_unseen_count', newUnseenCount.toString());
+          previousUnseenCount.current = newUnseenCount;
+          
+          setUnseenReportsCount(newUnseenCount);
+          setUnseenReports(unseenResponse.data.reports || []);
+          setUnseenReportsByGov(unseenResponse.data.by_governorate || []);
+          setUnseenWaterConnections(unseenResponse.data.water_connections || []);
+          setUnseenSewageConnections(unseenResponse.data.sewage_connections || []);
+        }).catch(e => console.error(e));
+
+      // 5. Support Messages
+      const hasSupportPerm = user && (user.role === 'admin' ||
+        (user.permissions || []).includes('support_messages') ||
+        Object.values(user.project_permissions || {}).some(perms => (perms || []).includes('support_messages')));
+      if (hasSupportPerm) {
+        axios.get(`${API}/support/messages/count?t=${timeParam}`, { headers })
+          .then(supportResponse => setSupportMessagesCount(supportResponse.data.count || 0))
+          .catch(e => console.error(e));
+      }
+
+      // 6. Settings Platform
+      axios.get(`${API}/settings/platform`)
+        .then(settingsRes => {
+          const { show_announcement, global_announcement, flash_announcement } = settingsRes.data;
           if (show_announcement && global_announcement) {
             const lastSeenAnn = localStorage.getItem('last_seen_announcement');
-            const lastSeenTime = localStorage.getItem('last_seen_ann_time');
             const now = new Date().getTime();
-            
             let shouldShowPopup = false;
-            // إظهار الإشعار مرة واحدة فقط عند إنشاء إعلان جديد (لكل مستخدم)
-            if (global_announcement !== lastSeenAnn) {
-               shouldShowPopup = true;
-            }
+            if (global_announcement !== lastSeenAnn) shouldShowPopup = true;
 
             if (shouldShowPopup) {
               if (soundEnabled) playIphoneAlertSound();
@@ -590,53 +563,36 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             setDynamicAnnouncement('');
             previousAnnouncementRef.current = '';
           }
-        } catch (e) {
-          // silent
-        }
-        
-        setUnseenReportsCount(newUnseenCount);
-        setUnseenReports(unseenResponse.data.reports || []);
-        setUnseenReportsByGov(unseenResponse.data.by_governorate || []);
-        setUnseenWaterConnections(unseenResponse.data.water_connections || []);
-        setUnseenSewageConnections(unseenResponse.data.sewage_connections || []);
-        
-        // جلب البلاغات المقروءة (آخر 20 بلاغ)
-        const seenResponse = await axios.get(`${API}/reports/notifications/seen`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setSeenReports(seenResponse.data.reports || []);
-        setSeenReportsCount(seenResponse.data.total || 0);
-        
-      } catch (error) {
-        console.error('Error fetching pending review:', error);
-      }
+        }).catch(e => console.error(e));
 
-      // جلب جميع العدادات بطلب واحد سريع جداً من الخادم
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API}/dashboard/badges?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = res.data || {};
+      // 7. Seen Reports
+      axios.get(`${API}/reports/notifications/seen?t=${timeParam}`, { headers })
+        .then(seenResponse => {
+          setSeenReports(seenResponse.data.reports || []);
+          setSeenReportsCount(seenResponse.data.total || 0);
+        }).catch(e => console.error(e));
+
+      // 8. Dashboard Badges
+      axios.get(`${API}/dashboard/badges?t=${timeParam}`, { headers })
+        .then(res => {
+          const data = res.data || {};
+          const safetyTotal = (data.safety || 0) + (data.safety_notes || 0) + (data.work_permits || 0) + (data.work_permits_notes || 0) + (data.violations || 0) + (data.violations_notes || 0);
+          const qualityTotal = (data.quality || 0) + (data.quality_notes || 0) + (data.warehouse || 0);
+          
+          setPendingSafetyCount(safetyTotal);
+          setPendingQualityCount(qualityTotal);
+          setPendingBusinessCount(data.business || 0);
+          setPendingConsultantCount(data.consultant || 0);
+          
+          const newReportNotes = data.report_notes || 0;
+          const dismissedCount = parseInt(localStorage.getItem('dismissedReportNotesCount') || '0', 10);
+          if (newReportNotes < dismissedCount) localStorage.setItem('dismissedReportNotesCount', newReportNotes.toString());
+          // if (newReportNotes > dismissedCount && hasPermission('report_notes')) setShowReportNotesPopup(true);
+          
+          setPendingReportNotesCount(newReportNotes);
+        }).catch(e => console.error(e));
         
-        const safetyTotal = (data.safety || 0) + (data.safety_notes || 0) + (data.work_permits || 0) + (data.work_permits_notes || 0) + (data.violations || 0) + (data.violations_notes || 0);
-        const qualityTotal = (data.quality || 0) + (data.quality_notes || 0) + (data.warehouse || 0);
-        
-        setPendingSafetyCount(safetyTotal);
-        setPendingQualityCount(qualityTotal);
-        setPendingBusinessCount(data.business || 0);
-        setPendingConsultantCount(data.consultant || 0);
-        
-        const newReportNotes = data.report_notes || 0;
-        const dismissedCount = parseInt(localStorage.getItem('dismissedReportNotesCount') || '0', 10);
-        
-        if (newReportNotes < dismissedCount) {
-          localStorage.setItem('dismissedReportNotesCount', newReportNotes.toString());
-        }
-        
-        if (newReportNotes > dismissedCount && hasPermission('report_notes')) {
-          setShowReportNotesPopup(true);
-        }
-        setPendingReportNotesCount(newReportNotes);
-      } catch (e) { /* silent */ }
+      setTimeout(() => { isFirstLoad.current = false; }, 2000);
     };
     
     // جلب البيانات عند التحميل
@@ -650,16 +606,63 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     };
     window.addEventListener('updateBadges', handleUpdateBadges);
     
-    // تحديث العدد كل 30 ثانية لتخفيف الضغط على المتصفح والخادم (Smart Polling)
-    const interval = setInterval(fetchPendingReview, 30000);
+    // تحديث العدد والإشعارات كل 15 ثانية (رقم مثالي لتجنب ثقل المنصة واستهلاك الإنترنت)
+    const interval = setInterval(fetchPendingReview, 15000);
     
-    // تحديث الدردشة بشكل أسرع بكثير (كل 3 ثوانٍ) لضمان وصول الإشعار القوي فوراً
-    const chatInterval = setInterval(fetchChatUnreadCount, 3000);
+    // تحديث الدردشة كل 7 ثوانٍ لضمان وصول الرسائل بسرعة دون خنق المتصفح
+    const chatInterval = setInterval(fetchChatUnreadCount, 7000);
+    
+    // ⚡ ربط WebSockets للإشعارات اللحظية
+    let ws = null;
+    let wsReconnectTimeout = null;
+    
+    const connectWS = () => {
+      if (!user || !user.id) return;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = BACKEND_URL.replace(/^http(s)?:\/\//, '');
+      const wsUrl = `${protocol}//${wsHost}/api/ws/notifications/${user.id}?token=${token}`;
+      
+      try {
+        ws = new window.WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('Real-time notifications connected 🚀');
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'REFRESH_NOTIFICATIONS') {
+              console.log('Real-time notification received! Refreshing data...');
+              fetchPendingReview();
+            }
+          } catch (e) {}
+        };
+        
+        ws.onclose = () => {
+          wsReconnectTimeout = setTimeout(connectWS, 5000);
+        };
+        
+        ws.onerror = () => {
+           ws.close();
+        };
+      } catch (e) {}
+    };
+    
+    connectWS();
     
     return () => {
       clearInterval(interval);
       clearInterval(chatInterval);
       window.removeEventListener('updateBadges', handleUpdateBadges);
+      if (ws) {
+        ws.onclose = null; // prevent reconnect
+        ws.close();
+      }
+      if (wsReconnectTimeout) clearTimeout(wsReconnectTimeout);
     };
   }, [user, soundEnabled, playNotificationSound, playIphoneAlertSound]);
   
@@ -943,6 +946,40 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     
     // الجميع الآخرين يظهر لهم
     return true;
+  };
+
+  const formatNotificationDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      let safeDateString = dateString;
+      if (typeof safeDateString === 'string' && !safeDateString.endsWith('Z') && !safeDateString.includes('+')) {
+        safeDateString += 'Z';
+      }
+      const date = new Date(safeDateString);
+      if (isNaN(date.getTime())) return '';
+      
+      const isToday = new Date().toDateString() === date.toDateString();
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      
+      const todayText = isRtl ? 'اليوم ' : 'Today ';
+      const datePart = isToday ? `${todayText}${day}/${month}/${year}` : `${day}/${month}/${year}`;
+      
+      let hours = date.getHours();
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      
+      const addedText = isRtl ? 'أضيف' : 'Added';
+      const atText = isRtl ? 'الساعة' : 'at';
+      
+      return `${addedText} ${datePart} ${atText} ${hours}:${minutes}:${seconds} ${ampm}`;
+    } catch (e) {
+      return '';
+    }
   };
 
   return (
@@ -1432,7 +1469,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                       {govGroup.count}
                                     </span>
                                   </div>
-                                  {govGroup.reports.slice(0, 5).map((report, rIdx) => (
+                                  {govGroup.reports.map((report, rIdx) => (
                                     <div
                                       key={rIdx}
                                       className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0"
@@ -1455,8 +1492,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                           <p className="text-xs text-gray-500 mt-1 truncate">
                                             {translateBrandingText(report.report_type, isRtl)} • {translateBrandingText(report.contractor, isRtl)}
                                           </p>
-                                          <p className="text-xs text-gray-400 mt-0.5 truncate">
+                                          <p className="text-xs text-gray-400 mt-0.5">
                                             {translateBrandingText(report.project, isRtl)?.replace('مشروع إصلاح أعمال ', '').replace(' - القطاع الأوسط', '')}
+                                            <span className="block mt-1 text-blue-500 font-medium whitespace-nowrap">{formatNotificationDate(report.added_at || report.created_at)}</span>
                                           </p>
                                         </div>
                                         <button
@@ -1472,11 +1510,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                       </div>
                                     </div>
                                   ))}
-                                  {govGroup.count > 5 && (
-                                    <div className="px-4 py-2 text-center text-xs text-blue-600 bg-blue-50/50">
-                                      +{govGroup.count - 5} {isRtl ? 'بلاغات أخرى' : 'other reports'}
-                                    </div>
-                                  )}
                                 </div>
                               ))}
                               
@@ -1489,7 +1522,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                       {unseenWaterConnections.length}
                                     </span>
                                   </div>
-                                  {unseenWaterConnections.slice(0, 10).map((c, cIdx) => (
+                                  {unseenWaterConnections.map((c, cIdx) => (
                                     <div key={cIdx} className="px-4 py-3 hover:bg-cyan-50 border-b border-gray-50 last:border-0">
                                       <div className="flex justify-between items-start gap-2">
                                         <div
@@ -1514,8 +1547,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                           <p className="text-xs text-gray-700 mt-1 truncate font-semibold">
                                             🏛️ {isRtl ? 'المحافظة:' : 'Gov:'} {translateBrandingText(c.governorate || c.area, isRtl) || (isRtl ? 'غير محدد' : 'Unspecified')}
                                           </p>
-                                          <p className="text-xs text-gray-600 mt-0.5 truncate">
+                                          <p className="text-xs text-gray-600 mt-0.5">
                                             📁 {isRtl ? 'المشروع:' : 'Project:'} {translateBrandingText(c.project, isRtl)?.replace('مشروع إصلاح أعمال ', '').replace(' - القطاع الأوسط', '')}
+                                            <span className="block mt-1 text-blue-500 font-medium whitespace-nowrap">{formatNotificationDate(c.created_at)}</span>
                                           </p>
                                         </div>
                                         <button
@@ -1547,7 +1581,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                       {unseenSewageConnections.length}
                                     </span>
                                   </div>
-                                  {unseenSewageConnections.slice(0, 10).map((c, cIdx) => (
+                                  {unseenSewageConnections.map((c, cIdx) => (
                                     <div key={cIdx} className="px-4 py-3 hover:bg-amber-50 border-b border-gray-50 last:border-0">
                                       <div className="flex justify-between items-start gap-2">
                                         <div
@@ -1572,8 +1606,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                           <p className="text-xs text-gray-700 mt-1 truncate font-semibold">
                                             🏛️ {isRtl ? 'المحافظة:' : 'Gov:'} {translateBrandingText(c.governorate || c.area, isRtl) || (isRtl ? 'غير محدد' : 'Unspecified')}
                                           </p>
-                                          <p className="text-xs text-gray-600 mt-0.5 truncate">
+                                          <p className="text-xs text-gray-600 mt-0.5">
                                             📁 {isRtl ? 'المشروع:' : 'Project:'} {translateBrandingText(c.project, isRtl)?.replace('مشروع إصلاح أعمال ', '').replace(' - القطاع الأوسط', '')}
+                                            <span className="block mt-1 text-blue-500 font-medium whitespace-nowrap">{formatNotificationDate(c.created_at)}</span>
                                           </p>
                                         </div>
                                         <button
@@ -1675,17 +1710,24 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                             onClick={markAllReportsAsSeen}
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
                           >
-                            ✓ {t('common.confirm')}
+                            ✓ {isRtl ? 'تأكيد كمقروءة' : 'Mark as read'}
                           </button>
-                          <button
-                            onClick={() => {
-                              setReportNotificationsOpen(false);
-                              navigate('/reports?filter=new');
-                            }}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
-                          >
-                            {isRtl ? 'عرض الكل' : 'View All'} ({unseenReportsCount})
-                          </button>
+                          {!expandNotifications && (unseenReportsCount > 5 || unseenWaterConnections.length > 10 || unseenSewageConnections.length > 10) && (
+                            <button
+                              onClick={() => {
+                                setExpandNotifications(false);
+                                setReportNotificationsOpen(false);
+                                if (window.location.pathname === '/reports' && window.location.search === '?filter=new') {
+                                  window.location.reload();
+                                } else {
+                                  navigate('/reports?filter=new');
+                                }
+                              }}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
+                            >
+                              {isRtl ? `عرض الكل الغير مقروءة (${unseenReportsCount})` : `View All Unread (${unseenReportsCount})`}
+                            </button>
+                          )}
                         </div>
                       )}
                       {notificationTab === 'read' && seenReports.length > 0 && (
@@ -2067,6 +2109,12 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <Link to="/meetings" onClick={(e) => handleLinkClick(e, "/meetings")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/meetings') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   {t('sidebar.meetings', { defaultValue: 'الاجتماعات' })}
+                </Link>
+              )}
+              {hasPermission('wfm_matching') && (
+                <Link to="/wfm-matching" onClick={(e) => handleLinkClick(e, "/wfm-matching")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/wfm-matching') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  {t('sidebar.wfmMatching', { defaultValue: 'مطابقة WFM' })}
                 </Link>
               )}
               
@@ -2491,6 +2539,21 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </svg>
                 </div>
                 <span className="sidebar-text">{t('sidebar.meetings', { defaultValue: 'الاجتماعات' })}</span>
+              </Link>
+            )}
+            
+            {/* مطابقة WFM */}
+            {hasPermission('wfm_matching') && (
+              <Link
+                to="/wfm-matching" onClick={(e) => handleLinkClick(e, "/wfm-matching")}
+                className={`sidebar-item ${isActive('/wfm-matching') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="sidebar-icon-box">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span className="sidebar-text">{t('sidebar.wfmMatching', { defaultValue: 'مطابقة WFM' })}</span>
               </Link>
             )}
             
