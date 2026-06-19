@@ -1704,7 +1704,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     
                     {/* Footer */}
                     <div className="sticky bottom-0 bg-gray-50 px-4 py-3 border-t">
-                      {notificationTab === 'unread' && unseenReportsCount > 0 && (
+                      {notificationTab === 'unread' && (unseenReportsCount > 0 || unseenWaterConnections.length > 0 || unseenSewageConnections.length > 0) && (
                         <div className="flex gap-2">
                           <button
                             onClick={markAllReportsAsSeen}
@@ -1712,7 +1712,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                           >
                             ✓ {isRtl ? 'تأكيد كمقروءة' : 'Mark as read'}
                           </button>
-                          {!expandNotifications && (unseenReportsCount > 5 || unseenWaterConnections.length > 10 || unseenSewageConnections.length > 10) && (
+                          {!expandNotifications && (
                             <button
                               onClick={() => {
                                 setExpandNotifications(false);
