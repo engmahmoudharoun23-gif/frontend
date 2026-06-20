@@ -2887,8 +2887,8 @@ const fetchReports = async () => {
         )}
         
       {/* Table Section - Completely Free Layout */}
-      <div id="reports-table-section" className={`w-full transition-all duration-300 ${activeDropdown ? 'overflow-visible pb-8' : 'overflow-x-auto pb-4'}`}>
-        <table className="min-w-full divide-y divide-gray-100">
+      <div id="reports-table-section" className="w-full overflow-x-auto pb-32">
+        <table className="min-w-[1200px] w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
               <th className="w-8 py-3 text-center bg-gray-100 border-b border-gray-200">
