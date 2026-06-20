@@ -4,6 +4,8 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import Layout from '../components/Layout';
+import Pagination from '../components/Pagination';
+
 import { translateBrandingText } from '../utils/brandingTranslation';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -33,15 +35,123 @@ function WfmMatching({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('platform'); // 'platform' | 'wfm'
   
   const [downloadUrl, setDownloadUrl] = useState(null);
+
   const [downloadFilename, setDownloadFilename] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  const [historyFiles, setHistoryFiles] = useState([]);
+  const [fetchingHistory, setFetchingHistory] = useState(false);
+
+  const handleViewExcel = async (url) => {
+    try {
+      setActiveDropdown(null);
+      toast.info(t('wfmMatching.loadingPreview', 'جاري تحميل البيانات للعرض...'));
+      const response = await axios.get(`${BACKEND_URL}${url}`, { responseType: 'arraybuffer' });
+      const data = new Uint8Array(response.data);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+      // Remove completely empty rows from the end
+      let lastRowIndex = jsonData.length - 1;
+      while (lastRowIndex >= 0 && (!jsonData[lastRowIndex] || jsonData[lastRowIndex].length === 0)) {
+        lastRowIndex--;
+      }
+      
+      const cleanedData = jsonData.slice(0, lastRowIndex + 1);
+      
+      // Post-process the data for Date formatting and auto-numbering
+      if (cleanedData.length > 0) {
+        const headers = cleanedData[0];
+        const dateIndices = [];
+        const mIndex = headers.findIndex(h => typeof h === 'string' && (h.trim() === 'م' || h.trim() === '#'));
+        
+        headers.forEach((h, idx) => {
+          if (typeof h === 'string' && (h.includes('تاريخ') || h.toLowerCase().includes('date'))) {
+            dateIndices.push(idx);
+          }
+        });
+        
+        for (let i = 1; i < cleanedData.length; i++) {
+          const row = cleanedData[i];
+          if (!row) continue;
+          
+          // 1. Auto-numbering for 'م'
+          if (mIndex !== -1) {
+             row[mIndex] = i; 
+          }
+          
+          // 2. Format dates (Excel serial numbers to JS readable string)
+          dateIndices.forEach(idx => {
+            const val = row[idx];
+            if (typeof val === 'number' && val > 30000 && val < 60000) {
+              // Convert Excel serial date to JS Date
+              const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+              const d = String(date.getDate()).padStart(2, '0');
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const y = date.getFullYear();
+              row[idx] = `${d}-${m}-${y}`;
+            }
+          });
+        }
+      }
+      
+      setPreviewData(cleanedData);
+      setShowPreviewModal(true);
+    } catch (error) {
+      console.error("Preview error:", error);
+      toast.error(t('wfmMatching.previewError', 'حدث خطأ أثناء محاولة عرض الملف.'));
+    }
+  };
+
+  const fetchHistory = async () => {
+    try {
+      setFetchingHistory(true);
+      const token = localStorage.getItem("token");
+      const url = selectedProject ? `${API}/wfm-matching/history?project=${encodeURIComponent(selectedProject)}` : `${API}/wfm-matching/history`;
+      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+      setHistoryFiles(res.data);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    } finally {
+      setFetchingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [selectedProject, user]);
+
+  const handleDeleteHistory = async (fileId) => {
+    if (!window.confirm(t('wfmMatching.confirmDelete', 'هل أنت متأكد من حذف هذا الملف؟'))) return;
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/wfm-matching/${fileId}`, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(t('wfmMatching.deleteSuccess', 'تم حذف الملف بنجاح'));
+      fetchHistory();
+    } catch (err) {
+      toast.error(t('wfmMatching.deleteError', 'حدث خطأ أثناء الحذف'));
+    }
+  };
+
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         if (user.role === 'admin') {
-          const response = await axios.get(`${API}/projects`);
-          const projects = response.data.map(p => p.name).sort((a, b) => a.localeCompare(b, 'ar'));
-          setAvailableProjects(projects);
+          try {
+            const response = await axios.get(`${API}/projects`);
+            const projects = response.data.map(p => p.name).sort((a, b) => a.localeCompare(b, 'ar'));
+            setAvailableProjects(projects);
+          } catch (e) {
+            console.error("API/projects failed, using fallback:", e);
+            setAvailableProjects(['مشروع المحافظات الغربية', 'مشروع كشف التسربات وإصلاحها', 'مشروع التشوه البصري']);
+          }
         } else {
           const projects = user.projects || [];
           setAvailableProjects(projects);
@@ -96,7 +206,7 @@ function WfmMatching({ user, onLogout }) {
       reader.onload = async (e) => {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           
@@ -110,13 +220,30 @@ function WfmMatching({ user, onLogout }) {
 
           setProgress(30);
 
-          const headers = jsonData[0];
-          const ticketColIdx = findTicketColumnIndex(headers);
-          
+          let headerRowIdx = -1;
+          let ticketColIdx = -1;
+          let headers = [];
+
+          for (let r = 0; r < Math.min(10, jsonData.length); r++) {
+            const currentHeaders = jsonData[r];
+            const idx = findTicketColumnIndex(currentHeaders);
+            if (idx !== -1) {
+              headerRowIdx = r;
+              headers = currentHeaders;
+              ticketColIdx = idx;
+              break;
+            }
+          }
+
           if (ticketColIdx === -1) {
             toast.error(t('wfmMatching.noTicketColumn', 'لم يتم العثور على عمود يحتوي على أرقام البلاغات. يرجى التأكد من الملف.'));
             setIsProcessing(false);
             return;
+          }
+
+          const prefixRows = [];
+          for (let i = 0; i < headerRowIdx; i++) {
+            prefixRows.push(jsonData[i]);
           }
 
           let actualTotalRows = 0;
@@ -126,7 +253,7 @@ function WfmMatching({ user, onLogout }) {
           const extractedTickets = [];
           const wfmMissingList = [];
 
-          for (let i = 1; i < jsonData.length; i++) {
+          for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
             if (row.length === 0 || row.every(cell => String(cell).trim() === '')) continue;
             
@@ -204,17 +331,45 @@ function WfmMatching({ user, onLogout }) {
 
           setProgress(90);
 
-          const finalAOA = [headers, ...matchedRows];
+          const finalAOA = [...prefixRows, headers, ...matchedRows];
           const newWorksheet = XLSX.utils.aoa_to_sheet(finalAOA);
           const newWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Matched Reports");
 
           const excelBuffer = XLSX.write(newWorkbook, { bookType: 'xlsx', type: 'array' });
+
           const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
           const url = URL.createObjectURL(blob);
           
           setDownloadUrl(url);
-          setDownloadFilename(`Cleaned_WFM_${selectedProject}_${new Date().getTime()}.xlsx`);
+          const fname = `Cleaned_WFM_${selectedProject}_${new Date().getTime()}.xlsx`;
+          setDownloadFilename(fname);
+          
+          // Save to backend automatically
+          try {
+            const formData = new FormData();
+            formData.append('file', blob, fname);
+            formData.append('project', selectedProject);
+            formData.append('stats', JSON.stringify({
+              total: actualTotalRows,
+              matched: finalMatchedCount,
+              unmatched: unmatchedCount,
+              platformTotal: platformTotal,
+              duplicates: actualDuplicates
+            }));
+            
+            await axios.post(`${API}/wfm-matching/save`, formData, {
+              headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'multipart/form-data'
+              }
+            });
+            fetchHistory(); // refresh history
+          } catch (saveErr) {
+            console.error("Error saving file to backend:", saveErr);
+            // non-blocking
+          }
+
           
           setProgress(100);
           toast.success(t('wfmMatching.matchingComplete', 'تمت عملية المطابقة بنجاح!'));
@@ -434,7 +589,7 @@ function WfmMatching({ user, onLogout }) {
                       <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       {t('wfmMatching.platformMissingMessage', { count: platformMissing.length, defaultValue: `يوجد ${platformMissing.length} بلاغ موجود بالمنصة ولم يتم العثور عليه داخل ملف WFM للمشروع المحدد.` }).replace('{{count}}', platformMissing.length)}
                     </div>
-                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <div className="overflow-visible rounded-xl border border-gray-200 w-full">
                       <table className="w-full text-right text-sm">
                         <thead className="bg-gray-50 text-gray-700">
                           <tr>
@@ -477,7 +632,7 @@ function WfmMatching({ user, onLogout }) {
                       <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       {t('wfmMatching.wfmMissingMessage', { count: wfmMissing.length, defaultValue: `يوجد ${wfmMissing.length} تكرار أو استثناء من بلاغات ملف WFM غير مسجلة بالمنصة.` }).replace('{{count}}', wfmMissing.length)}
                     </div>
-                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <div className="overflow-visible rounded-xl border border-gray-200 w-full">
                       <table className="w-full text-right text-sm">
                         <thead className="bg-gray-50 text-gray-700">
                           <tr>
@@ -507,8 +662,204 @@ function WfmMatching({ user, onLogout }) {
             
           </div>
         )}
+
+        {/* History Section */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mt-6 animate-fade-in-up">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+              <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              {t('wfmMatching.historyTitle', 'سجل الملفات المطابقة السابقة')}
+            </h2>
+            <button onClick={fetchHistory} className="text-indigo-600 hover:text-indigo-800 p-2 rounded-full hover:bg-indigo-50 transition-colors">
+              <svg className={`w-5 h-5 ${fetchingHistory ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            </button>
+          </div>
+          
+          {historyFiles.length > 0 ? (
+            <>
+            <div className="overflow-visible rounded-xl border border-gray-200 w-full">
+              <table className="w-full text-right text-sm">
+                <thead className="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 font-bold border-b text-center whitespace-nowrap">{t('wfmMatching.filename', 'اسم الملف')}</th>
+                    <th className="px-4 py-3 font-bold border-b text-center whitespace-nowrap">{t('wfmMatching.project', 'المشروع')}</th>
+                    <th className="px-4 py-3 font-bold border-b text-center w-full min-w-[400px]">{t('wfmMatching.stats', 'الإحصائيات')}</th>
+                    <th className="px-4 py-3 font-bold border-b text-center whitespace-nowrap">{t('wfmMatching.date', 'التاريخ')}</th>
+                    <th className="px-4 py-3 font-bold border-b text-center whitespace-nowrap">{t('wfmMatching.actions', 'إجراءات')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {historyFiles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((file, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-center font-semibold text-gray-900 whitespace-nowrap" dir="ltr" title={file.filename}>
+                        <div className="flex items-center justify-center gap-2 bg-gray-100 px-3 py-1 rounded-lg border border-gray-200">
+                          <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
+                          <span>{t('wfmMatching.defaultFileName', 'ملف WFM')}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold text-indigo-700 whitespace-nowrap">{translateBrandingText(file.project, isRtl)}</td>
+                      <td className="px-4 py-3 text-gray-600 text-center min-w-[350px]">
+                        {file.stats && (
+                          <div className="flex justify-center items-center flex-wrap gap-2 text-xs w-full">
+                            {file.stats.total !== undefined && (
+                              <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md border border-gray-200 font-bold">
+                                {t('wfmMatching.totalWfm', 'إجمالي WFM')}: <span dir="ltr" className="inline-block">{file.stats.total}</span>
+                              </span>
+                            )}
+                            {file.stats.platformTotal !== undefined && (
+                              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md border border-blue-200 font-bold">
+                                {t('wfmMatching.platformTotalShort', 'إجمالي المنصة')}: <span dir="ltr" className="inline-block">{file.stats.platformTotal}</span>
+                              </span>
+                            )}
+                            <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md border border-emerald-200 font-bold">
+                              {t('wfmMatching.matched', 'مطابق')}: <span dir="ltr" className="inline-block">{file.stats.matched || 0}</span>
+                            </span>
+                            <span className="bg-pink-100 text-pink-800 px-2 py-1 rounded-md border border-pink-200 font-bold">
+                              {t('wfmMatching.wfmExceptions', 'استثناءات WFM')}: <span dir="ltr" className="inline-block">{file.stats.unmatched || 0}</span>
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-500 whitespace-nowrap" dir="ltr">
+                        {new Date(file.created_at).toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </td>
+                      <td className="px-4 py-3 text-center relative">
+                        <button
+                          onClick={() => setActiveDropdown(activeDropdown === file.id ? null : file.id)}
+                          className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500 focus:outline-none"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
+                        </button>
+
+                        {activeDropdown === file.id && (
+                          <div 
+                            className={`absolute ${isRtl ? 'left-0' : 'right-0'} mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden text-sm font-bold`}
+                            onMouseLeave={() => setActiveDropdown(null)}
+                          >
+                            <button
+                              onClick={() => handleViewExcel(file.url)}
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 transition-colors text-right"
+                            >
+                              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                              {t('wfmMatching.viewExcel', 'عرض الملف')}
+                            </button>
+                            <a
+                              href={`${BACKEND_URL}${file.url}`}
+                              download
+                              onClick={() => {
+                                toast.success(t('wfmMatching.downloadSuccessToast', 'تم تنزيل الملف بنجاح ✅'));
+                                setActiveDropdown(null);
+                              }}
+                              className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 transition-colors border-t border-gray-50"
+                            >
+                              <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                              {t('wfmMatching.download', 'تنزيل')}
+                            </a>
+                            {(user.role === 'admin' || user.id === file.created_by) && (
+                              <button
+                                onClick={() => {
+                                  handleDeleteHistory(file.id);
+                                  setActiveDropdown(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 transition-colors border-t border-gray-50 text-right"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                {t('wfmMatching.delete', 'حذف')}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {historyFiles.length > 0 && (
+              <div className="mt-6 bg-white border border-gray-100 rounded-xl">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(historyFiles.length / itemsPerPage) || 1}
+                  totalItems={historyFiles.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={(limit) => {
+                    setItemsPerPage(limit);
+                    setCurrentPage(1);
+                  }}
+                  itemsPerPageOptions={[5, 10, 20, 50]}
+                  itemLabel={t('wfmMatching.files', 'ملفات')}
+                />
+              </div>
+            )}
+            </>
+          ) : (
+            <div className="text-center py-8 text-gray-500 font-bold bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              {t('wfmMatching.noHistory', 'لا يوجد سجل للملفات المطابقة حتى الآن')}
+            </div>
+          )}
+        </div>
       </div>
+      {/* Excel Preview Modal */}
+      {showPreviewModal && previewData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                {t('wfmMatching.previewTitle', 'معاينة الملف المطابق')}
+              </h3>
+              <button 
+                onClick={() => setShowPreviewModal(false)}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-4">
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-right">
+                    <thead className="bg-gray-100 text-gray-800 font-bold border-b border-gray-200 sticky top-0 z-10">
+                      <tr>
+                        {previewData[0] && previewData[0].map((cell, i) => (
+                          <th key={i} className="px-4 py-3 whitespace-nowrap border-l border-gray-200 last:border-l-0 shadow-sm">{cell}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {previewData.slice(1).map((row, rowIdx) => (
+                        <tr key={rowIdx} className="hover:bg-blue-50/50 transition-colors">
+                          {previewData[0].map((_, colIdx) => (
+                            <td key={colIdx} className="px-4 py-2 whitespace-nowrap border-l border-gray-100 last:border-l-0 text-gray-700">
+                              {row[colIdx] !== undefined && row[colIdx] !== null ? String(row[colIdx]) : ''}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button 
+                onClick={() => setShowPreviewModal(false)}
+                className="px-6 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-md"
+              >
+                {t('wfmMatching.closePreview', 'إغلاق المعاينة')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
+
   );
 }
 
