@@ -2117,6 +2117,12 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   {t('sidebar.wfmMatching', { defaultValue: 'مطابقة WFM' })}
                 </Link>
               )}
+              {hasPermission('update_reports') && (
+                <Link to="/update-reports" onClick={(e) => handleLinkClick(e, "/update-reports")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/update-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="inline-block w-4 h-4 ml-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  {t('sidebar.updateReports', { defaultValue: 'تحديث البلاغات' })}
+                </Link>
+              )}
               
               {/* إدارة المستخدمين */}
               {hasPermission('users_manage') && (
@@ -2554,6 +2560,20 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </svg>
                 </div>
                 <span className="sidebar-text">{t('sidebar.wfmMatching', { defaultValue: 'مطابقة WFM' })}</span>
+              </Link>
+            )}
+            
+            {hasPermission('update_reports') && (
+              <Link
+                to="/update-reports" onClick={(e) => handleLinkClick(e, "/update-reports")}
+                className={`sidebar-item ${isActive('/update-reports') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="sidebar-icon-box">
+                  <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <span className="sidebar-text">{t('sidebar.updateReports', { defaultValue: 'تحديث البلاغات' })}</span>
               </Link>
             )}
             

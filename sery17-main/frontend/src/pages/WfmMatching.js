@@ -589,8 +589,8 @@ function WfmMatching({ user, onLogout }) {
                       <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       {t('wfmMatching.platformMissingMessage', { count: platformMissing.length, defaultValue: `يوجد ${platformMissing.length} بلاغ موجود بالمنصة ولم يتم العثور عليه داخل ملف WFM للمشروع المحدد.` }).replace('{{count}}', platformMissing.length)}
                     </div>
-                    <div className="overflow-visible rounded-xl border border-gray-200 w-full">
-                      <table className="w-full text-right text-sm">
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 w-full">
+                      <table className="w-full text-right text-sm min-w-[800px]">
                         <thead className="bg-gray-50 text-gray-700">
                           <tr>
                             <th className="px-4 py-3 font-bold border-b">{t('wfmMatching.reportNumber', 'رقم البلاغ')}</th>
@@ -632,8 +632,8 @@ function WfmMatching({ user, onLogout }) {
                       <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       {t('wfmMatching.wfmMissingMessage', { count: wfmMissing.length, defaultValue: `يوجد ${wfmMissing.length} تكرار أو استثناء من بلاغات ملف WFM غير مسجلة بالمنصة.` }).replace('{{count}}', wfmMissing.length)}
                     </div>
-                    <div className="overflow-visible rounded-xl border border-gray-200 w-full">
-                      <table className="w-full text-right text-sm">
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 w-full">
+                      <table className="w-full text-right text-sm min-w-[600px]">
                         <thead className="bg-gray-50 text-gray-700">
                           <tr>
                             <th className="px-4 py-3 font-bold border-b">{t('wfmMatching.wfmReportNumber', 'رقم البلاغ (WFM)')}</th>
@@ -677,8 +677,8 @@ function WfmMatching({ user, onLogout }) {
           
           {historyFiles.length > 0 ? (
             <>
-            <div className="overflow-visible rounded-xl border border-gray-200 w-full">
-              <table className="w-full text-right text-sm">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 w-full">
+              <table className="w-full text-right text-sm min-w-[1000px]">
                 <thead className="bg-gray-50 text-gray-700">
                   <tr>
                     <th className="px-4 py-3 font-bold border-b text-center whitespace-nowrap">{t('wfmMatching.filename', 'اسم الملف')}</th>
