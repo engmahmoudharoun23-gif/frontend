@@ -372,45 +372,20 @@ function WorkPermits({ user, onLogout }) {
   const handleSave = async (e) => {
     e.preventDefault();
     if (isSubmitting || uploading) return;
-    
-    toast.success(editingReport ? t('workPermits.updateSuccess') : t('workPermits.saveSuccess'));
-    setShowModal(false);
-    
-    const tempId = 'temp-' + Date.now();
-    const optimisticReport = {
-       id: tempId,
-       date: form.date,
-       project: form.project,
-       governorate: form.governorate,
-       notes: form.notes,
-       status: 'جاري الرفع...',
-       created_by: user?.name || 'أنا',
-       image: form.image,
-       images: form.images
-    };
-
-    if (!editingReport) {
-      setReports(prev => [optimisticReport, ...prev]);
-    }
-
     setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
         await axios.put(`${API}/work-permits/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('workPermits.updateSuccess'));
       } else {
         await axios.post(`${API}/work-permits`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('workPermits.saveSuccess'));
       }
+      setShowModal(false);
       fetchReports();
     } catch (err) {
-      if (!editingReport) {
-         setReports(prev => prev.filter(r => r.id !== tempId));
-      }
-      if (err.response?.status === 413 || err.message.includes('Network') || err.message.includes('timeout')) {
-        toast.error(isRtl ? 'الإنترنت لديك ضعيف لرفع الملف، المحاولة فشلت في الخلفية' : 'Your internet is weak, background upload failed');
-      } else {
-        toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ في الخلفية' : 'Error saving permit in background'));
-      }
+      toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ' : 'Error saving permit'));
     } finally {
       setIsSubmitting(false);
     }
