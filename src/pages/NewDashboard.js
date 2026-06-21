@@ -455,6 +455,8 @@ const ProjectCard = ({ title, stats, projectKey, cardLabels = [] }) => {
       </h3>
       
       <div className="space-y-4">
+
+
         {/* البلاغات المتبقي الأسفلت */}
         <div className="bg-yellow-50 rounded-lg p-4">
           <div className="flex justify-between items-center">

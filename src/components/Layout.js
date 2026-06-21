@@ -96,9 +96,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     localStorage.setItem('cache_pendingReportNotesCount', pendingReportNotesCount);
   }, [pendingReviewCount, pendingInvoicesCount, pendingRequestsCount, signedRequestsCount, supportMessagesCount, pendingExtractsCount, pendingSafetyCount, pendingQualityCount, pendingBusinessCount, pendingConsultantCount, unreadChatCount, pendingReportNotesCount]);
 
-  const previousSignedCount = useRef(0);
-  const previousPendingReviewCount = useRef(0);
-  const previousUnreadChatCount = useRef(0);
+  const previousSignedCount = useRef(getCachedCount('cache_signedRequestsCount'));
+  const previousPendingReviewCount = useRef(getCachedCount('cache_pendingReviewCount'));
+  const previousUnreadChatCount = useRef(getCachedCount('cache_unreadChatCount'));
   
   const handleLinkClick = (e, path) => {
     if (location.pathname === path || (path === '/' && location.pathname === '/dashboard')) {
@@ -168,10 +168,10 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const [dynamicAnnouncement, setDynamicAnnouncement] = useState('');
   const [showDynamicAnnouncement, setShowDynamicAnnouncement] = useState(null);
   const [flashDynamicAnnouncement, setFlashDynamicAnnouncement] = useState(true);
-  const previousUnseenCount = useRef(0);
-  const previousInvoicesCount = useRef(0);
-  const previousRequestsCount = useRef(0);
-  const previousExtractsCount = useRef(0);
+  const previousUnseenCount = useRef(parseInt(localStorage.getItem('wfm_last_unseen_count') || '0', 10));
+  const previousInvoicesCount = useRef(getCachedCount('cache_pendingInvoicesCount'));
+  const previousRequestsCount = useRef(getCachedCount('cache_pendingRequestsCount'));
+  const previousExtractsCount = useRef(getCachedCount('cache_pendingExtractsCount'));
   const isFirstLoad = useRef(true);
   const reminderIntervalRef = useRef(null);
   
@@ -302,6 +302,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     }
   }, [soundVolume]);
   
+
+
   // دالة تشغيل صوت تذكير (أقل حدة) للتمييز عن الإشعار الجديد
   const playReminderSound = useCallback(() => {
     try {
@@ -404,9 +406,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         if (newUnreadCount > savedUnreadChatCount) {
           shouldPlayChatAlert = true;
           chatToastMessage = isRtl ? `لديك رسالة جديدة في الدردشة الفورية 💬` : `You have a new message in Instant Chat 💬`;
-        } else if (!sessionStorage.getItem('wfm_chat_login_sound_played') && newUnreadCount > 0) {
-          shouldPlayChatAlert = true;
-          chatToastMessage = isRtl ? `لديك رسائل غير مقروءة في الدردشة الفورية 💬` : `You have unread messages 💬`;
         }
 
         localStorage.setItem('wfm_last_unread_chat_count', newUnreadCount.toString());
@@ -421,7 +420,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             sessionStorage.setItem('wfm_chat_login_sound_played', 'true');
             if (soundEnabled) {
               try {
-                // استخدام جرس التنبيه القوي جداً للرسائل
                 playIphoneAlertSound();
               } catch (soundErr) {
                 console.error("Error playing chat sound:", soundErr);
@@ -502,9 +500,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           
           if (soundEnabled) {
             if (newUnseenCount > savedUnseenCount) {
-              playNotificationSound();
-            } else if (!sessionStorage.getItem('wfm_login_sound_played') && newUnseenCount > 0) {
-              sessionStorage.setItem('wfm_login_sound_played', 'true');
               playNotificationSound();
             }
           }
@@ -1400,6 +1395,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                               </svg>
                             )}
                           </button>
+
                           <button onClick={() => setReportNotificationsOpen(false)} className="text-white/80 hover:text-white text-xl p-1">✕</button>
                         </div>
                       </div>

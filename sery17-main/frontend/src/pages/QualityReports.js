@@ -356,48 +356,56 @@ function QualityReports({ user, onLogout }) {
     catch { return file; }
   };
 
-  const handleImageSelect = async (e) => {
+    const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
     try {
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
+      const token = localStorage.getItem('token');
       
       for (let file of files) {
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        if (isPdf) {
-           const reader = new FileReader();
-           let base64pdf = await new Promise(resolve => {
-             reader.onloadend = () => resolve(reader.result);
-             reader.readAsDataURL(file);
-           });
-           try {
-             const token = localStorage.getItem('token');
-             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-             if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-           } catch (e) { console.error('PDF compression failed', e); }
-           newPreviews.push(base64pdf);
-           newImages.push(base64pdf);
-        } else {
-           const compressed = await compressImage(file);
-           const result = await new Promise(resolve => {
-             const r = new FileReader();
-             r.onloadend = () => resolve(r.result);
-             r.readAsDataURL(compressed);
-           });
-           newPreviews.push(result);
-           newImages.push(result);
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 15 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await axios.post(`${API}/storage/upload`, formData, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          if (res.data && res.data.storage_path) {
+            // Check if we need objects for ViolationsModal or just strings
+            if (false) {
+               const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+               newPreviews.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+               newImages.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+            } else {
+               newPreviews.push(res.data.storage_path);
+               newImages.push(res.data.storage_path);
+            }
+          }
+        } catch (uploadErr) {
+          console.error('File upload failed', uploadErr);
+          toast.error('حدث خطأ أثناء رفع أحد الملفات');
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(i18n.language === 'ar' ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+      toast.success('تم إضافة الملفات بنجاح');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
+      toast.error('حدث خطأ غير متوقع');
     }
   };
   const removeImage = (idx) => {
@@ -491,7 +499,7 @@ function QualityReports({ user, onLogout }) {
   const handleDownloadPDF = async (report, titleText) => {
     let fullReport = report;
     if (!fullReport.image && activeTab !== 'warehouse_visits') {
-      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      toast.info(isRtl ? 'جاري تحضير ملف الـ PDF...' : 'Preparing PDF file...', { autoClose: false, toastId: 'loadingReport' });
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/quality-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
@@ -513,25 +521,46 @@ function QualityReports({ user, onLogout }) {
       const token = localStorage.getItem('token') || '';
       
       if (fullReport.image.startsWith('data:')) {
-        const link = document.createElement('a');
-        link.href = fullReport.image;
-        link.download = `report_attachment_${fullReport.id || 'file'}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(t('qualityReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        if (fullReport.image.startsWith('data:application/pdf')) {
+            fetch(fullReport.image)
+              .then(res => res.blob())
+              .then(blob => {
+                 const blobUrl = URL.createObjectURL(blob);
+                 window.open(blobUrl, '_blank');
+              });
+        } else {
+            const link = document.createElement('a');
+            link.href = fullReport.image;
+            let ext = '.jpg';
+            if (fullReport.image.startsWith('data:image/png')) ext = '.png';
+            link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success(t('qualityReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        }
       } else {
+        const isPdf = fullReport.image.toLowerCase().includes('.pdf');
         const fileUrlParam = encodeURIComponent(fullReport.image);
-        const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+        const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=${isPdf ? '0' : '1'}&auth=${encodeURIComponent(token)}`;
         
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_blank';
-        link.download = `report_attachment_${fullReport.id || 'file'}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(t('qualityReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        if (isPdf) {
+          window.open(downloadUrl, '_blank');
+        } else {
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.target = '_blank';
+          
+          let ext = '';
+          if (fullReport.image.toLowerCase().includes('.png')) ext = '.png';
+          else if (fullReport.image.toLowerCase().includes('.jpg') || fullReport.image.toLowerCase().includes('.jpeg')) ext = '.jpg';
+          
+          link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          toast.success(t('qualityReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        }
       }
     } catch (e) {
       console.error('File download error:', e);
@@ -630,7 +659,7 @@ function QualityReports({ user, onLogout }) {
                   <div className="mb-4 flex flex-wrap gap-4">
                     {imagePreviews.map((img, idx) => (
                       <div key={idx} className="relative inline-block">
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                        {img.startsWith('data:application/pdf') || img.toLowerCase().includes('.pdf') ? (
                           <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2">
                             <FileText className="w-8 h-8 text-teal-500 mb-1" />
                             <span className="text-xs text-gray-600 font-bold text-center">PDF</span>
@@ -644,7 +673,7 @@ function QualityReports({ user, onLogout }) {
                   </div>
                 ) : (imagePreview && (
                   <div className="mb-4 relative inline-block">
-                    {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
+                    {imagePreview.startsWith('data:application/pdf') || imagePreview.toLowerCase().includes('.pdf') ? (
                       <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2">
                         <FileText className="w-8 h-8 text-teal-500 mb-1" />
                         <span className="text-xs text-gray-600 font-bold text-center">PDF</span>
@@ -1095,7 +1124,7 @@ function QualityReports({ user, onLogout }) {
                     <div className="mb-3 flex flex-wrap gap-3">
                       {imagePreviews.map((img, idx) => (
                         <div key={idx} className="relative inline-block">
-                          {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                          {img.startsWith('data:application/pdf') || img.toLowerCase().includes('.pdf') ? (
                             <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
                               <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
                             </div>
@@ -1108,7 +1137,7 @@ function QualityReports({ user, onLogout }) {
                     </div>
                   ) : (imagePreview && (
                     <div className="mb-3 relative inline-block">
-                      {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
+                      {imagePreview.startsWith('data:application/pdf') || imagePreview.toLowerCase().includes('.pdf') ? (
                         <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
                           <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
                         </div>
@@ -1150,12 +1179,17 @@ function QualityReports({ user, onLogout }) {
                     <div className="flex flex-wrap gap-2">
                     {viewReport.images.map((img, idx) => (
                       <div key={idx}>
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                        {img.startsWith('data:application/pdf') || img.toLowerCase().includes('.pdf') ? (
                           <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: img })}>
                             <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
                           </div>
                         ) : (
-                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(img)} />
+                          <>
+                            <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(img)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
+                            <div style={{ display: 'none' }} className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: img })}>
+                              <span className="text-xs text-gray-600 font-bold text-center">File {idx+1}</span>
+                            </div>
+                          </>
                         )}
                       </div>
                     ))}
@@ -1164,12 +1198,17 @@ function QualityReports({ user, onLogout }) {
                 ) : (viewReport.image && (
                   <div>
                     <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    {viewReport.image.startsWith('data:application/pdf') || viewReport.image.endsWith('.pdf') ? (
+                    {viewReport.image.startsWith('data:application/pdf') || viewReport.image.toLowerCase().includes('.pdf') ? (
                       <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: viewReport.image })}>
                         <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
                       </div>
                     ) : (
-                      <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} />
+                      <>
+                        <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
+                        <div style={{ display: 'none' }} className="w-full h-32 bg-gray-100 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: viewReport.image })}>
+                          <span className="text-xs text-gray-600 font-bold text-center">File 1</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 ))}

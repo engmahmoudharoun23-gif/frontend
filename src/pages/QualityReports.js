@@ -356,48 +356,56 @@ function QualityReports({ user, onLogout }) {
     catch { return file; }
   };
 
-  const handleImageSelect = async (e) => {
+    const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
     try {
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
+      const token = localStorage.getItem('token');
       
       for (let file of files) {
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        if (isPdf) {
-           const reader = new FileReader();
-           let base64pdf = await new Promise(resolve => {
-             reader.onloadend = () => resolve(reader.result);
-             reader.readAsDataURL(file);
-           });
-           try {
-             const token = localStorage.getItem('token');
-             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-             if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-           } catch (e) { console.error('PDF compression failed', e); }
-           newPreviews.push(base64pdf);
-           newImages.push(base64pdf);
-        } else {
-           const compressed = await compressImage(file);
-           const result = await new Promise(resolve => {
-             const r = new FileReader();
-             r.onloadend = () => resolve(r.result);
-             r.readAsDataURL(compressed);
-           });
-           newPreviews.push(result);
-           newImages.push(result);
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 15 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await axios.post(`${API}/storage/upload`, formData, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          if (res.data && res.data.storage_path) {
+            // Check if we need objects for ViolationsModal or just strings
+            if (false) {
+               const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+               newPreviews.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+               newImages.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+            } else {
+               newPreviews.push(res.data.storage_path);
+               newImages.push(res.data.storage_path);
+            }
+          }
+        } catch (uploadErr) {
+          console.error('File upload failed', uploadErr);
+          toast.error('حدث خطأ أثناء رفع أحد الملفات');
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(i18n.language === 'ar' ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+      toast.success('تم إضافة الملفات بنجاح');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
+      toast.error('حدث خطأ غير متوقع');
     }
   };
   const removeImage = (idx) => {

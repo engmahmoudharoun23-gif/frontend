@@ -259,7 +259,7 @@ function SafetyReports({ user, onLogout }) {
     catch { return file; }
   };
 
-  const handleImageSelect = async (e) => {
+    const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
@@ -269,6 +269,12 @@ function SafetyReports({ user, onLogout }) {
       const token = localStorage.getItem('token');
       
       for (let file of files) {
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 15 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+        }
         const formData = new FormData();
         formData.append('file', file);
         try {
@@ -279,23 +285,30 @@ function SafetyReports({ user, onLogout }) {
             }
           });
           if (res.data && res.data.storage_path) {
-            newPreviews.push(res.data.storage_path);
-            newImages.push(res.data.storage_path);
+            // Check if we need objects for ViolationsModal or just strings
+            if (false) {
+               const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+               newPreviews.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+               newImages.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+            } else {
+               newPreviews.push(res.data.storage_path);
+               newImages.push(res.data.storage_path);
+            }
           }
         } catch (uploadErr) {
           console.error('File upload failed', uploadErr);
-          toast.error(isRtl ? 'حدث خطأ أثناء رفع أحد الملفات' : 'Error uploading a file');
+          toast.error('حدث خطأ أثناء رفع أحد الملفات');
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(isRtl ? 'تم إضافة الملفات بنجاح' : 'Files added successfully');
+      toast.success('تم إضافة الملفات بنجاح');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
-      toast.error(isRtl ? 'حدث خطأ غير متوقع' : 'Unexpected error');
+      toast.error('حدث خطأ غير متوقع');
     }
   };
   const removeImage = (idx) => {
@@ -342,45 +355,20 @@ function SafetyReports({ user, onLogout }) {
   const handleSave = async (e) => {
     e.preventDefault();
     if (isSubmitting || uploading) return;
-    
-    toast.success(editingReport ? t('safetyReports.updateSuccess') : t('safetyReports.saveSuccess'));
-    setShowModal(false);
-    
-    const tempId = 'temp-' + Date.now();
-    const optimisticReport = {
-       id: tempId,
-       date: form.date,
-       project: form.project,
-       governorate: form.governorate,
-       notes: form.notes,
-       status: 'جاري الرفع...',
-       created_by: user?.name || 'أنا',
-       image: form.image,
-       images: form.images
-    };
-
-    if (!editingReport) {
-      setReports(prev => [optimisticReport, ...prev]);
-    }
-
     setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
         await axios.put(`${API}/safety-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('safetyReports.updateSuccess'));
       } else {
         await axios.post(`${API}/safety-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('safetyReports.saveSuccess'));
       }
+      setShowModal(false);
       fetchReports();
     } catch (err) {
-      if (!editingReport) {
-         setReports(prev => prev.filter(r => r.id !== tempId));
-      }
-      if (err.response?.status === 413 || err.message.includes('Network') || err.message.includes('timeout')) {
-        toast.error(isRtl ? 'الإنترنت لديك ضعيف لرفع الملف، المحاولة فشلت في الخلفية' : 'Your internet is weak, background upload failed');
-      } else {
-        toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ في الخلفية' : 'Error saving report in background'));
-      }
+      toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ' : 'Error saving report'));
     } finally {
       setIsSubmitting(false);
     }
@@ -473,12 +461,22 @@ function SafetyReports({ user, onLogout }) {
         }
       };
 
-      const allFiles = [];
-      if (fullReport.images && fullReport.images.length > 0) allFiles.push(...fullReport.images);
-      if (fullReport.files && fullReport.files.length > 0) allFiles.push(...fullReport.files);
-      if (fullReport.image) allFiles.push(fullReport.image);
-      if (fullReport.file) allFiles.push(fullReport.file);
-      if (fullReport.file_url) allFiles.push(fullReport.file_url);
+      const rawFiles = [];
+      if (fullReport.images && fullReport.images.length > 0) rawFiles.push(...fullReport.images);
+      if (fullReport.files && fullReport.files.length > 0) rawFiles.push(...fullReport.files);
+      if (fullReport.image) rawFiles.push(fullReport.image);
+      if (fullReport.file) rawFiles.push(fullReport.file);
+      if (fullReport.file_url) rawFiles.push(fullReport.file_url);
+
+      const uniqueFilesMap = new Map();
+      rawFiles.forEach(f => {
+        if(!f) return;
+        const url = typeof f === 'string' ? f : (f.data || f.url || '');
+        if(url && !uniqueFilesMap.has(url)) {
+          uniqueFilesMap.set(url, f);
+        }
+      });
+      const allFiles = Array.from(uniqueFilesMap.values());
 
       if (allFiles.length > 0) {
         allFiles.forEach((img, idx) => {
@@ -1019,12 +1017,22 @@ function SafetyReports({ user, onLogout }) {
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
                 {(() => {
-                  const allFiles = [];
-                  if (viewReport.images && viewReport.images.length > 0) allFiles.push(...viewReport.images);
-                  if (viewReport.files && viewReport.files.length > 0) allFiles.push(...viewReport.files);
-                  if (viewReport.image) allFiles.push(viewReport.image);
-                  if (viewReport.file) allFiles.push(viewReport.file);
-                  if (viewReport.file_url) allFiles.push(viewReport.file_url);
+                  const rawFiles = [];
+                  if (viewReport.images && viewReport.images.length > 0) rawFiles.push(...viewReport.images);
+                  if (viewReport.files && viewReport.files.length > 0) rawFiles.push(...viewReport.files);
+                  if (viewReport.image) rawFiles.push(viewReport.image);
+                  if (viewReport.file) rawFiles.push(viewReport.file);
+                  if (viewReport.file_url) rawFiles.push(viewReport.file_url);
+                  
+                  const uniqueFilesMap = new Map();
+                  rawFiles.forEach(f => {
+                    if(!f) return;
+                    const url = typeof f === 'string' ? f : (f.data || f.url || '');
+                    if(url && !uniqueFilesMap.has(url)) {
+                      uniqueFilesMap.set(url, f);
+                    }
+                  });
+                  const allFiles = Array.from(uniqueFilesMap.values());
                   
                   if (allFiles.length > 0) {
                     return (

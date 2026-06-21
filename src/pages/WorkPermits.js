@@ -286,52 +286,56 @@ function WorkPermits({ user, onLogout }) {
     catch { return file; }
   };
 
-  const handleImageSelect = async (e) => {
+    const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
     try {
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
+      const token = localStorage.getItem('token');
       
       for (let file of files) {
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        if (isPdf) {
-          if (file.size > 10 * 1024 * 1024) {
-            toast.error("حجم ملف الـ PDF يتجاوز 10 ميجا. يرجى اختيار ملف أصغر.");
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 15 ميجا. يرجى اختيار ملف أصغر.");
             continue;
           }
-          const reader = new FileReader();
-          let base64pdf = await new Promise(resolve => {
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(file);
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await axios.post(`${API}/storage/upload`, formData, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
           });
-          try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-          } catch (e) { console.error('PDF compression failed', e); }
-          newPreviews.push(base64pdf);
-          newImages.push(base64pdf);
-        } else {
-          const compressed = await compressImage(file);
-          const result = await new Promise(resolve => {
-            const r = new FileReader();
-            r.onloadend = () => resolve(r.result);
-            r.readAsDataURL(compressed);
-          });
-          newPreviews.push(result);
-          newImages.push(result);
+          if (res.data && res.data.storage_path) {
+            // Check if we need objects for ViolationsModal or just strings
+            if (false) {
+               const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+               newPreviews.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+               newImages.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+            } else {
+               newPreviews.push(res.data.storage_path);
+               newImages.push(res.data.storage_path);
+            }
+          }
+        } catch (uploadErr) {
+          console.error('File upload failed', uploadErr);
+          toast.error('حدث خطأ أثناء رفع أحد الملفات');
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(isRtl ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+      toast.success('تم إضافة الملفات بنجاح');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
+      toast.error('حدث خطأ غير متوقع');
     }
   };
 
@@ -372,45 +376,20 @@ function WorkPermits({ user, onLogout }) {
   const handleSave = async (e) => {
     e.preventDefault();
     if (isSubmitting || uploading) return;
-    
-    toast.success(editingReport ? t('workPermits.updateSuccess') : t('workPermits.saveSuccess'));
-    setShowModal(false);
-    
-    const tempId = 'temp-' + Date.now();
-    const optimisticReport = {
-       id: tempId,
-       date: form.date,
-       project: form.project,
-       governorate: form.governorate,
-       notes: form.notes,
-       status: 'جاري الرفع...',
-       created_by: user?.name || 'أنا',
-       image: form.image,
-       images: form.images
-    };
-
-    if (!editingReport) {
-      setReports(prev => [optimisticReport, ...prev]);
-    }
-
     setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
         await axios.put(`${API}/work-permits/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('workPermits.updateSuccess'));
       } else {
         await axios.post(`${API}/work-permits`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('workPermits.saveSuccess'));
       }
+      setShowModal(false);
       fetchReports();
     } catch (err) {
-      if (!editingReport) {
-         setReports(prev => prev.filter(r => r.id !== tempId));
-      }
-      if (err.response?.status === 413 || err.message.includes('Network') || err.message.includes('timeout')) {
-        toast.error(isRtl ? 'الإنترنت لديك ضعيف لرفع الملف، المحاولة فشلت في الخلفية' : 'Your internet is weak, background upload failed');
-      } else {
-        toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ في الخلفية' : 'Error saving permit in background'));
-      }
+      toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ' : 'Error saving permit'));
     } finally {
       setIsSubmitting(false);
     }

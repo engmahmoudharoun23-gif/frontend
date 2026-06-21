@@ -163,37 +163,41 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
     try {
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
-      for (const file of files) {
+      const token = localStorage.getItem('token');
+      
+      for (let file of files) {
         const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
         if (isPdf) {
-          let base64pdf = await new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(file);
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 15 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await axios.post(`${API}/storage/upload`, formData, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
           });
-          try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-          } catch (e) { console.error('PDF compression failed', e); }
-          newPreviews.push({ type: 'pdf', data: base64pdf, name: file.name });
-          newImages.push({ type: 'pdf', data: base64pdf, name: file.name });
-        } else {
-          const compressed = await compressImage(file);
-          const result = await new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(compressed);
-          });
-          newPreviews.push({ type: 'image', data: result });
-          newImages.push({ type: 'image', data: result });
+          if (res.data && res.data.storage_path) {
+             newPreviews.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+             newImages.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+          }
+        } catch (uploadErr) {
+          console.error('File upload failed', uploadErr);
+          toast.error('حدث خطأ أثناء رفع أحد الملفات');
         }
       }
+      
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages }));
-      toast.success(d('تم إضافة الملفات وضغطها بنجاح', 'Files added and compressed successfully'));
-    } catch (e) {
+      toast.success(d('تم إضافة الملفات بنجاح', 'Files added successfully'));
+    } catch (e) { 
       console.error(e);
+      toast.error('حدث خطأ غير متوقع');
     } finally {
       setUploading(false);
     }

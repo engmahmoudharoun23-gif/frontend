@@ -163,37 +163,41 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
     try {
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
-      for (const file of files) {
+      const token = localStorage.getItem('token');
+      
+      for (let file of files) {
         const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
         if (isPdf) {
-          let base64pdf = await new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(file);
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 15 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await axios.post(`${API}/storage/upload`, formData, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
           });
-          try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-          } catch (e) { console.error('PDF compression failed', e); }
-          newPreviews.push({ type: 'pdf', data: base64pdf, name: file.name });
-          newImages.push({ type: 'pdf', data: base64pdf, name: file.name });
-        } else {
-          const compressed = await compressImage(file);
-          const result = await new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(compressed);
-          });
-          newPreviews.push({ type: 'image', data: result });
-          newImages.push({ type: 'image', data: result });
+          if (res.data && res.data.storage_path) {
+             newPreviews.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+             newImages.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+          }
+        } catch (uploadErr) {
+          console.error('File upload failed', uploadErr);
+          toast.error('حدث خطأ أثناء رفع أحد الملفات');
         }
       }
+      
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages }));
-      toast.success(d('تم إضافة الملفات وضغطها بنجاح', 'Files added and compressed successfully'));
-    } catch (e) {
+      toast.success(d('تم إضافة الملفات بنجاح', 'Files added successfully'));
+    } catch (e) { 
       console.error(e);
+      toast.error('حدث خطأ غير متوقع');
     } finally {
       setUploading(false);
     }
@@ -545,11 +549,11 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
           )}
 
           {isFullScreen && !showForm && (
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
               <p className="text-gray-500">{subTitleText}</p>
               <button
                 onClick={openAdd}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-sm transition-all shadow-md"
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-sm transition-all shadow-md w-full sm:w-auto justify-center"
               >
                 <Plus className="w-5 h-5" />
                 {d('إضافة مخالفة', 'Add Violation')}
@@ -576,32 +580,32 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
             ) : (
               <div className="space-y-3">
                 {currentViolations.map((v, idx) => (
-                  <div key={v.id} className="bg-red-50 border border-red-100 rounded-xl p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between hover:shadow-md transition-shadow">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div key={v.id} className="bg-red-50 border border-red-100 rounded-xl p-4 w-full flex flex-col gap-3 hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-3 w-full">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 text-red-600 font-bold text-sm flex items-center justify-center">
                         {indexOfFirstItem + idx + 1}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3 w-full lg:w-11/12">
-                          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-red-100 text-red-800 rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex-1 min-w-0 w-full overflow-hidden">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 w-full">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-red-100 text-red-800 rounded-xl text-xs font-bold shadow-sm">
                             <div className="p-1.5 bg-red-50 rounded-lg shrink-0"><Calendar className="w-4 h-4 text-red-500" /></div>
                             <span className="truncate">{v.date || '-'}</span>
                           </div>
-                          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-blue-100 text-blue-800 rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-blue-100 text-blue-800 rounded-xl text-xs font-bold shadow-sm">
                             <div className="p-1.5 bg-blue-50 rounded-lg shrink-0"><MapPin className="w-4 h-4 text-blue-500" /></div>
                             <span className="truncate" title={translateBrandingText(v.governorate, isRtl)}>{translateBrandingText(v.governorate, isRtl) || '-'}</span>
                           </div>
-                          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm">
                             <div className="p-1.5 bg-slate-50 rounded-lg shrink-0"><Briefcase className="w-4 h-4 text-slate-500" /></div>
                             <span className="truncate" title={translateBrandingText(v.project, isRtl)}>{translateBrandingText(v.project, isRtl) || '-'}</span>
                           </div>
                         </div>
-                        <p className="text-sm font-bold text-red-700 truncate">⚠ {v.violation_type || '-'}</p>
-                        {v.notes && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{v.notes}</p>}
+                        <p className="text-sm font-bold text-red-700 break-words whitespace-normal leading-relaxed w-full">⚠ {v.violation_type || '-'}</p>
+                        {v.notes && <p className="text-xs text-gray-500 mt-1 break-words whitespace-normal leading-relaxed w-full">{v.notes}</p>}
                         <p className="text-xs text-gray-400 mt-1">{d('بواسطة:', 'By:')} {v.created_by || '-'}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center justify-between w-full mt-2 pt-3 border-t border-red-100">
                       <span className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${v.status === 'تمت المعالجة' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-700 text-white shadow-slate-200'}`}>
                         {v.status || (isRtl ? 'قيد المعالجة' : 'Processing')}
                       </span>
@@ -697,7 +701,7 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
                   <span className="text-red-600">{isRtl ? 'عرض' : 'Showing'}</span> {currentViolations.length} <span className="text-red-600">{isRtl ? 'مخالفات من إجمالي' : 'violations of total'}</span> {filteredViolations.length}
                 </div>
                 
-                <div className="flex items-center gap-2" dir="ltr">
+                <div className="flex flex-wrap items-center justify-center gap-2" dir="ltr">
                   <button
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}

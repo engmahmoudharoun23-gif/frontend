@@ -259,48 +259,56 @@ function SafetyReports({ user, onLogout }) {
     catch { return file; }
   };
 
-  const handleImageSelect = async (e) => {
+    const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
     try {
       const newPreviews = [...imagePreviews];
       const newImages = [...(form.images || [])];
+      const token = localStorage.getItem('token');
       
       for (let file of files) {
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        if (isPdf) {
-           const reader = new FileReader();
-           let base64pdf = await new Promise(resolve => {
-             reader.onloadend = () => resolve(reader.result);
-             reader.readAsDataURL(file);
-           });
-           try {
-             const token = localStorage.getItem('token');
-             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-             if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-           } catch (e) { console.error('PDF compression failed', e); }
-           newPreviews.push(base64pdf);
-           newImages.push(base64pdf);
-        } else {
-           const compressed = await compressImage(file);
-           const result = await new Promise(resolve => {
-             const r = new FileReader();
-             r.onloadend = () => resolve(r.result);
-             r.readAsDataURL(compressed);
-           });
-           newPreviews.push(result);
-           newImages.push(result);
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("حجم ملف الـ PDF يتجاوز 15 ميجا. يرجى اختيار ملف أصغر.");
+            continue;
+          }
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await axios.post(`${API}/storage/upload`, formData, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          if (res.data && res.data.storage_path) {
+            // Check if we need objects for ViolationsModal or just strings
+            if (false) {
+               const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+               newPreviews.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+               newImages.push({ type: isPdf ? 'pdf' : 'image', data: res.data.storage_path, name: file.name });
+            } else {
+               newPreviews.push(res.data.storage_path);
+               newImages.push(res.data.storage_path);
+            }
+          }
+        } catch (uploadErr) {
+          console.error('File upload failed', uploadErr);
+          toast.error('حدث خطأ أثناء رفع أحد الملفات');
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(i18n.language === 'ar' ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+      toast.success('تم إضافة الملفات بنجاح');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
+      toast.error('حدث خطأ غير متوقع');
     }
   };
   const removeImage = (idx) => {
@@ -360,7 +368,7 @@ function SafetyReports({ user, onLogout }) {
       setShowModal(false);
       fetchReports();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'حدث خطأ');
+      toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ' : 'Error saving report'));
     } finally {
       setIsSubmitting(false);
     }
@@ -386,7 +394,7 @@ function SafetyReports({ user, onLogout }) {
     const hasAnyFile = (r) => r.image || r.file || r.file_url || (r.images && r.images.length > 0) || (r.files && r.files.length > 0);
     
     if (!hasAnyFile(fullReport)) {
-      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+      toast.info(isRtl ? 'جاري تحضير ملف الـ PDF...' : 'Preparing PDF file...', { autoClose: false, toastId: 'loadingReport' });
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/safety-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
@@ -412,41 +420,63 @@ function SafetyReports({ user, onLogout }) {
         const dataUrl = isString ? fileData : (fileData.data || fileData.url);
         
         if (dataUrl.startsWith('data:')) {
-          const link = document.createElement('a');
-          link.href = dataUrl;
-          let ext = '.jpg';
-          if (dataUrl.startsWith('data:application/pdf')) ext = '.pdf';
-          else if (dataUrl.startsWith('data:image/png')) ext = '.png';
-          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
-          link.download = name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          if (dataUrl.startsWith('data:application/pdf')) {
+            fetch(dataUrl)
+              .then(res => res.blob())
+              .then(blob => {
+                 const blobUrl = URL.createObjectURL(blob);
+                 window.open(blobUrl, '_blank');
+              });
+          } else {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            let ext = '.jpg';
+            if (dataUrl.startsWith('data:image/png')) ext = '.png';
+            const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
         } else {
+          const isPdf = dataUrl.toLowerCase().includes('.pdf');
           const fileUrlParam = encodeURIComponent(dataUrl);
-          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=${isPdf ? '0' : '1'}&auth=${encodeURIComponent(token)}`;
           
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.target = '_blank';
-          let ext = '';
-          if (dataUrl.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-          else if (dataUrl.toLowerCase().endsWith('.png')) ext = '.png';
-          else if (dataUrl.toLowerCase().endsWith('.jpg') || dataUrl.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
-          link.download = name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          if (isPdf) {
+            window.open(downloadUrl, '_blank');
+          } else {
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.target = '_blank';
+            let ext = '';
+            if (dataUrl.toLowerCase().includes('.png')) ext = '.png';
+            else if (dataUrl.toLowerCase().includes('.jpg') || dataUrl.toLowerCase().includes('.jpeg')) ext = '.jpg';
+            const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
         }
       };
 
-      const allFiles = [];
-      if (fullReport.images && fullReport.images.length > 0) allFiles.push(...fullReport.images);
-      if (fullReport.files && fullReport.files.length > 0) allFiles.push(...fullReport.files);
-      if (fullReport.image) allFiles.push(fullReport.image);
-      if (fullReport.file) allFiles.push(fullReport.file);
-      if (fullReport.file_url) allFiles.push(fullReport.file_url);
+      const rawFiles = [];
+      if (fullReport.images && fullReport.images.length > 0) rawFiles.push(...fullReport.images);
+      if (fullReport.files && fullReport.files.length > 0) rawFiles.push(...fullReport.files);
+      if (fullReport.image) rawFiles.push(fullReport.image);
+      if (fullReport.file) rawFiles.push(fullReport.file);
+      if (fullReport.file_url) rawFiles.push(fullReport.file_url);
+
+      const uniqueFilesMap = new Map();
+      rawFiles.forEach(f => {
+        if(!f) return;
+        const url = typeof f === 'string' ? f : (f.data || f.url || '');
+        if(url && !uniqueFilesMap.has(url)) {
+          uniqueFilesMap.set(url, f);
+        }
+      });
+      const allFiles = Array.from(uniqueFilesMap.values());
 
       if (allFiles.length > 0) {
         allFiles.forEach((img, idx) => {
@@ -553,12 +583,12 @@ function SafetyReports({ user, onLogout }) {
                     <input type="file" accept="image/*,application/pdf" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
                   </label>
                 </div>
-                {uploading && <p className="text-sm text-orange-600 mb-4 font-bold animate-pulse">{t('safetyReports.uploadingImage')}</p>}
+                {uploading && <p className="text-sm text-orange-600 mb-4 font-bold animate-pulse">{isRtl ? 'جاري ضغط ورفع الملفات...' : 'Compressing and uploading...'}</p>}
                 {imagePreviews.length > 0 ? (
                   <div className="mb-4 flex flex-wrap gap-4">
                     {imagePreviews.map((img, idx) => (
                       <div key={idx} className="relative inline-block">
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
+                        {img.startsWith('data:application/pdf') || img.toLowerCase().includes('.pdf') ? (
                           <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
                             <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
                           </div>
@@ -571,7 +601,7 @@ function SafetyReports({ user, onLogout }) {
                   </div>
                 ) : (imagePreview && (
                   <div className="mb-4 relative inline-block">
-                    {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
+                    {imagePreview.startsWith('data:application/pdf') || imagePreview.toLowerCase().includes('.pdf') ? (
                       <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
                         <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
                       </div>
@@ -987,12 +1017,22 @@ function SafetyReports({ user, onLogout }) {
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
                 {(() => {
-                  const allFiles = [];
-                  if (viewReport.images && viewReport.images.length > 0) allFiles.push(...viewReport.images);
-                  if (viewReport.files && viewReport.files.length > 0) allFiles.push(...viewReport.files);
-                  if (viewReport.image) allFiles.push(viewReport.image);
-                  if (viewReport.file) allFiles.push(viewReport.file);
-                  if (viewReport.file_url) allFiles.push(viewReport.file_url);
+                  const rawFiles = [];
+                  if (viewReport.images && viewReport.images.length > 0) rawFiles.push(...viewReport.images);
+                  if (viewReport.files && viewReport.files.length > 0) rawFiles.push(...viewReport.files);
+                  if (viewReport.image) rawFiles.push(viewReport.image);
+                  if (viewReport.file) rawFiles.push(viewReport.file);
+                  if (viewReport.file_url) rawFiles.push(viewReport.file_url);
+                  
+                  const uniqueFilesMap = new Map();
+                  rawFiles.forEach(f => {
+                    if(!f) return;
+                    const url = typeof f === 'string' ? f : (f.data || f.url || '');
+                    if(url && !uniqueFilesMap.has(url)) {
+                      uniqueFilesMap.set(url, f);
+                    }
+                  });
+                  const allFiles = Array.from(uniqueFilesMap.values());
                   
                   if (allFiles.length > 0) {
                     return (
@@ -1004,12 +1044,17 @@ function SafetyReports({ user, onLogout }) {
                           if (!imgStr) return null;
                           return (
                           <div key={idx}>
-                            {imgStr.startsWith('data:application/pdf') || imgStr.endsWith('.pdf') ? (
+                            {imgStr.startsWith('data:application/pdf') || imgStr.toLowerCase().includes('.pdf') ? (
                               <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
                                 <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
                               </div>
                             ) : (
-                              <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} />
+                              <>
+                                <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
+                                <div style={{ display: 'none' }} className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                                  <span className="text-xs text-gray-600 font-bold text-center">File {idx+1}</span>
+                                </div>
+                              </>
                             )}
                           </div>
                           );

@@ -24,6 +24,10 @@ function Users({ user, onLogout }) {
   const isRtl = i18n.dir() === 'rtl';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const getCached = (key, fallback) => {
     try { const c = localStorage.getItem(key); if (c) return JSON.parse(c); } catch (e) {}
     return fallback;
@@ -71,6 +75,7 @@ function Users({ user, onLogout }) {
   const [editSelectedPermissions, setEditSelectedPermissions] = useState([]);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [permissionsUser, setPermissionsUser] = useState(null);
+  const [savingPermissions, setSavingPermissions] = useState(false);
   
   // إدارة المشاريع - جلب من قاعدة البيانات
   const [availableProjects, setAvailableProjects] = useState(() => getCached('cache_Users.js_projects', []));
@@ -117,7 +122,7 @@ function Users({ user, onLogout }) {
   // قائمة الصلاحيات المرتبطة بمشروع
   const PROJECT_SCOPED = [
     'support_messages', 'trash', 'settings', 'dashboard', 'reports_view', 'reports_add', 'reports_edit', 'reports_delete',
-    'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes', 'report_notes',
+    'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes', 'report_notes', 'owner_notes',
     'water_connections', 'water_connections_import',
     'sewage_connections', 'sewage_connections_import',
     'invoices', 'review_invoices', 'review_invoices_3', 'view_all_invoices',
@@ -126,7 +131,7 @@ function Users({ user, onLogout }) {
     'contractors', 'projects', 'users_manage', 'team', 'project_settings',
     'cars', 'cars_manage', 'fleet_maintenance', 'hr_management',
     'safety_reports', 'quality_reports', 'business_reports', 'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit', 'quality_reports_delete', 'business_reports_edit', 'business_reports_delete', 'business_reports_review', 'consultant_close',
-    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations',
+    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations', 'meetings', 'meetings_add', 'wfm_matching', 'update_reports'
   ];
   
   // دالة توحيد النص العربي للمقارنة (تعالج اختلافات الهمزات والتاء المربوطة)
@@ -640,6 +645,8 @@ function Users({ user, onLogout }) {
 
   // حفظ الصلاحيات والمشاريع
   const handleSavePermissions = async () => {
+    if (savingPermissions) return;
+    setSavingPermissions(true);
     try {
       const token = localStorage.getItem('token');
       
@@ -673,6 +680,8 @@ function Users({ user, onLogout }) {
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.detail || (i18n.language === 'ar' ? 'حدث خطأ' : 'An error occurred'));
+    } finally {
+      setSavingPermissions(false);
     }
   };
   
@@ -847,7 +856,8 @@ function Users({ user, onLogout }) {
         const projectsRes = await axios.get(`${API}/projects`);
         const project = projectsRes.data.find(p => p.name === projectToDelete);
         if (project) {
-          await axios.delete(`${API}/projects/${project.id}`);
+          const deleteId = project.id || project.name;
+          await axios.delete(`${API}/projects/${encodeURIComponent(deleteId)}`);
         }
         await fetchProjects();
         setSelectedProjects(selectedProjects.filter(p => p !== projectToDelete));
@@ -2256,10 +2266,11 @@ function Users({ user, onLogout }) {
                 </button>
                 <button
                   onClick={handleSavePermissions}
+                  disabled={savingPermissions}
                   data-testid="save-permissions-btn"
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                  className={`px-6 py-2 text-white rounded-lg flex items-center gap-2 ${savingPermissions ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}`}
                 >
-                  {t('users.savePermissions')}
+                  {savingPermissions ? (i18n.language === 'ar' ? 'جاري الحفظ...' : 'Saving...') : t('users.savePermissions')}
                 </button>
               </div>
             </div>

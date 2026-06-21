@@ -24,6 +24,10 @@ function Users({ user, onLogout }) {
   const isRtl = i18n.dir() === 'rtl';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const getCached = (key, fallback) => {
     try { const c = localStorage.getItem(key); if (c) return JSON.parse(c); } catch (e) {}
     return fallback;
@@ -71,6 +75,7 @@ function Users({ user, onLogout }) {
   const [editSelectedPermissions, setEditSelectedPermissions] = useState([]);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [permissionsUser, setPermissionsUser] = useState(null);
+  const [savingPermissions, setSavingPermissions] = useState(false);
   
   // إدارة المشاريع - جلب من قاعدة البيانات
   const [availableProjects, setAvailableProjects] = useState(() => getCached('cache_Users.js_projects', []));
@@ -640,6 +645,8 @@ function Users({ user, onLogout }) {
 
   // حفظ الصلاحيات والمشاريع
   const handleSavePermissions = async () => {
+    if (savingPermissions) return;
+    setSavingPermissions(true);
     try {
       const token = localStorage.getItem('token');
       
@@ -673,6 +680,8 @@ function Users({ user, onLogout }) {
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.detail || (i18n.language === 'ar' ? 'حدث خطأ' : 'An error occurred'));
+    } finally {
+      setSavingPermissions(false);
     }
   };
   
@@ -2257,10 +2266,11 @@ function Users({ user, onLogout }) {
                 </button>
                 <button
                   onClick={handleSavePermissions}
+                  disabled={savingPermissions}
                   data-testid="save-permissions-btn"
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                  className={`px-6 py-2 text-white rounded-lg flex items-center gap-2 ${savingPermissions ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}`}
                 >
-                  {t('users.savePermissions')}
+                  {savingPermissions ? (i18n.language === 'ar' ? 'جاري الحفظ...' : 'Saving...') : t('users.savePermissions')}
                 </button>
               </div>
             </div>
