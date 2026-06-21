@@ -1,0 +1,190 @@
+1191:                 )}
+1192:               </div>
+1193:             </div>
+1194:           </div>
+1195:         </div>
+1196: 
+1197:         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+1198:           {getSortedProjects().map(([key, stats], index) => {
+1199:             const shortName = stats.name ? stats.name.replace('مشروع إصلاح أعمال ', '').replace('مشروع ', '').replace(' -القطاع الأوسط', '').replace(' - القطاع الأوسط', '') : key;
+1200:             const connStats = connectionsStatsByProject[stats.name];
+1201:             
+1202:             const explicitlyHasWater = checkExplicitPerm(stats.name, 'water_connections');
+1203:             const explicitlyHasSewage = checkExplicitPerm(stats.name, 'sewage_connections');
+1204:             
+1205:             // Only split into multi-card if BOTH are granted
+1206:             const isConnectionProject = explicitlyHasWater && explicitlyHasSewage;
+1207:             const showWater = isConnectionProject;
+1208:             const showSewage = isConnectionProject;
+1209: 
+1210:             return (
+1211:               <div 
+1212:                 key={key} 
+1213:                 className={`rounded-xl shadow-lg p-4 sm:p-5 text-white transition-all cursor-pointer ${
+1214:                   selectedProject72h === stats.name 
+1215:                   ? 'ring-4 ring-white ring-opacity-60 scale-105 z-10 shadow-2xl' 
+1216:                   : 'hover:scale-[1.02] opacity-90 hover:opacity-100'
+1217:                 }`}
+1218:                 style={{ 
+1219:                   background: `linear-gradient(135deg, ${getThemeColor('primary')}, ${getThemeColor('hover')})`
+1220:                 }}
+1221:                 onClick={() => {
+1222:                   // العودة للسلوك السابق: التمرير لقسم الـ 72 ساعة بدلاً من الانتقال لصفحة أخرى
+1223:                   handleCardClick(stats.name, isConnectionProject ? 'water_connections' : 'reports');
+1224:                 }}
+1225:               >
+1226:                 {isConnectionProject ? (
+1227:                   <div className="space-y-4">
+1228:                     <div className="flex items-center justify-between border-b border-white/20 pb-2">
+1229:                       <p className="text-sm font-bold opacity-90">مشروع {shortName}</p>
+1230:                       <span className="text-xl">📁</span>
+1231:                     </div>
+1232:                     {/* البطاقة أصبحت "متعددة" دائماً كما طلب المستخدم (grid-cols-2) */}
+1233:                     <div className="grid grid-cols-2 gap-4">
+1234:                       {showWater && (
+1235:                         <div 
+1236:                           onClick={(e) => { e.stopPropagation(); handleCardClick(stats.name, 'water_connections'); }}
+1237:                           className="bg-white/10 rounded-lg p-3 backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all cursor-pointer group"
+1238:                         >
+1239:                           <p className="text-[10px] opacity-80 mb-1 uppercase font-bold group-hover:opacity-100 transition-opacity">توصيلات المياه</p>
+1240:                           <div className="flex items-center justify-between">
+1241:                             <p className="text-2xl font-bold">{connStats?.water?.total || 0}</p>
+1242:                             <span className="text-xl">💧</span>
+1243:                           </div>
+1244:                         </div>
+1245:                       )}
+1246:                       {showSewage && (
+1247:                         <div 
+1248:                           onClick={(e) => { e.stopPropagation(); handleCardClick(stats.name, 'sewage_connections'); }}
+1249:                           className="bg-white/10 rounded-lg p-3 backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all cursor-pointer group"
+1250:                         >
+1251:                           <p className="text-[10px] opacity-80 mb-1 uppercase font-bold group-hover:opacity-100 transition-opacity">توصيلات الصرف</p>
+1252:                           <div className="flex items-center justify-between">
+1253:                             <p className="text-2xl font-bold">{connStats?.sewage?.total || 0}</p>
+1254:                             <span className="text-xl">🚽</span>
+1255:                           </div>
+1256:                         </div>
+1257:                       )}
+1258:                     </div>
+1259:                   </div>
+1260:                 ) : (
+1261:                   <div className="flex items-center justify-between h-full">
+1262:                     <div>
+1263:                       <p className="text-xs sm:text-sm opacity-90 font-bold mb-1">إجمالي بلاغات {shortName}</p>
+1264:                       <p className="text-3xl sm:text-4xl font-extrabold tracking-tight">{stats.total || 0}</p>
+1265:                     </div>
+1266:                     <div className="text-4xl sm:text-6xl opacity-20">🏛️</div>
+1267:                   </div>
+1268:                 )}
+1269:               </div>
+1270:             );
+1271:           })}
+1272:         </div>
+1273: 
+1274:         {/* Charts - الرسوم البيانية */}
+1275:         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+1276:           {/* Bar Chart */}
+1277:           <div className="bg-white rounded-lg shadow-md p-6">
+1278:             <h3 className="text-xl font-bold text-gray-900 mb-4">مقارنة البلاغات حسب المشاريع</h3>
+1279:             <ResponsiveContainer width="100%" height={300}>
+1280:               <BarChart data={chartData}>
+1281:                 <CartesianGrid strokeDasharray="3 3" />
+1282:                 <XAxis 
+1283:                   dataKey="name" 
+1284:                   style={{ fontSize: '9px', fontWeight: 'bold' }} 
+1285:                   interval={0} 
+1286:                   height={80} 
+1287:                   tick={{ dy: 10 }}
+1288:                   textAnchor="middle"
+1289:                 />
+1290:                 <YAxis />
+1291:                 <Tooltip />
+1292:                 <Legend />
+1293:                 {/* إظهار أعمدة الإصلاح فقط إذا كان هناك بيانات لها */}
+1294:                 {chartData.some(d => d.total > 0) && (
+1295:                   <>
+1296:                     <Bar dataKey="total" fill="#3B82F6" name="بلاغات الإصلاح" />
+1297:                     <Bar dataKey="fixed" fill="#10B981" name="تم الإصلاح" />
+1298:                   </>
+1299:                 )}
+1300:                 {/* إظهار أعمدة التوصيلات دائماً إذا وجدت */}
+1301:                 {chartData.some(d => d.water > 0) && <Bar dataKey="water" fill="#0EA5E9" name="توصيلات المياه" />}
+1302:                 {chartData.some(d => d.sewage) && <Bar dataKey="sewage" fill="#059669" name="توصيلات الصرف" />}
+1303:               </BarChart>
+1304:             </ResponsiveContainer>
+1305:           </div>
+1306: 
+1307:           {/* Pie Chart */}
+1308:           <div className="bg-white rounded-lg shadow-md p-6">
+1309:             <h3 className="text-xl font-bold text-gray-900 mb-4">توزيع البلاغات حسب المشاريع</h3>
+1310:             <ResponsiveContainer width="100%" height={300}>
+1311:               <PieChart>
+1312:                 <Pie
+1313:                   data={pieData}
+1314:                   cx="50%"
+1315:                   cy="50%"
+1316:                   labelLine={false}
+1317:                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+1318:                   outerRadius={100}
+1319:                   fill="#8884d8"
+1320:                   dataKey="value"
+1321:                 >
+1322:                   {pieData.map((entry, index) => (
+1323:                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+1324:                   ))}
+1325:                 </Pie>
+1326:                 <Tooltip />
+1327:               </PieChart>
+1328:             </ResponsiveContainer>
+1329:           </div>
+1330:         </div>
+1331: 
+1332:         {/* AI Analysis - التحليل الذكي */}
+1333:         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+1334:           <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+1335:             🤖 التحليل الذكي بالذكاء الاصطناعي
+1336:           </h3>
+1337:           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+1338:             {aiAnalysisCards.map((card, index) => (
+1339:               <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/5 flex flex-col justify-between">
+1340:                 <div>
+1341:                   <h4 className="font-semibold mb-2 text-sm sm:text-base">{card.title}</h4>
+1342:                   <p className="text-xs sm:text-sm leading-relaxed">{card.content}</p>
+1343:                 </div>
+1344:                 <div className="mt-3 pt-2 border-t border-white/10 text-[10px] font-bold opacity-80 uppercase tracking-wider">
+1345:                   {card.footer}
+1346:                 </div>
+1347:               </div>
+1348:             ))}
+1349:           </div>
+1350:         </div>
+1351: 
+1352:         {/* 24 Hour Counter per Governorate */}
+1353:         {/* يظهر للـ: Admin، المستوى الأول، المستوى الثالث (محمود هارون) الذين لديهم صلاحيات جميع المحافظات */}
+1354:         {(
+1355:           user.role === 'admin' || 
+1356:           hasPermission('reports_view') || 
+1357:           hasPermission('water_connections') || 
+1358:           hasPermission('sewage_connections') ||
+1359:           (user.governorates && user.governorates.length > 0)
+1360:         ) && Object.keys(last72HoursCounts).length > 0 && (
+1361:           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+1362:             <div className="flex items-center justify-between mb-4">
+1363:               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+1364:                 <span className="text-red-600">🔴</span>
+1365:                 البلاغات المضافة خلال 72 ساعة لكل محافظة
+1366:               </h3>
+1367:               <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
+1368:                 📅 {new Date().toLocaleDateString('en-GB', { 
+1369:                   year: 'numeric', 
+1370:                   month: 'long', 
+1371:                   day: 'numeric',
+1372:                   weekday: 'long'
+1373:                 })}
+1374:               </div>
+1375:             </div>
+1376:             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+1377:               <p className="text-sm text-blue-800">
+1378:                 ⏰ يعرض البلاغات من تاريخ المباشرة <strong>{new Date(Date.now() - 72*60*60*1000).toLocaleString('en-GB', { 
+1379:                   year: 'numeric', 
+1380:                   month: 'numeric', 

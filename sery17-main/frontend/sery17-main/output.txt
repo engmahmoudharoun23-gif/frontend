@@ -1,0 +1,501 @@
+Reports.js: 12: // دالة لتحويل التاريخ إلى اسم اليوم بالعربي
+Reports.js: 15: const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+Reports.js: 21: 'بيت الخبرة': 'Expert House',
+Reports.js: 22: 'شركة بيت الخبرة للإستشارات الهندسية': 'Expert House Engineering Consultancy Company',
+Reports.js: 23: 'المهندس أحمد عبيدات': 'Eng. Ahmed Obeidat',
+Reports.js: 24: 'مدير عام المشاريع': 'General Projects Manager',
+Reports.js: 25: 'الأستاذ أحمد حافظ': 'Mr. Ahmed Hafez',
+Reports.js: 26: 'منسق المشاريع': 'Projects Coordinator',
+Reports.js: 27: 'مكتب بيت الخبرة للاستشارات الهندسية': 'Expert House Engineering Consultancy Office',
+Reports.js: 28: 'مكتب بيت الخبرة للإستشارات الهندسية': 'Expert House Engineering Consultancy Office',
+Reports.js: 29: 'شركة المياة الوطنية': 'National Water Company',
+Reports.js: 30: 'شركة المياه الوطنية': 'National Water Company',
+Reports.js: 31: 'نظام إدارة البلاغات والمشاريع - WFM': 'Project and Reports Management System - WFM',
+Reports.js: 32: 'نظام إدارة البلاغات المستلمة من WFM': 'Reports Management System Received from WFM',
+Reports.js: 33: 'الكل': 'All',
+Reports.js: 34: 'جميع المحافظات': 'All Governorates',
+Reports.js: 35: 'كل المحافظات': 'All Governorates',
+Reports.js: 36: 'جميع محافظات المشروع': 'All Project Governorates',
+Reports.js: 37: 'جميع المحافظات المسموح بها': 'All Allowed Governorates',
+Reports.js: 38: 'غير محدد': 'Not Specified',
+Reports.js: 39: 'غير معروف': 'Unknown',
+Reports.js: 42: 'مشروع التشوة البصري': 'Visual Distortion Project',
+Reports.js: 43: 'مشروع التشوه البصري': 'Visual Distortion Project',
+Reports.js: 44: 'التشوه البصري': 'Visual Distortion',
+Reports.js: 45: 'التشوة البصري': 'Visual Distortion',
+Reports.js: 46: 'مشروع كشف التسربات وإصلاحها': 'Leak Detection and Repair Project',
+Reports.js: 47: 'مشروع كشف التسربات واصلاحها': 'Leak Detection and Repair Project',
+Reports.js: 48: 'كشف التسربات وإصلاحها': 'Leak Detection & Repair',
+Reports.js: 49: 'مشروع المحافظات الغربية - القطاع الأوسط': 'Western Governorates - Central Sector Project',
+Reports.js: 50: 'مشروع المحافظات الغربية -القطاع الأوسط': 'Western Governorates - Central Sector Project',
+Reports.js: 51: 'مشروع ايصال مكة': 'Makkah Connection Project',
+Reports.js: 52: 'مشروع ايصال الرياض': 'Riyadh Connection Project',
+Reports.js: 53: 'ايصال مكة': 'Makkah Connection',
+Reports.js: 54: 'ايصال الرياض': 'Riyadh Connection',
+Reports.js: 55: 'ايصال': 'Connection',
+Reports.js: 58: 'الدوادمي': 'Dawadmi',
+Reports.js: 59: 'شقراء': 'Shaqra',
+Reports.js: 60: 'المزاحمية': 'Al-Muzahmiyah',
+Reports.js: 61: 'ضرماء': 'Dharma',
+Reports.js: 62: 'مرات': 'Marat',
+Reports.js: 63: 'ساجر': 'Sajir',
+Reports.js: 64: 'القصب': 'Al-Qasab',
+Reports.js: 65: 'عفيف': 'Afif',
+Reports.js: 66: 'القويعية': 'Al-Quway\'iyah',
+Reports.js: 67: 'مكة': 'Makkah',
+Reports.js: 68: 'الطائف': 'Taif',
+Reports.js: 69: 'الرياض': 'Riyadh',
+Reports.js: 72: 'حسين': 'Hussein',
+Reports.js: 73: 'شركة الموسي': 'Al-Mousa Company',
+Reports.js: 74: 'جيزة العربية': 'Giza Arabia',
+Reports.js: 75: 'الاداء المتوازن': 'Balanced Performance',
+Reports.js: 78: 'م/ مدحت حسين': 'Eng. Medhat Hussein',
+Reports.js: 79: 'م/عبدالمنعم': 'Eng. Abdel Moneim',
+Reports.js: 80: 'ابراهيم حسين طائفي': 'Ibrahim Taifi',
+Reports.js: 81: 'سعد الدين': 'Saad El-Din',
+Reports.js: 82: 'م / محمود محمد هارون': 'Eng. Mahmoud Mohamed Haroun',
+Reports.js: 83: 'أ / محمد شوقي': 'Mr. Mohamed Shawky',
+Reports.js: 84: 'م/ عبدالحفيظ': 'Eng. Abdel Hafiz',
+Reports.js: 85: ' م / ميهران': 'Eng. Mehran',
+Reports.js: 86: ' م/ أمين مختار': 'Eng. Amin Mokhtar',
+Reports.js: 87: 'م/ أمين مختار': 'Eng. Amin Mokhtar',
+Reports.js: 88: 'م / ميهران': 'Eng. Mehran',
+Reports.js: 89: 'مراقب': 'Supervisor',
+Reports.js: 90: 'مراقب الاستشاري': 'Consultant Supervisor',
+Reports.js: 91: 'مراقب البلدية': 'Municipality Supervisor',
+Reports.js: 92: 'جديد': 'New'
+Reports.js: 100: .replace(/[أإآ]/g, "ا")
+Reports.js: 101: .replace(/ة/g, "ه")
+Reports.js: 102: .replace(/ى/g, "ي");
+Reports.js: 123: 'مهندس': 'Eng.',
+Reports.js: 124: 'المهندس': 'Eng.',
+Reports.js: 125: 'المهندسة': 'Eng.',
+Reports.js: 126: 'استشاري': 'Consultant',
+Reports.js: 127: 'الاستشاري': 'Consultant',
+Reports.js: 128: 'مدير': 'Manager',
+Reports.js: 129: 'عام': 'General',
+Reports.js: 130: 'المشاريع': 'Projects',
+Reports.js: 131: 'مشروع': 'Project',
+Reports.js: 132: 'منسق': 'Coordinator',
+Reports.js: 133: 'نظام': 'System',
+Reports.js: 134: 'إدارة': 'Management',
+Reports.js: 135: 'البلاغات': 'Reports',
+Reports.js: 136: 'بيت': 'House',
+Reports.js: 137: 'الخبرة': 'Expert',
+Reports.js: 138: 'شركة': 'Company',
+Reports.js: 139: 'المياه': 'Water',
+Reports.js: 140: 'المياة': 'Water',
+Reports.js: 141: 'الوطنية': 'National',
+Reports.js: 142: 'للإستشارات': 'Consultancy',
+Reports.js: 143: 'للاستشارات': 'Consultancy',
+Reports.js: 144: 'الهندسية': 'Engineering',
+Reports.js: 145: 'أحمد': 'Ahmed',
+Reports.js: 146: 'احمد': 'Ahmed',
+Reports.js: 147: 'حافظ': 'Hafez',
+Reports.js: 148: 'عبيدات': 'Obeidat',
+Reports.js: 149: 'محمود': 'Mahmoud',
+Reports.js: 150: 'على': 'Ali',
+Reports.js: 151: 'علي': 'Ali',
+Reports.js: 152: 'محمد': 'Mohamed',
+Reports.js: 153: 'خالد': 'Khaled',
+Reports.js: 154: 'عبد': 'Abdel',
+Reports.js: 155: 'الرحمن': 'Rahman',
+Reports.js: 156: 'الله': 'Allah',
+Reports.js: 157: 'حسن': 'Hassan',
+Reports.js: 158: 'حسين': 'Hussein',
+Reports.js: 159: 'مكتب': 'Office',
+Reports.js: 160: 'شريك': 'Success',
+Reports.js: 161: 'النجاح': 'Partner',
+Reports.js: 162: 'مراقب': 'Supervisor',
+Reports.js: 163: 'التشوه': 'Visual Distortion',
+Reports.js: 164: 'التشوة': 'Visual Distortion',
+Reports.js: 165: 'البصري': '',
+Reports.js: 166: 'شقراء': 'Shaqra',
+Reports.js: 167: 'مرات': 'Marat',
+Reports.js: 168: 'ساجر': 'Sajir',
+Reports.js: 169: 'الدوادمي': 'Dawadmi',
+Reports.js: 170: 'عفيف': 'Afif',
+Reports.js: 171: 'القويعية': 'Quway\'iyah',
+Reports.js: 172: 'القصب': 'Al-Qasab',
+Reports.js: 173: 'المزاحمية': 'Muzahmiyah',
+Reports.js: 174: 'ضرماء': 'Dharma',
+Reports.js: 175: 'مكة': 'Makkah',
+Reports.js: 176: 'الطائف': 'Taif'
+Reports.js: 184: const normalized = word.replace(/[أإآ]/g, 'ا').replace(/ة$/g, 'ه').replace(/ى$/g, 'ي');
+Reports.js: 252: // دالة التحقق من الصلاحية (تدعم الصلاحيات لكل مشروع)
+Reports.js: 255: // صلاحيات مرتبطة بالمشروع: نستخدم per-project إذا كان المشروع محدداً
+Reports.js: 264: // فحص الصلاحيات العامة
+Reports.js: 266: // fallback: إذا كانت صلاحية مرتبطة بمشروع والمستخدم يملكها لأي مشروع → نعتبره مخوّلاً (الزر يظهر)
+Reports.js: 319: license_status: searchParams.get('license_status') || '',  // فلتر جديد للرخص
+Reports.js: 320: my_reports: false,   // فلتر بلاغاتي
+Reports.js: 321: created_by: '',       // فلتر حسب المستخدم
+Reports.js: 322: date: '',            // تاريخ الاستلام
+Reports.js: 323: start_date: '',      // تاريخ المباشرة
+Reports.js: 324: exact: searchParams.get('exact') === 'true' // فلتر للبحث الدقيق
+Reports.js: 326: const [myReportsCount, setMyReportsCount] = useState(0);  // عدد بلاغاتي
+Reports.js: 327: const [level3Users, setLevel3Users] = useState([]);  // قائمة مستخدمي المستوى 3
+Reports.js: 329: const [loadingImages, setLoadingImages] = useState({});  // تتبع الصور قيد التحميل
+Reports.js: 330: const [reportImages, setReportImages] = useState({});     // تخزين الصور المحملة
+Reports.js: 331: const [selectedReports, setSelectedReports] = useState([]);  // البلاغات المحددة للتصدير
+Reports.js: 332: const [isAllSelected, setIsAllSelected] = useState(false);   // علامة لتحديد جميع البلاغات
+Reports.js: 333: const [showNotesModal, setShowNotesModal] = useState(false);  // عرض modal الملاحظات
+Reports.js: 344: // الملاحظة الحالية
+Reports.js: 345: const [availableProjects, setAvailableProjects] = useState([]); // المشاريع من قاعدة البيانات
+Reports.js: 346: const [reportTypes, setReportTypes] = useState([]); // أنواع البلاغات الديناميكية
+Reports.js: 347: const [dynamicStatuses, setDynamicStatuses] = useState([]); // حالات البلاغات الديناميكية
+Reports.js: 348: const [exportDynamicStatuses, setExportDynamicStatuses] = useState([]); // حالات التصدير الديناميكية
+Reports.js: 349: const [isNewReportsFilter, setIsNewReportsFilter] = useState(false); // فلتر البلاغات الجديدة
+Reports.js: 350: const [activeDropdown, setActiveDropdown] = useState(null); // التحكم في الدروب بوكس للإجراءات
+Reports.js: 363: // جلب حالات البلاغ الديناميكية للمشروع (الفلاتر الرئيسية)
+Reports.js: 385: // إغلاق القائمة المنسدلة عند الضغط خارجها
+Reports.js: 396: // تم نقل حالة الترقيم للأعلى
+Reports.js: 398: // قراءة المشروع وحالة المراجعة والمحافظة من URL عند التحميل أو تغيير URL
+Reports.js: 399: // تطبيق الفلاتر من URL (للإشعارات)
+Reports.js: 409: // إذا كان الفلتر للبلاغات الجديدة
+Reports.js: 445: // إذا كان هناك بحث من URL (من الإشعارات)
+Reports.js: 453: // تنفيذ البحث مباشرة
+Reports.js: 498: // إذا كان هناك فلاتر من URL (إضافة projectFromUrl للشرط)
+Reports.js: 502: // أولاً: تحقق من license_status مباشرة
+Reports.js: 506: // ثانياً: تحقق من review_status (للتوافق القديم)
+Reports.js: 509: if (decodedStatus.includes('بانتظار') || decodedStatus.includes('المراجعة')) {
+Reports.js: 517: // تحديث الفلاتر وعلامة التطبيق
+Reports.js: 583: // جلب البلاغات مباشرة بالفلاتر الجديدة
+Reports.js: 624: // جلب المحافظات من الـ API
+Reports.js: 637: // جلب المشاريع من قاعدة البيانات
+Reports.js: 643: 'ايصال',
+Reports.js: 644: 'ايصال الرياض',
+Reports.js: 645: 'مشروع كشف التسربات وإصلاحها',
+Reports.js: 646: 'مشروع المحافظات الغربية -القطاع الأوسط'
+Reports.js: 661: // جلب أنواع البلاغات لجميع المشاريع
+Reports.js: 670: // جلب أنواع البلاغات من جميع المشاريع
+Reports.js: 685: setReportTypes(['ترابي', 'بلاط', 'أسفلت']);
+Reports.js: 689: // حساب المحافظات المتاحة حسب صلاحيات المستخدم
+Reports.js: 691: // المستوى الثالث (لديه محافظات محددة) - يرى محافظاته فقط
+Reports.js: 700: // المستوى الثاني أو Admin (ليس لديه محافظات محددة)
+Reports.js: 701: // إذا كان هناك مشروع محدد في الفلتر
+Reports.js: 706: // إذا كان المستخدم له مشاريع محددة - جمع محافظات مشاريعه
+Reports.js: 714: return [...new Set(govs)]; // إزالة التكرار
+Reports.js: 717: // افتراضياً (Admin بدون مشاريع) - {t('reports.allGovernorates')}
+Reports.js: 721: // حساب المحافظات المتاحة لقسم التصدير بناءً على المشروع المحدد
+Reports.js: 723: // المستوى الثالث (لديه محافظات محددة) - يرى محافظاته فقط
+Reports.js: 725: // إذا تم اختيار مشروع، فلتر المحافظات حسب المشروع
+Reports.js: 733: // إذا تم اختيار مشروع محدد في فلاتر التصدير
+Reports.js: 738: // إذا كان المستخدم له مشاريع محددة - جمع محافظات مشاريعه
+Reports.js: 746: return [...new Set(govs)]; // إزالة التكرار
+Reports.js: 749: // افتراضياً (Admin بدون مشاريع) - جميع المحافظات
+Reports.js: 752: // حقول التصدير منفصلة
+Reports.js: 754: project: searchParams.get('project') || '',  // إضافة فلتر المشروع
+Reports.js: 764: created_by: searchParams.get('created_by') || ''  // فلتر المستخدم
+Reports.js: 768: // جلب حالات البلاغ الديناميكية للمشروع (فلاتر التصدير)
+Reports.js: 791: const [fullscreenImage, setFullscreenImage] = useState(null); // الصورة المكبرة
+Reports.js: 796: // fetchLast24HoursCounts(); // تم تعطيله لتحسين الأداء
+Reports.js: 800: // جلب قائمة المستخدمين والعدد مرة واحدة عند التحميل
+Reports.js: 840: // إذا تم اختيار مشروع في الفلتر، عرض مقاوليه فقط (للجميع بما فيهم الأدمن)
+Reports.js: 844: // الأدمن يرى جميع المقاولين فقط إذا لم يتم اختيار مشروع
+Reports.js: 847: // للمستخدمين العاديين، استخدام أول مشروع لديهم كافتراضي
+Reports.js: 861: // تم تعطيل هذا الطلب لتحسين الأداء
+Reports.js: 897: finalNote = finalNote + (finalNote ? '\n\n' : '') + 'تعقيب الاستشاري:\n' + consultantReplyText;
+Reports.js: 930: if (!window.confirm(t('consultantNoteModal.confirmDeleteNote', { defaultValue: 'هل أنت متأكد من الحذف النهائي للملاحظة والردود؟' }))) return;
+Reports.js: 953: toast.success(t('consultantNoteModal.deleteNoteSuccess', { defaultValue: 'تم الحذف النهائي بنجاح' }));
+Reports.js: 957: toast.error(t('consultantNoteModal.deleteNoteError', { defaultValue: 'حدث خطأ أثناء الحذف' }));
+Reports.js: 974: ? t('consultantNotesPage.processSuccess', { defaultValue: 'تمت المعالجة بنجاح' })
+Reports.js: 975: : t('consultantNotesPage.processCanceled', { defaultValue: 'تم إلغاء المعالجة' }));
+Reports.js: 979: toast.error(t('consultantNotesPage.processError', { defaultValue: 'حدث خطأ أثناء تغيير الحالة' }));
+Reports.js: 995: toast.success(t('consultantNoteModal.replySuccess', { defaultValue: 'تم التحديث بنجاح' }));
+Reports.js: 1000: toast.error(t('consultantNoteModal.replyError', { defaultValue: 'حدث خطأ أثناء التحديث' }));
+Reports.js: 1008: if (!window.confirm('هل أنت متأكد من حذف رد المستوى الثالث؟')) return;
+Reports.js: 1019: toast.success('تم حذف الرد بنجاح');
+Reports.js: 1023: toast.error('حدث خطأ أثناء حذف الرد');
+Reports.js: 1028: // لا تجلب البلاغات العادية إذا كان فلتر البلاغات الجديدة مفعّل
+Reports.js: 1033: // إعادة تعيين التحديد عند جلب بلاغات جديدة
+Reports.js: 1049: // إضافة معاملات الترقيم
+Reports.js: 1056: // تحديث البيانات من الاستجابة
+Reports.js: 1074: // تمرير الشاشة بمرونة إلى بداية جدول البلاغات
+Reports.js: 1079: // نمرر بحيث يكون الجدول في أعلى الشاشة (مع ترك مساحة بسيطة للهيدر)
+Reports.js: 1157: // دالة موحدة للبحث التلقائي عند تغيير أي فلتر من قسم الفلاتر (المشروع، المحافظة، التاريخ...)
+Reports.js: 1159: // 1. تحديث فلاتر التصدير
+Reports.js: 1161: // إذا تغير المشروع نقوم بتفريغ المحافظة والتواريخ
+Reports.js: 1171: // 2. تحديث الفلاتر الرئيسية
+Reports.js: 1182: // 3. إعادة تعيين عدد التصدير
+Reports.js: 1185: // 4. تحديث الصفحة
+Reports.js: 1188: // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً" (مثل handleQuickSearch)
+Reports.js: 1231: // دالة للبحث الفوري عند الكتابة
+Reports.js: 1312: // تحديد جميع البلاغات في الصفحة الحالية
+Reports.js: 1321: // تحديد جميع البلاغات - طريقة مبسطة وسريعة
+Reports.js: 1323: if (!window.confirm(t('reports.confirmSelectAll', { count: totalReports, defaultValue: `هل تريد تحديد جميع البلاغات (${totalReports} بلاغ)؟` }))) {
+Reports.js: 1327: // نستخدم علامة بسيطة بدلاً من جلب جميع IDs
+Reports.js: 1328: // هذا أسرع بكثير وأكثر موثوقية
+Reports.js: 1330: setSelectedReports(reports.map(r => r.id)); // نحدد فقط البلاغات المعروضة للعرض
+Reports.js: 1331: toast.success(t('reports.selectAllSuccess', { count: totalReports, defaultValue: `✅ تم تحديد جميع البلاغات (${totalReports} بلاغ)!\n\nعند التصدير، سيتم تصدير جميع البلاغات حسب الفلاتر الحالية.` }), {
+Reports.js: 1361: // تحديد/إلغاء تحديد بلاغ
+Reports.js: 1370: // تبديل حالة المراجعة
+Reports.js: 1398: if (response.data.review_status === 'تمت المراجعة') {
+Reports.js: 1399: toast.success(i18n.language === 'ar' ? 'تم مراجعة البلاغ بنجاح' : 'Report reviewed successfully');
+Reports.js: 1401: toast.success(i18n.language === 'ar' ? 'تم اعادة فتح حالة المراجعة' : 'Review status reopened');
+Reports.js: 1413: // تبديل حالة إغلاق WFM (مدير المشروع)
+Reports.js: 1435: toast.success(i18n.language === 'ar' ? 'تمت المعالجة بواسطة الاستشاري' : 'Processed by Consultant');
+Reports.js: 1437: toast.success(i18n.language === 'ar' ? 'تم اغلاق الرخصة علي منصة البنية التحتية' : 'License closed on Infrastructure Platform');
+Reports.js: 1440: toast.success(i18n.language === 'ar' ? 'تم فتح معالجة الرخصة' : 'License processing opened');
+Reports.js: 1443: // تحديث الحالة في الـ state محلياً فوراً لتجنب التأخير
+Reports.js: 1450: // إعادة جلب البيانات لضمان المزامنة التامة مع قاعدة البيانات
+Reports.js: 1457: const errorMsg = error.response?.data?.detail || 'حدث خطأ في الاتصال بالسيرفر';
+Reports.js: 1459: // محاولة التحديث حتى في حالة الخطأ لضمان استقرار الواجهة
+Reports.js: 1464: // دالة للتحقق من البلاغ الجديد (لم تتم مراجعته بعد)
+Reports.js: 1466: return reviewStatus === 'بانتظار المراجعة' || reviewStatus === 'قيد المراجعة' || !reviewStatus;
+Reports.js: 1469: // البحث السريع عن البلاغات حسب جميع الفلاتر
+Reports.js: 1475: // إضافة جميع فلاتر التصدير
+Reports.js: 1489: // إضافة معاملات الترقيم
+Reports.js: 1498: // تحديث عدد البلاغات
+Reports.js: 1501: // عرض البلاغات في الجدول فوراً
+Reports.js: 1517: toast.info(t('reports.exportPreparing', {defaultValue: 'جاري تجهيز ملف التصدير...'}), { autoClose: 2500 });
+Reports.js: 1521: // إضافة جميع فلاتر التصدير
+Reports.js: 1537: timeout: 120000 // 2 دقيقة timeout
+Reports.js: 1549: toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
+Reports.js: 1553: toast.error(t('reports.exportTimeout', {defaultValue: 'انتهت مهلة التصدير - حاول تضييق نطاق التاريخ'}));
+Reports.js: 1555: toast.error(t('reports.exportError', {defaultValue: 'حدث خطأ في التصدير - حاول مرة أخرى'}));
+Reports.js: 1560: // تصدير البلاغات المحددة - منطق مبسط وموثوق
+Reports.js: 1569: if (!window.confirm(t('reports.confirmExport', { count: exportCount, defaultValue: `هل تريد تصدير ${exportCount} بلاغ؟` }))) {
+Reports.js: 1575: // إذا تم تحديد "الكل"، استخدم التصدير بالفلاتر (أسرع وأكثر موثوقية)
+Reports.js: 1580: // إضافة جميع الفلاتر الحالية
+Reports.js: 1589: timeout: 300000 // 5 دقائق
+Reports.js: 1601: toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
+Reports.js: 1603: // إعادة تعيين
+Reports.js: 1607: // إذا كان العدد المحدد > 50، استخدم أيضاً التصدير بالفلاتر
+Reports.js: 1612: // إضافة الفلاتر الحالية
+Reports.js: 1633: toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
+Reports.js: 1636: // للأعداد الصغيرة فقط، استخدم export-selected
+Reports.js: 1665: toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
+Reports.js: 1670: const errorMsg = error.response?.data?.detail || error.message || t('common.error', {defaultValue: 'حدث خطأ'});
+Reports.js: 1671: toast.error(`${t('reports.exportError', {defaultValue: 'حدث خطأ في التصدير'})}: ${errorMsg}`);
+Reports.js: 1677: // جلب الصور لبلاغ معين
+Reports.js: 1685: // حفظ الصور في state
+Reports.js: 1688: // عرض الصور في Modal
+Reports.js: 1710: // resolve إلى URL مع التوكن إن لزم
+Reports.js: 1727: toast.error(`❌ فشل تحميل الملف ${index + 1}`);
+Reports.js: 1731: // دالة للتبديل بين جميع البلاغات وبلاغاتي
+Reports.js: 1754: ) : t('reports.title', {defaultValue: 'البلاغات'})}
+Reports.js: 1760: {/* زر العودة للبلاغات العادية */}
+Reports.js: 1770: {/* تم حذف زر بلاغاتي بناءً على طلب المستخدم */}
+Reports.js: 1794: {/* للمستخدمين: بحث مبسط مع الفلاتر */}
+Reports.js: 1819: {/* إضافة فلتر المشروع للمستخدمين (لتجنب اختلاط المشاريع) */}
+Reports.js: 1855: {/* عرض عداد 24 ساعة للمحافظة المختارة */}
+Reports.js: 1859: 🔴 {last24HoursCounts[filters.governorate]} {t('reports.newReportsLast24h', {defaultValue: 'بلاغ جديد خلال 24 ساعة'})}
+Reports.js: 1898: {/* الحالات الديناميكية من الإعدادات */}
+Reports.js: 1903: {/* الحالات الافتراضية */}
+Reports.js: 1904: {filters.project?.includes('كشف التسربات') ? (
+Reports.js: 1906: <option value="status_fixed_leak">✅ {t('statusMap.تم الاصلاح - تسريب')}</option>
+Reports.js: 1907: <option value="status_no_leak">❌ {t('statusMap.لا يوجد تسريب')}</option>
+Reports.js: 1911: <option value="status_fixed">✅ {t('statusMap.تم الإصلاح')}</option>
+Reports.js: 1912: <option value="status_asphalt">🛣️ {t('statusMap.تم الإصلاح - ومتبقي الأسفلت')}</option>
+Reports.js: 1917: <option value="license_issued">📋 {t('statusMap.تم إصدار رخص')}</option>
+Reports.js: 1918: <option value="license_not_issued">❌ {t('statusMap.لم يتم إصدار رخصة')}</option>
+Reports.js: 1921: <option value="status_in_progress">🔄 {t('statusMap.قيد المعالجة')}</option>
+Reports.js: 1922: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
+Reports.js: 1929: {/* أزرار البحث وإعادة التعيين */}
+Reports.js: 1954: /* للمسؤول: بحث كامل كما كان */
+Reports.js: 2005: {/* الفلاتر الإضافية للمسؤول */}
+Reports.js: 2031: <option value="">🔍 {filters.project?.includes('كشف التسربات') ? t('reports.allStatuses') : t('reports.allStatuses')}</option>
+Reports.js: 2032: <optgroup label={filters.project?.includes('كشف التسربات') ? t('reports.byLeakStatus', {defaultValue: "حسب حالة التسرب"}) : t('reports.byStatus', {defaultValue: "حسب الحالة"})}>
+Reports.js: 2033: {/* الحالات الديناميكية من الإعدادات */}
+Reports.js: 2038: {/* الحالات الافتراضية */}
+Reports.js: 2040: filters.project?.includes('كشف التسربات') ? (
+Reports.js: 2042: <option value="status_fixed_leak">✅ {t('statusMap.تم الاصلاح - تسريب')}</option>
+Reports.js: 2043: <option value="status_no_leak">❌ {t('statusMap.لا يوجد تسريب')}</option>
+Reports.js: 2047: <option value="status_fixed">✅ {t('statusMap.تم الإصلاح')}</option>
+Reports.js: 2048: <option value="status_asphalt">🛣️ {t('statusMap.تم الإصلاح - ومتبقي الأسفلت')}</option>
+Reports.js: 2053: <optgroup label={t('reports.byReview', {defaultValue: "حسب المراجعة"})}>
+Reports.js: 2054: <option value="review_pending">⏳ {t('statusMap.قيد المراجعة')}</option>
+Reports.js: 2056: <optgroup label={t('reports.byLicense', {defaultValue: "حسب الرخصة"})}>
+Reports.js: 2057: <option value="license_issued">📋 {t('statusMap.تم إصدار رخص')}</option>
+Reports.js: 2058: <option value="license_not_issued">❌ {t('statusMap.لم يتم إصدار رخصة')}</option>
+Reports.js: 2060: <optgroup label={t('reports.byProcessing', {defaultValue: "حسب حالة المعالجة"})}>
+Reports.js: 2061: <option value="status_in_progress">🔄 {t('statusMap.قيد المعالجة')}</option>
+Reports.js: 2062: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
+Reports.js: 2068: {/* أزرار البحث وإعادة التعيين */}
+Reports.js: 2110: <option value="تم الإصلاح">{t('statusMap.تم الإصلاح')}</option>
+Reports.js: 2111: <option value="تم الإصلاح-ومتبقي الأسفلت">{t('statusMap.تم الإصلاح-ومتبقي الأسفلت')}</option>
+Reports.js: 2119: <option value="">🔍 {filters.project?.includes('كشف التسربات') ? 'جميع الحالات' : t('reports.allStatuses')}</option>
+Reports.js: 2120: <optgroup label={filters.project?.includes('كشف التسربات') ? "حسب حالة التسرب" : "حسب الحالة"}>
+Reports.js: 2121: {/* الحالات الديناميكية من الإعدادات */}
+Reports.js: 2126: {/* الحالات الافتراضية (تظهر فقط إذا لم تكن هناك حالات مخصصة) */}
+Reports.js: 2128: filters.project?.includes('كشف التسربات') ? (
+Reports.js: 2130: <option value="status_fixed_leak">✅ {t('statusMap.تم الاصلاح - تسريب')}</option>
+Reports.js: 2131: <option value="status_no_leak">❌ {t('statusMap.لا يوجد تسريب')}</option>
+Reports.js: 2135: <option value="status_fixed">✅ {t('statusMap.تم الإصلاح')}</option>
+Reports.js: 2136: <option value="status_asphalt">🛣️ {t('statusMap.تم الإصلاح - ومتبقي الأسفلت')}</option>
+Reports.js: 2141: <optgroup label={t('reports.byReview', {defaultValue: 'حسب المراجعة'})}>
+Reports.js: 2142: <option value="review_pending">⏳ {t('statusMap.بإنتظار المراجعة')}</option>
+Reports.js: 2144: <optgroup label={t('reports.byLicense', {defaultValue: 'حسب الرخصة'})}>
+Reports.js: 2145: <option value="license_issued">📋 {t('statusMap.تم إصدار رخص')}</option>
+Reports.js: 2146: <option value="license_not_issued">❌ {t('statusMap.لم يتم إصدار رخصة')}</option>
+Reports.js: 2148: <optgroup label={t('reports.byProcessing', {defaultValue: 'حسب حالة المعالجة'})}>
+Reports.js: 2149: <option value="status_in_progress">🔄 {t('statusMap.قيد المعالجة')}</option>
+Reports.js: 2150: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
+Reports.js: 2155: {/* قسم التصدير مع فلاتر المحافظة والتاريخ */}
+Reports.js: 2161: {t('reports.exportTitle', {defaultValue: 'تصدير التقارير (Excel / PDF)'})}
+Reports.js: 2165: {/* اختيار المشروع */}
+Reports.js: 2168: <label className="text-sm font-medium text-gray-700 whitespace-nowrap">📁 {t('reports.project', {defaultValue: 'المشروع'})}:</label>
+Reports.js: 2174: {!currentProject && <option value="">{t('reports.allProjects', {defaultValue: 'جميع المشاريع'})}</option>}
+Reports.js: 2187: {/* اختيار المحافظة حسب الصلاحيات */}
+Reports.js: 2189: <label className="text-sm font-medium text-gray-700 whitespace-nowrap">🏛️ {t('reports.governorate', {defaultValue: 'المحافظة'})}:</label>
+Reports.js: 2197: ? t('reports.allProjectGovernorates', {defaultValue: 'جميع محافظات المشروع'})
+Reports.js: 2199: ? t('reports.allAllowedGovernorates', {defaultValue: 'جميع المحافظات المسموح بها'})
+Reports.js: 2200: : t('reports.allGovernorates', {defaultValue: 'جميع المحافظات'}))}
+Reports.js: 2202: {/* استخدام getExportGovernorates() للحصول على المحافظات المناسبة حسب المشروع المختار */}
+Reports.js: 2209: {/* المقاول */}
+Reports.js: 2211: <label className="text-sm font-medium text-gray-700 whitespace-nowrap">👷 {t('reports.contractor', {defaultValue: 'المقاول'})}:</label>
+Reports.js: 2217: <option value="">{t('reports.allContractors', {defaultValue: 'جميع المقاولين'})}</option>
+Reports.js: 2226: {/* نوع البلاغ */}
+Reports.js: 2228: <label className="text-sm font-medium text-gray-700 whitespace-nowrap">📋 {t('reports.reportType', {defaultValue: 'نوع البلاغ'})}:</label>
+Reports.js: 2234: <option value="">{t('reports.allTypes', {defaultValue: 'جميع الأنواع'})}</option>
+Reports.js: 2243: {/* الحالة / الرخصة */}
+Reports.js: 2245: <label className="text-sm font-medium text-gray-700 whitespace-nowrap">✅ {t('reports.status', {defaultValue: 'الحالة'})}:</label>
+Reports.js: 2251: <option value="">🔍 {t('reports.allStatuses', {defaultValue: 'جميع الحالات'})}</option>
+Reports.js: 2252: <optgroup label={t('reports.byStatus', {defaultValue: 'حسب الحالة'})}>
+Reports.js: 2253: {/* الحالات الديناميكية من الإعدادات */}
+Reports.js: 2258: {/* الحالات الافتراضية */}
+Reports.js: 2260: exportFilters.project?.includes('كشف التسربات') ? (
+Reports.js: 2262: <option value="status_fixed_leak">✅ {t('statusMap.تم الاصلاح - تسريب', {defaultValue: 'تم الاصلاح - تسريب'})}</option>
+Reports.js: 2263: <option value="status_no_leak">❌ {t('statusMap.لا يوجد تسريب', {defaultValue: 'لا يوجد تسريب'})}</option>
+Reports.js: 2267: <option value="status_fixed">✅ {t('statusMap.تم الإصلاح', {defaultValue: 'تم الإصلاح'})}</option>
+Reports.js: 2268: <option value="status_asphalt">🛣️ {t('statusMap.تم الإصلاح - ومتبقي الأسفلت', {defaultValue: 'تم الإصلاح - ومتبقي الأسفلت'})}</option>
+Reports.js: 2273: <optgroup label={t('reports.byReview', {defaultValue: 'حسب المراجعة'})}>
+Reports.js: 2274: <option value="review_pending">⏳ {t('statusMap.قيد المراجعة', {defaultValue: 'قيد المراجعة'})}</option>
+Reports.js: 2276: <optgroup label={t('reports.byLicense', {defaultValue: 'حسب الرخصة'})}>
+Reports.js: 2277: <option value="license_issued">📋 {t('statusMap.تم إصدار رخص', {defaultValue: 'تم إصدار رخص'})}</option>
+Reports.js: 2278: <option value="license_not_issued">❌ {t('statusMap.لم يتم إصدار رخصة', {defaultValue: 'لم يتم إصدار رخصة'})}</option>
+Reports.js: 2280: <optgroup label={t('reports.byProcessing', {defaultValue: 'حسب حالة المعالجة'})}>
+Reports.js: 2281: <option value="status_in_progress">🔄 {t('statusMap.قيد المعالجة', {defaultValue: 'قيد المعالجة'})}</option>
+Reports.js: 2282: <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري', {defaultValue: 'مغلقة بواسطة الاستشاري'})}</option>
+Reports.js: 2287: {/* فلتر المستخدم - ديناميكي حسب المشروع والمحافظة، يظهر لمن لديه صلاحية إدارة أو مراجعة */}
+Reports.js: 2295: <label className="text-sm font-medium text-gray-700 whitespace-nowrap">👤 {t('reports.createdBy', {defaultValue: 'المستخدم'})}:</label>
+Reports.js: 2301: <option value="">{t('reports.allUsers', {defaultValue: 'جميع المستخدمين'})}</option>
+Reports.js: 2311: {/* حقول التاريخ - مجمعة ومنسقة بجوار بعضها */}
+Reports.js: 2314: <label className="text-sm font-bold text-gray-700 whitespace-nowrap">📥 {t('reports.receiptDateFrom', {defaultValue: 'الاستلام من'})}</label>
+Reports.js: 2323: <label className="text-sm font-bold text-gray-700 whitespace-nowrap">{t('reports.dateTo', {defaultValue: 'الاستلام الى'})}</label>
+Reports.js: 2336: <label className="text-sm font-bold text-gray-700 whitespace-nowrap">🚀 {t('reports.startDateFrom', {defaultValue: 'مباشره من'})}</label>
+Reports.js: 2345: <label className="text-sm font-bold text-gray-700 whitespace-nowrap">{t('reports.startDateTo', {defaultValue: 'مباشره الى'})}</label>
+Reports.js: 2355: {/* زر البحث */}
+Reports.js: 2366: {/* زر إعادة تعيين */}
+Reports.js: 2377: {/* عرض عدد البلاغات */}
+Reports.js: 2387: {/* أزرار التصدير والحذف - ذكية: تعمل على المحدد إن وُجد، أو على نتائج الفلتر */}
+Reports.js: 2393: title={selectedReports.length > 0 ? t('reports.exportSelectedCount', { count: selectedReports.length, defaultValue: `تصدير ${selectedReports.length} بلاغ محدد` }) : t('reports.exportMatching', {defaultValue: 'تصدير جميع البلاغات المطابقة'})}
+Reports.js: 2398: {selectedReports.length > 0 ? t('reports.exportExcelWithCount', { count: selectedReports.length, defaultValue: `تصدير Excel (${selectedReports.length})` }) : t('reports.exportExcel')}
+Reports.js: 2405: title={selectedReports.length > 0 ? t('reports.exportSelectedCount', { count: selectedReports.length, defaultValue: `تصدير ${selectedReports.length} بلاغ محدد` }) : t('reports.exportMatching', {defaultValue: 'تصدير جميع البلاغات المطابقة'})}
+Reports.js: 2410: {selectedReports.length > 0 ? t('reports.exportPdfWithCount', { count: selectedReports.length, defaultValue: `تصدير PDF (${selectedReports.length})` }) : t('reports.exportPdf')}
+Reports.js: 2417: title={t('reports.deleteSelectedCount', { count: selectedReports.length, defaultValue: `حذف ${selectedReports.length} بلاغ محدد` })}
+Reports.js: 2422: {t('reports.deleteSelectedWithCount', { count: selectedReports.length, defaultValue: `حذف المحدد (${selectedReports.length})` })}
+Reports.js: 2428: {/* شريط الإشعار فقط عند وجود تحديد */}
+Reports.js: 2437: <span className="text-blue-700">— {t('reports.exportSelectedNote', {defaultValue: 'أزرار التصدير أعلاه ستعمل على المحدد فقط'})}</span>
+Reports.js: 2453: {/* اختيار عدد البلاغات في الصفحة */}
+Reports.js: 2455: <label className="text-sm font-medium text-gray-700">{t('reports.reportsPerPage', {defaultValue: 'عدد البلاغات في الصفحة'})}:</label>
+Reports.js: 2468: {/* معلومات الصفحة */}
+Reports.js: 2470: <span className="text-blue-600">{t('reports.page', {defaultValue: 'صفحة'})}</span> {currentPage} <span className="text-blue-600">{t('reports.of', {defaultValue: 'من'})}</span> {totalPages}
+Reports.js: 2472: <span className="text-blue-600">{t('reports.showing', {defaultValue: 'عرض'})}</span> {reports.length} <span className="text-blue-600">{t('reports.reportsOfTotal', {defaultValue: 'بلاغات من إجمالي'})}</span> {totalReports}
+Reports.js: 2475: {/* أزرار التنقل */}
+Reports.js: 2486: {t('common.first', {defaultValue: 'الأولى'})}
+Reports.js: 2568: title="تحديد البلاغات في الصفحة الحالية"
+Reports.js: 2588: <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
+Reports.js: 2625: (report.governorate === 'المزاحمية' || report.governorate === 'ضرماء')
+Reports.js: 2633: {t('reports.statuses.new', {defaultValue: 'جديد'})}
+Reports.js: 2652: <span className="text-gray-300 text-xs italic">{t('reports.notStarted', {defaultValue: 'لم يبدأ'})}</span>
+Reports.js: 2662: // تحقق ديناميكي: هل الرخصة غير صالحة؟ (تحتوي على أحرف عربية، فارغة، أو مجرد شرطة/أصفار)
+Reports.js: 2667: // تحديد النص والألوان بناءً على حالة الرخصة وحالة الإغلاق
+Reports.js: 2673: ? t('statusMap.رخصة غير صادرة', {defaultValue: 'رخصة غير صادرة'})
+Reports.js: 2674: : t('statusMap.قيد المعالجة', {defaultValue: 'قيد المعالجة'});
+Reports.js: 2681: ? t('statusMap.مغلقة بواسطة الاستشاري', {defaultValue: 'مغلقة بواسطة الاستشاري'})
+Reports.js: 2682: : t('statusMap.قيد المعالجة', {defaultValue: 'قيد المعالجة'});
+Reports.js: 2698: <span className="font-black text-blue-900 text-[15px] leading-tight">{report.contractor ? translateBrandingText(report.contractor, isRtl) : t('statusMap.غير محدد')}</span>
+Reports.js: 2717: if (s.includes('تم الإصلاح') && !s.includes('متبقي')) colorClass = 'bg-green-100 text-green-700 border-green-200';
+Reports.js: 2718: else if (s.includes('متبقي الأسفلت') || s.includes('متبقي')) colorClass = 'bg-red-100 text-red-700 border-red-200';
+Reports.js: 2719: else if (s.includes('تحت التنفيذ') || s.includes('قيد المعالجة') || s.includes('جاري العمل')) colorClass = 'bg-blue-100 text-blue-700 border-blue-200';
+Reports.js: 2720: else if (s.includes('معلق') || s.includes('متوقف')) colorClass = 'bg-red-100 text-red-700 border-red-200';
+Reports.js: 2731: <span className="font-black text-gray-800">{translateBrandingText(report.created_by_name, isRtl) || t('statusMap.غير معروف')}</span>
+Reports.js: 2737: report.review_status === 'تمت المراجعة'
+Reports.js: 2742: <span>{report.review_status === 'تمت المراجعة' ? t('statusMap.تمت المراجعة') : t('statusMap.قيد المراجعة')}</span>
+Reports.js: 2743: {report.review_status === 'تمت المراجعة' && report.reviewed_by_name && (
+Reports.js: 2763: <span className="absolute -top-1 -right-1 text-orange-500 animate-bounce" title="يوجد ملاحظات">
+Reports.js: 2793: setCurrentNotes(report.notes || 'لا توجد ملاحظات');
+Reports.js: 2806: {/* خيار ملاحظات الاستشاري */}
+Reports.js: 2823: {t('consultantNoteModal.title', { defaultValue: 'ملاحظات الاستشاري' })}
+Reports.js: 2826: {/* خيار مغلقة بواسطة الاستشاري - يظهر فقط لمن لديه الصلاحية */}
+Reports.js: 2843: {report.wfm_closed ? t('statusMap.فتح المعالجة') : t('statusMap.مغلقة بواسطة الاستشاري')}
+Reports.js: 2898: {/* شريط الصفحات في الأسفل أيضاً */}
+Reports.js: 2901: {/* اختيار عدد البلاغات في الصفحة */}
+Reports.js: 2903: <label className="text-sm font-medium text-gray-700">{t('reports.reportsPerPage', {defaultValue: 'عدد البلاغات في الصفحة'})}:</label>
+Reports.js: 2916: {/* معلومات الصفحة */}
+Reports.js: 2918: <span className="text-blue-600">{t('reports.page', {defaultValue: 'صفحة'})}</span> {currentPage} <span className="text-blue-600">{t('reports.of', {defaultValue: 'من'})}</span> {totalPages}
+Reports.js: 2920: <span className="text-blue-600">{t('reports.showing', {defaultValue: 'عرض'})}</span> {reports.length} <span className="text-blue-600">{t('reports.reportsOfTotal', {defaultValue: 'بلاغات من إجمالي'})}</span> {totalReports}
+Reports.js: 2923: {/* أزرار التنقل */}
+Reports.js: 2934: {t('common.first', {defaultValue: 'الأولى'})}
+Reports.js: 2946: {t('common.prev', {defaultValue: 'السابق'})}
+Reports.js: 2987: {t('common.next', {defaultValue: 'التالي'})}
+Reports.js: 2999: {t('common.last', {defaultValue: 'الأخيرة'})}
+Reports.js: 3007: {/* نافذة عرض الصور - تصميم محسّن */}
+Reports.js: 3017: <span>الوسائط (صور وفيديو)</span>
+Reports.js: 3023: toast.info(`📥 جارِ تحميل ${selectedImages.length} ملف...`);
+Reports.js: 3028: toast.success(`✅ تم تحميل ${selectedImages.length} ملف بنجاح`);
+Reports.js: 3035: <span className="hidden sm:inline">تحميل الكل</span>
+Reports.js: 3050: {/* الصورة مع أيقونة العين */}
+Reports.js: 3058: <img src={resolveImageUrl(img)} alt={`صورة ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
+Reports.js: 3067: {/* أيقونة العين للتكبير */}
+Reports.js: 3075: {/* معلومات الصورة */}
+Reports.js: 3077: <p className="text-xs sm:text-sm font-semibold text-blue-800">مرفق {index + 1}</p>
+Reports.js: 3081: title="تحميل الصورة"
+Reports.js: 3096: {/* نافذة الصورة المكبرة (Fullscreen) */}
+Reports.js: 3113: alt="صورة مكبرة"
+Reports.js: 3136: تحميل
+Reports.js: 3142: {/* Modal ملاحظات الاستشاري */}
+Reports.js: 3151: {t('consultantNoteModal.title', { defaultValue: 'ملاحظات الاستشاري' })}
+Reports.js: 3162: title="تغيير حالة الملاحظة"
+Reports.js: 3177: ? t('consultantNoteModal.processed', { defaultValue: 'تمت المعالجة' })
+Reports.js: 3178: : t('consultantNoteModal.underProcessing', { defaultValue: 'قيد المعالجة' })}
+Reports.js: 3194: <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.writeNoteLabel', { defaultValue: 'اكتب الملاحظة هنا:' })}</label>
+Reports.js: 3198: placeholder={t('consultantNoteModal.writeNotePlaceholder', { defaultValue: 'اكتب ملاحظات الاستشاري...' })}
+Reports.js: 3203: <p className="text-xs text-gray-500 mt-2">{t('consultantNoteModal.helpText', { defaultValue: 'يمكنك تعديل أو حذف الملاحظة عن طريق مسح النص وحفظه.' })}</p>
+Reports.js: 3208: <div className="text-sm font-bold text-gray-700 border-b pb-1">{t('consultantNoteModal.previousReplies', { defaultValue: 'الردود السابقة:' })}</div>
+Reports.js: 3213: if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
+Reports.js: 3217: {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {(() => {
+Reports.js: 3219: if (!name) return t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' });
+Reports.js: 3221: if (lowerName.includes('shazly') || lowerName.includes('شاذلي')) {
+Reports.js: 3222: return t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+Reports.js: 3224: if (lowerName.includes('motlaq') || lowerName.includes('مطلق')) {
+Reports.js: 3225: return t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+Reports.js: 3227: if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
+Reports.js: 3228: return t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+Reports.js: 3241: if (currentText.includes('--- إضافة جديدة ---')) {
+Reports.js: 3242: const legacyParts = currentText.split(/---\s*إضافة جديدة\s*---/);
+Reports.js: 3246: const author = index === lastIndex ? (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })) : t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' });
+Reports.js: 3247: return `---رد: ${author}---${part}`;
+Reports.js: 3251: const parts = currentText.split(/---رد:\s*(.*?)---/);
+Reports.js: 3255: const firstAuthor = parts.length > 1 && replyText.includes('--- إضافة جديدة ---')
+Reports.js: 3256: ? t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' })
+Reports.js: 3257: : (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' }));
+Reports.js: 3270: const isShazly = lowerName.includes('shazly') || lowerName.includes('شاذلي');
+Reports.js: 3271: const isMotlaq = lowerName.includes('motlaq') || lowerName.includes('مطلق');
+Reports.js: 3272: const isConsultant = lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('الاستشاري');
+Reports.js: 3275: bubbleName = t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
+Reports.js: 3277: bubbleName = t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
+Reports.js: 3279: bubbleName = t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
+Reports.js: 3286: let prefixText = t('consultantNoteModal.employeeReply', { defaultValue: 'رد الموظف:' });
+Reports.js: 3294: prefixText = t('consultantNoteModal.consultantFollowUp', { defaultValue: 'تعقيب الاستشاري:' });
+Reports.js: 3301: {(!r.consultant_note_processed && (user?.full_name === b.name || user?.username === b.name || (b.name === 'المستوى الثالث' && !user?.full_name && !user?.username) || (b.name && user?.username?.toLowerCase().includes('medhat') && b.name.toLowerCase().includes('medhat')))) && (
+Reports.js: 3303: <button onClick={() => { setEditingBubbleIndex(i); setEditingBubbleText(b.text); }} className="text-blue-600 hover:text-blue-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-blue-200">{t("common.edit", { defaultValue: "تعديل" })}</button>
+Reports.js: 3305: if(!window.confirm(t("consultantNotesPage.confirmDeleteReply", { defaultValue: "هل أنت متأكد من حذف ردك؟" }))) return;
+Reports.js: 3307: const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
+Reports.js: 3309: }} className="text-red-600 hover:text-red-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-red-200">{t("common.delete", { defaultValue: "حذف" })}</button>
+Reports.js: 3320: const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
+Reports.js: 3322: }} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 shadow-sm border border-blue-600">{t("common.saveEdit", { defaultValue: "حفظ التعديل" })}</button>
+Reports.js: 3323: <button onClick={() => setEditingBubbleIndex(null)} className="bg-white text-gray-700 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 shadow-sm border border-gray-300">{t("common.cancel", { defaultValue: "إلغاء" })}</button>
+Reports.js: 3340: <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.additionalReplyLabel', { defaultValue: 'تعقيب الاستشاري (إضافي):' })}</label>
+Reports.js: 3344: placeholder={t('consultantNoteModal.writeReplyPlaceholder', { defaultValue: 'اكتب ردك أو تعقيبك هنا...' })}
+Reports.js: 3356: {t('consultantNoteModal.cancel', { defaultValue: 'إلغاء' })}
+Reports.js: 3366: {t('consultantNoteModal.replyButton', { defaultValue: 'رد' })}
+Reports.js: 3377: {t('consultantNoteModal.deleteReply', { defaultValue: 'حذف الرد' })}
+Reports.js: 3382: (reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.username || reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.full_name || (!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
+Reports.js: 3391: {t('consultantNoteModal.permanentDelete', { defaultValue: 'حذف نهائي' })}
+Reports.js: 3399: {isSavingConsultantNote ? t('consultantNoteModal.saving', { defaultValue: 'جاري الحفظ...' }) : t('consultantNoteModal.saveAndSend', { defaultValue: 'حفظ وإرسال' })}
+Reports.js: 3406: {/* Modal الملاحظات */}
+Reports.js: 3411: <h3 className="text-xl font-bold text-gray-900">📝 الملاحظات</h3>
+Reports.js: 3422: {currentNotes || 'لا توجد ملاحظات'}
+Reports.js: 3429: إغلاق

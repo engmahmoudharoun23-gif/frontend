@@ -1,0 +1,97 @@
+  } catch (e) {
+  } catch (e) {
+    console.error(e);
+    .catch(err => {
+  const [errorMessage, setErrorMessage] = useState('');
+      toast.error('يجب رفع ملف Excel (.xlsx أو .xls)');
+      toast.error(t('reportForm.selectProjectFirst'));
+      const { imported, skipped, message, columns_found, errors } = response.data;
+        const errMsg = errors?.length > 0 ? `${t('reportForm.errors')}${errors.join(', ')}` : '';
+        toast.error(`❌ ${t('reportForm.noReportsImported')}${colsMsg}${errMsg}${t('reportForm.checkReportNumberColumn')}`, { duration: 10000 });
+    } catch (error) {
+      console.error('Import error:', error);
+      const errorMsg = error.response?.data?.detail || t('reportForm.importError');
+      toast.error(`❌ ${errorMsg}`);
+      } catch (e) {
+        console.error('Failed to fetch projects:', e);
+      } catch (error) {
+        console.error('Failed to fetch governorates:', error);
+    } catch (error) {
+      console.error('Failed to fetch contractors:', error);
+    } catch (error) {
+      console.error('Failed to fetch report types:', error);
+    } catch (error) {
+      console.error('Failed to fetch report statuses:', error);
+      toast.error(t('reportForm.enterStatusName'));
+      toast.error(t('reportForm.selectProjectFirstSimple'));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || t('reportForm.unknownError'));
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+        toast.error(t('reportForm.deleteImageError'));
+        (error) => {
+          console.log('⚠️ لم يتم الحصول على الموقع:', error.code, error.message);
+      toast.error(t('reportForm.enterContractorName'));
+      toast.error(t('reportForm.selectProjectFirstSimple'));
+    } catch (error) {
+      console.error('Error adding contractor:', error);
+      toast.error(error.response?.data?.detail || t('reportForm.addContractorError'));
+    } catch (error) {
+      console.error('Failed to fetch report:', error);
+      toast.error('حدث خطأ في تحميل البلاغ');
+    } catch (error) {
+      console.error('Failed to fetch images:', error);
+    } catch (error) {
+      console.error('خطأ في تحديد الحي:', error);
+          logo.onerror = () => {
+      reader.onerror = reject;
+    } catch (error) {
+      console.error('خطأ في الوصول للكاميرا:', error);
+      toast.error('❌ لم نتمكن من الوصول للكاميرا. يرجى التأكد من السماح بالوصول للكاميرا في إعدادات المتصفح.');
+    } catch (error) {
+      console.error('خطأ في ضغط الصورة:', error);
+      } catch {
+        video.play().catch(e => {
+        } catch (e) {
+          } catch (e2) {
+      video.onerror = () => {
+        reject(new Error("فشل في تحميل الفيديو للضغط"));
+  const handleSubmit = async (e) => {
+    setErrorMessage('');
+    } catch (error) {
+      console.error('Failed to save report:', error);
+      let errorMsg = error.response?.data?.detail || error.message || 'حدث خطأ غير معروف';
+      if (typeof errorMsg === 'object') {
+        errorMsg = Array.isArray(errorMsg) 
+          ? errorMsg.map(e => e.msg || e.message || JSON.stringify(e)).join(', ')
+          : JSON.stringify(errorMsg);
+      setErrorMessage(String(errorMsg));
+      toast.error(`❌ فشل في حفظ البلاغ! ${String(errorMsg)}`, { autoClose: 5000 });
+        } catch (imgError) {
+          console.error('Failed to upload image:', imgError);
+        toast.error('❌ فشل في رفع الصور', { autoClose: 5000 });
+    } catch (error) {
+      console.error('Background upload error:', error);
+      toast.error('❌ خطأ في رفع الصور', { autoClose: 5000 });
+          {errorMessage && (
+                    {t('reportForm.errorTitle')}
+                    {errorMessage}
+          <form onSubmit={handleSubmit} className="space-y-6">
+                          (error) => {
+                            let errorMsg = '';
+                            if (error.code === 1) {
+                              errorMsg = t('reportForm.locationErrorBlocked');
+                              instructions = t('reportForm.locationErrorBlockedInstructions');
+                            } else if (error.code === 2) {
+                              errorMsg = t('reportForm.locationErrorUnavailable');
+                              instructions = t('reportForm.locationErrorUnavailableInstructions');
+                            } else if (error.code === 3) {
+                              errorMsg = t('reportForm.locationErrorTimeout');
+                              instructions = t('reportForm.locationErrorTimeoutInstructions');
+                            toast.error(errorMsg + instructions);
+                              onError={(e) => {
+                                e.target.parentElement.innerHTML += '<div class="absolute inset-0 flex items-center justify-center text-gray-400">❌ Error</div>';
+                        } catch (err) {
+                          toast.error(t('reportForm.videoCompressError'));
+                          console.error(err);
+              <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50">

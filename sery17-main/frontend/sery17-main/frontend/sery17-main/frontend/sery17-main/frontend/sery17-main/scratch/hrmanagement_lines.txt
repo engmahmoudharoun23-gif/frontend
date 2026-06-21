@@ -1,0 +1,26 @@
+99: date: new Date().toISOString().split('T')[0], status: 'غير مسددة', action_date: '', notes: ''
+256: payload.status = newRemaining <= 0 ? 'مسددة' : 'مسددة جزئياً';
+289: const newStatus = newRemaining <= 0 ? 'مسددة' : (newPaidAmount > 0 ? 'مسددة جزئياً' : 'غير مسددة');
+311: const isItemActive = !['مسددة', 'مرتجعة', 'تم تصفية العهدة'].includes(item.status);
+312: const isExistingActive = existing && !['مسددة', 'مرتجعة', 'تم تصفية العهدة'].includes(existing.status);
+341: if (['مسددة', 'مرتجعة', 'تالفة', 'تم تصفية العهدة'].includes(item.status)) {
+458: rows = data.map((a, i) => ({ '#': i+1, 'الاسم': a.employee_name, 'النوع': a.type, 'الشركة': a.company, 'المشروع': a.project, 'المبلغ': a.amount, 'المسدد': a.paid_amount, 'المتبقي': a.remaining_amount, 'الوصف': a.item_description, 'التاريخ': a.date, 'تاريخ الإجراء': a.action_date, 'الحالة': a.status, 'ملاحظات': a.notes }));
+642: <div class="info-item"><div class="label">المبلغ المسدد</div><div class="value text-green">${item.paid_amount?.toLocaleString()} ر.س</div></div>
+1227: {(item.amount > 0 && item.paid_amount > 0) ? `${(item.amount - item.paid_amount)} ${isRtl ? 'ر.س' : 'SAR'}` : item.amount > 0 && item.status === 'غير مسددة' ? `${item.amount} ${isRtl ? 'ر.س' : 'SAR'}` : '-'}
+1233: <span className={`px-2 py-1 rounded-full text-xs ${item.status === 'عهدة الموظف' ? 'bg-blue-100 text-blue-700' : ['مسددة', 'عهدة الشركة', 'تم تصفية العهدة'].includes(item.status) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+1234: {item.status === 'عهدة الموظف' ? (isRtl ? 'عهدة الموظف' : "Employee's Custody") : item.status === 'مسددة' ? (isRtl ? 'مسددة' : 'Paid') : item.status === 'عهدة الشركة' ? (isRtl ? 'عهدة الشركة' : "Company's Custody") : item.status === 'تم تصفية العهدة' ? (isRtl ? 'تم تصفية العهدة' : 'Custody Liquidated') : (isRtl ? (item.status || 'غير مسددة') : (item.status === 'غير مسددة' ? 'Unpaid' : item.status))}
+1509: <select value={advanceCustodyForm.type} onChange={e => setAdvanceCustodyForm({...advanceCustodyForm, type: e.target.value, status: e.target.value === 'سلفة' ? 'غير مسددة' : 'عهدة الموظف'})} className="w-full px-3 py-2 border rounded-lg">
+1525: {advanceCustodyForm.status === 'مسددة جزئياً' && (
+1526: <div><label className="block text-sm text-gray-600 mb-1">{isRtl ? 'المبلغ المسدد' : 'Paid Amount'}</label>
+1529: {advanceCustodyForm.status === 'مسددة جزئياً' && (
+1539: const isCompleted = ['مسددة', 'مسددة جزئياً', 'عهدة الشركة', 'مفقودة من الموظف', 'تالفة من الموظف', 'تم تصفية العهدة'].includes(newStatus);
+1540: const isReset = ['غير مسددة', 'عهدة الموظف'].includes(newStatus);
+1549: <option value="غير مسددة">{isRtl ? 'غير مسددة' : 'Unpaid'}</option>
+1550: <option value="مسددة جزئياً">{isRtl ? 'مسددة جزئياً' : 'Partially Paid'}</option>
+1551: <option value="مسددة">{isRtl ? 'مسددة' : 'Paid'}</option>
+1564: {['مسددة', 'مسددة جزئياً', 'مرتجعة', 'مفقودة', 'تالفة', 'تم تصفية العهدة'].includes(advanceCustodyForm.status) && (
+1586: {!['مسددة', 'عهدة الشركة', 'تالفة', 'تم تصفية العهدة'].includes(selectedAdvance.status) && (
+1624: <th className="p-2 font-bold">{selectedAdvance.type === 'سلفة' ? 'المبلغ المسدد' : 'الإجراء / ملاحظة'}</th>
+1666: <div key={group.id || gIdx} className={`border rounded-lg overflow-hidden ${group.status === 'مسددة' || group.status === 'تم تصفية العهدة' || group.status === 'مرتجعة' ? 'opacity-75 border-gray-200' : 'border-blue-200 shadow-sm'}`}>
+1667: <div className={`p-3 flex justify-between items-center ${group.status === 'مسددة' || group.status === 'تم تصفية العهدة' || group.status === 'مرتجعة' ? 'bg-gray-100' : 'bg-blue-50'}`}>
+1673: <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${group.status === 'مسددة' || group.status === 'مرتجعة' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
