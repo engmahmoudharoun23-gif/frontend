@@ -341,22 +341,49 @@ function SafetyReports({ user, onLogout }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || uploading) return;
+    
+    toast.success(editingReport ? t('safetyReports.updateSuccess') : t('safetyReports.saveSuccess'));
+    setShowModal(false);
+    
+    const tempId = 'temp-' + Date.now();
+    const optimisticReport = {
+       id: tempId,
+       date: form.date,
+       project: form.project,
+       governorate: form.governorate,
+       notes: form.notes,
+       status: 'جاري الرفع...',
+       created_by: user?.name || 'أنا',
+       image: form.image,
+       images: form.images
+    };
+
+    if (!editingReport) {
+      setReports(prev => [optimisticReport, ...prev]);
+    }
+
     setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
-        toast.success(t('safetyReports.updateSuccess'));
-        setShowModal(false);
         await axios.put(`${API}/safety-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
       } else {
-        toast.success(t('safetyReports.saveSuccess'));
-        setShowModal(false);
         await axios.post(`${API}/safety-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
       }
       fetchReports();
-    } catch (err) { toast.error(err.response?.data?.detail || 'حدث خطأ'); }
-    finally { setIsSubmitting(false); }
+    } catch (err) {
+      if (!editingReport) {
+         setReports(prev => prev.filter(r => r.id !== tempId));
+      }
+      if (err.response?.status === 413 || err.message.includes('Network') || err.message.includes('timeout')) {
+        toast.error(isRtl ? 'الإنترنت لديك ضعيف لرفع الملف، المحاولة فشلت في الخلفية' : 'Your internet is weak, background upload failed');
+      } else {
+        toast.error(err.response?.data?.detail || (isRtl ? 'حدث خطأ أثناء الحفظ في الخلفية' : 'Error saving report in background'));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDelete = async (id) => {

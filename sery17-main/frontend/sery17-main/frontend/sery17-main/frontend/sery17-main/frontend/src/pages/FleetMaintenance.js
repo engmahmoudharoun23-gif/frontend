@@ -424,7 +424,7 @@ function FleetMaintenance({ user, onLogout }) {
         </div>
 
         {/* Cars Table */}
-        {cars.length === 0 && loading ? (
+        {loading ? (
           <div className="text-center py-10">{t('fleetPage.loading')}</div>
         ) : cars.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-xl">

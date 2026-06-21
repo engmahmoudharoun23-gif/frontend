@@ -240,7 +240,6 @@ function Contractors({ user, onLogout }) {
   };
   const [contractors, setContractors] = useState(getInitialContractors);
   const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [projects, setProjects] = useState([]);
   const [filterProject, setFilterProject] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -311,12 +310,10 @@ function Contractors({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
     if (!formData.name || !formData.project) {
       toast.error(t('contractorsPage.fillAllData'));
       return;
     }
-    setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
       if (editingId) {
@@ -332,8 +329,6 @@ function Contractors({ user, onLogout }) {
       fetchContractors();
     } catch (e) {
       toast.error(e.response?.data?.detail || t('contractorsPage.errorOccurred'));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -448,7 +443,7 @@ function Contractors({ user, onLogout }) {
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 bg-gray-200 rounded-lg">{t('contractorsPage.cancel')}</button>
-                  <button type="submit" disabled={isSubmitting} className={`px-4 py-2 bg-blue-500 text-white rounded-lg ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : (editingId ? t('contractorsPage.save') : t('contractorsPage.add'))}</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-lg">{editingId ? t('contractorsPage.save') : t('contractorsPage.add')}</button>
                 </div>
               </form>
             </div>

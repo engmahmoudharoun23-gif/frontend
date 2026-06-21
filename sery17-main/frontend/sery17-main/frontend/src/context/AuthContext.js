@@ -22,31 +22,6 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
     }
     setLoading(false);
-
-    // Global Axios Interceptor for 401 errors
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response && error.response.status === 401) {
-          if (
-            error.config && 
-            !error.config.url?.includes('/auth/login') && 
-            !error.config.url?.includes('/auth/extend')
-          ) {
-            // For general 401 unauthorized (not from login)
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            delete axios.defaults.headers.common['Authorization'];
-            window.location.href = '/login';
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
   }, []);
 
   // Login function

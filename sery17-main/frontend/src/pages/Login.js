@@ -553,14 +553,10 @@ function Login({ onLogin }) {
             <div className="bg-white/5 rounded-[2rem] p-8 border border-white/10 transition-all hover:bg-white/10 hover:translate-y-[-5px] w-full">
               <img src={branding.company_logo_url || "/bayt-alkhibra-logo.png"} alt="Expert House" className="h-16 w-auto mx-auto mb-5 object-contain" />
               <h3 className="text-xl font-black text-center w-full">{getBrandingCompanyName()}</h3>
-              {branding.project_manager_name && !branding.project_manager_name.includes('أحمد عبيدات') && (
-                <>
-                  <div className="h-[1px] w-12 bg-primary mx-auto my-4" style={{ backgroundColor: getThemeColor('primary') }}></div>
-                  <p className="text-base text-white/80 font-black text-center w-full tracking-wider">
-                    {`${branding.project_manager_name} - ${branding.project_manager_title || (isRtl ? 'مدير عام المشاريع' : 'Projects General Manager')}`}
-                  </p>
-                </>
-              )}
+              <div className="h-[1px] w-12 bg-primary mx-auto my-4" style={{ backgroundColor: getThemeColor('primary') }}></div>
+              <p className="text-base text-white/80 font-black text-center w-full tracking-wider">
+                {(!branding.project_manager_name || branding.project_manager_name.includes('أحمد عبيدات')) ? (isRtl ? 'المهندس / أحمد عبيدات - مدير عام المشاريع' : 'Eng. Ahmed Obeidat - Projects General Manager') : `${branding.project_manager_name} - ${branding.project_manager_title || (isRtl ? 'مدير عام المشاريع' : 'Projects General Manager')}`}
+              </p>
             </div>
 
             <div className="flex items-center gap-8 py-6">
@@ -655,22 +651,16 @@ function Login({ onLogin }) {
                   `${(!platformName || platformName.includes('بيت الخبرة')) ? 'Expert House Engineering Consultancy' : platformName} is a leader in engineering and technical solutions, striving to deliver innovative solutions serving the Kingdom's infrastructure, in close cooperation with partners to achieve Saudi Vision 2030.`
                 }
               </p>
-              {(branding.project_manager_name || branding.project_coordinator_name) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
-                  {branding.project_manager_name && !branding.project_manager_name.includes('أحمد عبيدات') && (
-                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                      <h4 className="font-black text-white/40 text-xs mb-1 uppercase tracking-widest">{t('settings.projectManager')}</h4>
-                      <p className="text-lg text-white">{branding.project_manager_name}</p>
-                    </div>
-                  )}
-                  {branding.project_coordinator_name && !branding.project_coordinator_name.includes('أحمد حافظ') && (
-                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                      <h4 className="font-black text-white/40 text-xs mb-1 uppercase tracking-widest">{t('settings.projectCoordinator')}</h4>
-                      <p className="text-lg text-white">{branding.project_coordinator_name}</p>
-                    </div>
-                  )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                  <h4 className="font-black text-white/40 text-xs mb-1 uppercase tracking-widest">{t('settings.projectManager')}</h4>
+                  <p className="text-lg text-white">{(!branding.project_manager_name || branding.project_manager_name.includes('أحمد عبيدات')) ? (isRtl ? "المهندس / أحمد عبيدات" : "Eng. Ahmed Obeidat") : branding.project_manager_name}</p>
                 </div>
-              )}
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                  <h4 className="font-black text-white/40 text-xs mb-1 uppercase tracking-widest">{t('settings.projectCoordinator')}</h4>
+                  <p className="text-lg text-white">{(!branding.project_coordinator_name || branding.project_coordinator_name.includes('أحمد حافظ')) ? (isRtl ? "الأستاذ أحمد حافظ" : "Mr. Ahmed Hafez") : branding.project_coordinator_name}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

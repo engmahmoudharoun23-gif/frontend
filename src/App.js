@@ -37,6 +37,8 @@ import Archive from './pages/Archive';
 import Chat from './pages/Chat';
 import Violations from './pages/Violations';
 import Meetings from './pages/Meetings';
+import WfmMatching from './pages/WfmMatching';
+import UpdateReports from './pages/UpdateReports';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -455,6 +457,14 @@ function App() {
         <Route
           path="/meetings"
           element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'meetings')) ? <Meetings user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
+          path="/wfm-matching"
+          element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'wfm_matching')) ? <WfmMatching user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
+          path="/update-reports"
+          element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'update_reports')) ? <UpdateReports user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         <Route
           path="/quality-reports"

@@ -42,10 +42,6 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const [editingBubbleText, setEditingBubbleText] = useState('');
   const [activeBubbleDropdown, setActiveBubbleDropdown] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
-  const [showEditNoteModal, setShowEditNoteModal] = useState(false);
-  const [editingNoteText, setEditingNoteText] = useState('');
-  const [editingNoteId, setEditingNoteId] = useState(null);
-  const [isSavingNote, setIsSavingNote] = useState(false);
 
   const fetchNotes = async (page = currentPage, limit = itemsPerPage, search = searchQuery, status = statusFilter) => {
     try {
@@ -86,7 +82,6 @@ const ConsultantNotes = ({ user, onLogout }) => {
         toast.success(response.data.consultant_note_processed 
           ? t('consultantNotesPage.processSuccess', { defaultValue: 'تمت المعالجة بنجاح' }) 
           : t('consultantNotesPage.processCanceled', { defaultValue: 'تم إلغاء المعالجة' }));
-        window.dispatchEvent(new Event('updateBadges'));
       }
     } catch (error) {
       console.error('Error toggling status:', error);
@@ -183,36 +178,10 @@ const ConsultantNotes = ({ user, onLogout }) => {
       if (response.data.success) {
         toast.success(t('consultantNotesPage.noteDeletedSuccess', { defaultValue: 'تم حذف الملاحظة بنجاح' }));
         fetchNotes(currentPage, itemsPerPage, searchQuery, statusFilter);
-        window.dispatchEvent(new Event('updateBadges'));
       }
     } catch (error) {
       console.error('Error deleting consultant note:', error);
       toast.error(t('consultantNotesPage.noteDeleteError', { defaultValue: 'حدث خطأ أثناء حذف الملاحظة' }));
-    }
-  };
-
-  const handleEditNoteSubmit = async () => {
-    if (!editingNoteText.trim()) return;
-    setIsSavingNote(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(`${API}/reports/${editingNoteId}/consultant_note`, { consultant_note: editingNoteText }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success || response.status === 200) {
-        setReports(reports.map(r => 
-          r.id === editingNoteId ? { ...r, consultant_note: editingNoteText, consultant_note_processed: false, consultant_note_processed_date: '' } : r
-        ));
-        toast.success(t('common.editSuccess', { defaultValue: 'تم التعديل بنجاح' }));
-        setShowEditNoteModal(false);
-        setEditingNoteId(null);
-        setEditingNoteText('');
-      }
-    } catch (error) {
-      console.error('Error editing consultant note:', error);
-      toast.error(t('common.error', { defaultValue: 'حدث خطأ أثناء التعديل' }));
-    } finally {
-      setIsSavingNote(false);
     }
   };
 
@@ -294,7 +263,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto pb-72">
+              <div className="overflow-x-auto pb-48">
                 <table className="w-full text-sm text-right min-w-[800px]">
                 <thead className="text-[13px] text-gray-800 bg-gray-100/80 border-b border-gray-200">
                   <tr>
@@ -310,7 +279,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {currentItems.map((report, idx) => (
+                  {currentItems.map((report) => (
                     <tr key={report.id} className="hover:bg-blue-50/30 transition-colors">
 
                       <td className="px-6 py-4 font-bold text-blue-600 whitespace-nowrap">
@@ -527,7 +496,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
                           </button>
                           
                           {activeDropdown === report.id && (
-                            <div className={`absolute ${idx > 1 && idx >= currentItems.length - 2 ? 'bottom-full mb-2' : 'top-full mt-2'} w-56 bg-white border border-gray-100 shadow-xl rounded-xl z-50 overflow-hidden ${isRtl ? 'left-0' : 'right-0'}`}>
+                            <div className={`absolute top-full mt-2 w-56 bg-white border border-gray-100 shadow-xl rounded-xl z-50 overflow-hidden ${isRtl ? 'left-0' : 'right-0'}`}>
                               <Link 
                                 to={`/reports?search=${report.report_number || report.id}&exact=true`}
                                 className="w-full text-right px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
@@ -569,37 +538,20 @@ const ConsultantNotes = ({ user, onLogout }) => {
                               )}
 
                               {hasProjectPermission(user, report.project, 'consultant_notes') && 
-                               (user?.role === 'admin' || report.consultant_note_by === user?.username || report.consultant_note_by === user?.full_name || (!report.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
-                                <>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveDropdown(null);
-                                      setEditingNoteId(report.id);
-                                      setEditingNoteText(report.consultant_note || '');
-                                      setShowEditNoteModal(true);
-                                    }}
-                                    className="w-full text-right px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
-                                  >
-                                    <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    {t("common.edit", { defaultValue: "تعديل الملاحظة" })}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveDropdown(null);
-                                      handleDeleteNote(report.id);
-                                    }}
-                                    className="w-full text-right px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
-                                  >
-                                    <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    {t("consultantNotesPage.deleteNote", { defaultValue: "حذف الملاحظة" })}
-                                  </button>
-                                </>
+                               (report.consultant_note_by === user?.username || report.consultant_note_by === user?.full_name || (!report.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdown(null);
+                                    handleDeleteNote(report.id);
+                                  }}
+                                  className="w-full text-right px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
+                                >
+                                  <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                  {t("consultantNotesPage.deleteNote", { defaultValue: "حذف الملاحظة" })}
+                                </button>
                               )}
                               
                               {(user?.role === 'admin' || user?.can_create_subusers) ? (
@@ -846,54 +798,6 @@ const ConsultantNotes = ({ user, onLogout }) => {
                   {isSavingReply ? t('consultantNotesPage.sending', { defaultValue: 'جاري الإرسال...' }) : t('consultantNotesPage.sendReply', { defaultValue: 'إرسال الرد' })}
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showEditNoteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform transition-all overflow-hidden flex flex-col">
-            <div className="bg-indigo-600 px-6 py-4 flex items-center justify-between shrink-0">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                {t("common.edit", { defaultValue: "تعديل الملاحظة" })}
-              </h3>
-              <button 
-                onClick={() => setShowEditNoteModal(false)}
-                className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-full"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto">
-              <textarea
-                value={editingNoteText}
-                onChange={(e) => setEditingNoteText(e.target.value)}
-                className="w-full h-40 p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-0 resize-none"
-                placeholder={t("consultantNotesPage.note", { defaultValue: "الملاحظة" })}
-              ></textarea>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 shrink-0 border-t border-gray-100">
-              <button
-                onClick={() => setShowEditNoteModal(false)}
-                className="px-6 py-2.5 rounded-xl text-gray-700 font-bold hover:bg-gray-200 transition-colors"
-              >
-                {t("common.cancel", { defaultValue: "إلغاء" })}
-              </button>
-              <button
-                onClick={handleEditNoteSubmit}
-                disabled={isSavingNote || !editingNoteText.trim()}
-                className="px-6 py-2.5 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSavingNote ? (
-                  <><svg className="animate-spin w-5 h-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>{t("common.saving", { defaultValue: "جاري الحفظ..." })}</>
-                ) : (
-                  <>{t("common.save", { defaultValue: "حفظ" })}</>
-                )}
-              </button>
             </div>
           </div>
         </div>

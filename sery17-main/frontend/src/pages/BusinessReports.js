@@ -432,7 +432,7 @@ function BusinessReports({ user, onLogout }) {
   const handleDownloadFile = async (report) => {
     let fullReport = report;
     if (!fullReport.file_url) {
-      toast.info(isRtl ? 'جاري تحضير ملف الـ PDF...' : 'Preparing PDF file...', { autoClose: false, toastId: 'loadingReport' });
+      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/business-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});

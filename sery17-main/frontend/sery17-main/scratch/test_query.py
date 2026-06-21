@@ -1,49 +1,27 @@
-import asyncio
-import sys
 import os
+import sys
+from pymongo import MongoClient
 
-sys.path.append(r'd:\sery17-main\sery17-main\backend')
-import server
-from database import db
+# Add backend to path to import
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
+from server import get_flexible_project_query
 
-async def test():
-    await db.client.admin.command('ping')
-    
-    # 1. Find a user named Mukhtar
-    user = await db.users.find_one({"full_name": {"$regex": "مختار"}})
-    if not user:
-        print("User not found")
-        return
-        
-    print(f"User found: {user['full_name']}")
-    print(f"Permissions: {user.get('permissions')}")
-    
-    # Simulate get_reports
-    project = None
-    
-    query = {"is_deleted": {"$ne": True}}
-    
-    is_manager = user.get("can_create_subusers", False)
-    can_view_all = server.has_project_permission(user, project, "view_governorate_data")
-    print(f"is_manager: {is_manager}")
-    print(f"can_view_all: {can_view_all}")
-    
-    if not is_manager and not can_view_all:
-        query["created_by"] = user.get("username")
-        print("ADDED created_by restriction!")
-    else:
-        print("SKIPPED created_by restriction! The user will see all data.")
-        
-    # Apply governorate filter
-    if len(user.get('governorates', [])) > 0:
-        query["governorate"] = {"$in": user.get('governorates', [])}
-        print(f"Applied governorate filter: {query['governorate']}")
-        
-    print(f"Final Query: {query}")
-    
-    # Count reports
-    count = await db.reports.count_documents(query)
-    print(f"Total reports visible: {count}")
+client = MongoClient("mongodb://localhost:27017")
+db = client["wfm_reports"]
 
-if __name__ == "__main__":
-    asyncio.run(test())
+project_name = "مشروع المحافظات الغربية - القطاع الأوسط"
+regex_query = get_flexible_project_query(project_name)
+
+query = {
+    "is_deleted": {"$ne": True},
+    "project": regex_query
+}
+
+reports = list(db.reports.find(query))
+print(f"Count from DB directly: {len(reports)}")
+if len(reports) > 0:
+    for i, r in enumerate(reports):
+        print(f"Report {i+1} project: {r.get('project', 'NO PROJECT FIELD')}")
+else:
+    print("NO REPORTS FOUND FOR THIS REGEX!")
+    print(regex_query)

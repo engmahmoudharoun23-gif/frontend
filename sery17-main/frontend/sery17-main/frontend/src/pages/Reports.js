@@ -6,9 +6,6 @@ import { PROJECT_GOVERNORATES as BASE_PROJECT_GOVERNORATES } from '../utils/proj
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { resolveImageUrl, isVideo } from '../utils/imageUrl';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-import { useBranding } from '../hooks/useBranding';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -249,7 +246,6 @@ const translateBrandingText = (text, isRtl) => {
 function Reports({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
-  const { branding } = useBranding();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -416,7 +412,7 @@ function Reports({ user, onLogout }) {
       setIsNewReportsFilter(true);
       const fetchNewReports = async () => {
         try {
-          setLoading(true);
+          // setLoading(true);
           const token = localStorage.getItem('token');
           const response = await axios.get(`${API}/reports/notifications/unseen`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -458,7 +454,7 @@ function Reports({ user, onLogout }) {
       // تنفيذ البحث مباشرة
       const fetchWithSearch = async () => {
         try {
-          setLoading(true);
+          // setLoading(true);
           const params = new URLSearchParams();
           params.append('search', searchQuery);
           params.append('page', pageFromUrl);
@@ -573,7 +569,8 @@ function Reports({ user, onLogout }) {
               setReports(JSON.parse(cached));
               setLoading(false);
             } else {
-              setLoading(true);
+              setReports([]);
+              // setLoading(true);
             }
           } catch (e) {}
         }
@@ -792,7 +789,6 @@ function Reports({ user, onLogout }) {
   }, [exportFilters.project]);
   const [showImagesModal, setShowImagesModal] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
-  const [selectedReportForMedia, setSelectedReportForMedia] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null); // الصورة المكبرة
   const [last24HoursCounts, setLast24HoursCounts] = useState({});
 
@@ -808,12 +804,8 @@ function Reports({ user, onLogout }) {
       try {
         const token = localStorage.getItem('token');
         const params = new URLSearchParams();
-        const activeProject = exportFilters.project || filters.project;
-        const activeGovernorate = exportFilters.governorate || filters.governorate;
-        
-        if (activeProject) params.append('project', activeProject);
-        if (activeGovernorate) params.append('governorate', activeGovernorate);
-        
+        if (exportFilters.project) params.append('project', exportFilters.project);
+        if (exportFilters.governorate) params.append('governorate', exportFilters.governorate);
         const response = await axios.get(`${API}/users/level3?${params}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -839,7 +831,7 @@ function Reports({ user, onLogout }) {
     
     fetchLevel3Users();
     fetchMyReportsCount();
-  }, [exportFilters.project, exportFilters.governorate, filters.project, filters.governorate]);
+  }, [exportFilters.project, exportFilters.governorate]);
   
   const fetchContractors = async () => {
     try {
@@ -1037,7 +1029,7 @@ const fetchReports = async () => {
     // لا تجلب البلاغات العادية إذا كان فلتر البلاغات الجديدة مفعّل
     if (isNewReportsFilter) return;
     
-    setLoading(true);
+    // setLoading(true);
     
     // إعادة تعيين التحديد عند جلب بلاغات جديدة
     setSelectedReports([]);
@@ -1132,7 +1124,7 @@ const fetchReports = async () => {
     setExportCount(null);
     setCurrentPage(1);
     
-    setLoading(true);
+    // setLoading(true);
     const params = new URLSearchParams();
     if (defaultProj) params.append('project', defaultProj);
     if (defaultGov) params.append('governorate', defaultGov);
@@ -1194,25 +1186,25 @@ const fetchReports = async () => {
     // 4. تحديث الصفحة
     handlePageChange(1);
     
-    // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً"
-    setLoading(true);
+    // 5. جلب البيانات فوراً ليكون البحث "أوتوماتيكياً" (مثل handleQuickSearch)
+    // setLoading(true);
     const params = new URLSearchParams();
-
-    // استخدام newExportFilters مباشرة (تحتوي date_from, date_to, start_date_from, start_date_to)
-    const projectToUse = newExportFilters.project || filters.project || currentProject;
-    if (projectToUse) params.append('project', projectToUse);
-    if (newExportFilters.governorate) params.append('governorate', newExportFilters.governorate);
-    if (newExportFilters.contractor) params.append('contractor', newExportFilters.contractor);
-    if (newExportFilters.report_type) params.append('report_type', newExportFilters.report_type);
-    if (newExportFilters.status) params.append('status', newExportFilters.status);
-    if (newExportFilters.license_status) params.append('license_status', newExportFilters.license_status);
-    if (newExportFilters.date_from) params.append('date_from', newExportFilters.date_from);
-    if (newExportFilters.date_to) params.append('date_to', newExportFilters.date_to);
-    if (newExportFilters.start_date_from) params.append('start_date_from', newExportFilters.start_date_from);
-    if (newExportFilters.start_date_to) params.append('start_date_to', newExportFilters.start_date_to);
-    if (newExportFilters.created_by) params.append('created_by', newExportFilters.created_by);
-    if (newFilters.search) params.append('search', newFilters.search);
-
+    Object.entries(newFilters).forEach(([key, val]) => { 
+      if (val && typeof val === 'string' && val.trim()) {
+        if (key === 'date') {
+          params.append('date_from', val);
+          params.append('date_to', val);
+        } else if (key === 'start_date') {
+          params.append('start_date_from', val);
+          params.append('start_date_to', val);
+        } else {
+          params.append(key, val);
+        }
+      }
+    });
+    if (!params.has('project') && currentProject) {
+      params.append('project', currentProject);
+    }
     params.append('page', 1);
     params.append('limit', reportsPerPage);
     
@@ -1221,15 +1213,14 @@ const fetchReports = async () => {
         const fetchedReports = response.data.reports || [];
         setReports(fetchedReports);
         
-        if (newExportFilters.project) {
+        if (newFilters.project) {
           try {
-            localStorage.setItem(`reports_cache_${newExportFilters.project}`, JSON.stringify(fetchedReports));
+            localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
           } catch (e) {}
         }
         
         setTotalReports(response.data.total_count || 0);
         setTotalPages(response.data.total_pages || 0);
-        setExportCount(response.data.total_count || 0);
         setLoading(false);
       })
       .catch(error => {
@@ -1400,9 +1391,7 @@ const fetchReports = async () => {
           ? { 
               ...report, 
               review_status: response.data.review_status,
-              reviewed_by_name: response.data.reviewed_by_name,
-              wfm_closed: response.data.wfm_closed,
-              wfm_closed_by: response.data.wfm_closed_by
+              reviewed_by_name: response.data.reviewed_by_name
             }
           : report
       ));
@@ -1480,7 +1469,7 @@ const fetchReports = async () => {
   
   // البحث السريع عن البلاغات حسب جميع الفلاتر
   const handleSearchExportCount = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const params = new URLSearchParams();
       
@@ -1582,7 +1571,7 @@ const fetchReports = async () => {
       return;
     }
     
-    setLoading(true);
+    // setLoading(true);
     try {
       // إذا تم تحديد "الكل"، استخدم التصدير بالفلاتر (أسرع وأكثر موثوقية)
       if (isAllSelected) {
@@ -1687,8 +1676,7 @@ const fetchReports = async () => {
   };
 
   // جلب الصور لبلاغ معين
-  const fetchReportImages = async (report) => {
-    const reportId = report.id;
+  const fetchReportImages = async (reportId) => {
     setLoadingImages(prev => ({ ...prev, [reportId]: true }));
     
     try {
@@ -1701,7 +1689,6 @@ const fetchReports = async () => {
       // عرض الصور في Modal
       if (images.length > 0) {
         setSelectedImages(images);
-        setSelectedReportForMedia(report);
         setShowImagesModal(true);
       } else {
         toast.info(t('reports.noImages'));
@@ -1714,214 +1701,9 @@ const fetchReports = async () => {
     }
   };
 
-  const viewImages = (images, report) => {
+  const viewImages = (images) => {
     setSelectedImages(images);
-    setSelectedReportForMedia(report);
     setShowImagesModal(true);
-  };
-
-  const handleDownloadImagesAsPdf = async () => {
-    if (!selectedReportForMedia || selectedImages.length === 0) return;
-    
-    toast.info(t('reports.pdf.preparing', {defaultValue: 'جاري تجهيز ملف الـ PDF... الرجاء الانتظار'}));
-    try {
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      
-      const headerDiv = document.createElement('div');
-      headerDiv.style.width = '800px';
-      headerDiv.style.padding = '30px';
-      headerDiv.style.backgroundColor = '#ffffff';
-      headerDiv.style.direction = 'rtl';
-      headerDiv.style.fontFamily = 'Arial, sans-serif';
-      headerDiv.style.color = '#000';
-      headerDiv.style.position = 'fixed';
-      headerDiv.style.top = '-9999px';
-      
-      const notSpecified = t('common.notSpecified', {defaultValue: 'غير محدد'});
-      
-      const getBase64Image = async (url) => {
-        try {
-          const res = await fetch(url);
-          const blob = await res.blob();
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-        } catch (e) {
-          return url;
-        }
-      };
-
-      const partnerLogoUrl = (branding.partner_logo_url || '').startsWith('http') 
-        ? branding.partner_logo_url 
-        : window.location.origin + (branding.partner_logo_url || '/nwc-logo.png');
-      const companyLogoUrl = (branding.company_logo_url || '').startsWith('http') 
-        ? branding.company_logo_url 
-        : window.location.origin + (branding.company_logo_url || '/bayt-alkhibra-logo.png');
-        
-      const [partnerLogoB64, companyLogoB64] = await Promise.all([
-        getBase64Image(partnerLogoUrl),
-        getBase64Image(companyLogoUrl)
-      ]);
-
-      let locLat = selectedReportForMedia.latitude || notSpecified;
-      let locLng = selectedReportForMedia.longitude || notSpecified;
-      
-      // Fallback to location string if latitude/longitude are not explicitly provided
-      if ((locLat === notSpecified || locLng === notSpecified) && selectedReportForMedia.location) {
-        const match = selectedReportForMedia.location.match(/-?\d{1,3}\.\d{4,}/g);
-        if (match && match.length >= 2) {
-          locLat = match[0];
-          locLng = match[1];
-        } else {
-          locLat = selectedReportForMedia.location.substring(0, 40);
-        }
-      }
-
-      headerDiv.innerHTML = `
-        <div style="direction: ${isRtl ? 'rtl' : 'ltr'}; font-family: Cairo, 'Tajawal', sans-serif;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 2px solid #3b82f6; padding-bottom: 20px;">
-            <div style="width: 150px; text-align: ${isRtl ? 'right' : 'left'};">
-              <img src="${partnerLogoB64}" alt="NWC Logo" style="max-width: 100%; max-height: 90px; object-fit: contain;" />
-            </div>
-            <div style="text-align: center; flex: 1; padding: 0 20px;">
-              <h2 style="color: #1e3a8a; margin: 0; font-size: 28px;">${t('reports.pdf.mediaReportDetails', {defaultValue: 'تفاصيل بلاغ الوسائط'})}</h2>
-              <h3 style="color: #3b82f6; margin: 10px 0 0 0; font-size: 20px;">${translateBrandingText(selectedReportForMedia.project || '', isRtl)} - ${translateBrandingText(selectedReportForMedia.governorate || '', isRtl)}</h3>
-            </div>
-            <div style="width: 150px; text-align: ${isRtl ? 'left' : 'right'};">
-              <img src="${companyLogoB64}" alt="Company Logo" style="max-width: 100%; max-height: 90px; object-fit: contain;" />
-            </div>
-          </div>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; margin-top: 20px; font-size: 16px; text-align: center;">
-            <tbody>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; width: 25%; text-align: center;">${t('reports.reportNumber', {defaultValue: 'رقم البلاغ'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; width: 25%; text-align: center;">${selectedReportForMedia.report_number || selectedReportForMedia.id || notSpecified}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; width: 25%; text-align: center;">${t('reports.licenseNumber', {defaultValue: 'رقم الرخصة'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; width: 25%; text-align: center;">${selectedReportForMedia.license_number || t('reports.noLicense', {defaultValue: 'بدون رخصة'})}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.receiveDate', {defaultValue: 'تاريخ الاستلام'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.received_date || selectedReportForMedia.created_at ? new Date(selectedReportForMedia.received_date || selectedReportForMedia.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : notSpecified}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.startDate', {defaultValue: 'تاريخ المباشرة'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.start_date ? new Date(selectedReportForMedia.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : notSpecified}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.createdBy', {defaultValue: 'اسم المراقب'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${translateBrandingText(selectedReportForMedia.created_by_name || 'غير معروف', isRtl)}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.pdf.systemEngineerLabel', {defaultValue: 'مهندس النظام وتحليل البيانات'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${t('reports.pdf.systemEngineerName', {defaultValue: 'م/ محمود محمد هارون'})}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.diameter', {defaultValue: 'القطر'})} (${t('reportForm.mm', {defaultValue: 'بالمليمتر'})})</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.diameter_mm || selectedReportForMedia.diameter || notSpecified}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.depth', {defaultValue: 'العمق'})} (${t('reportForm.cm', {defaultValue: 'بالسنتيمتر'})})</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.depth_meters || selectedReportForMedia.depth || notSpecified}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.latitude', {defaultValue: 'خط العرض'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; direction: ltr; text-align: center;">${locLat}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reportForm.longitude', {defaultValue: 'خط الطول'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; direction: ltr; text-align: center;">${locLng}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.closeDate', {defaultValue: 'تاريخ الإغلاق'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${selectedReportForMedia.closed_at ? new Date(selectedReportForMedia.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : (selectedReportForMedia.wfm_closed_at ? new Date(selectedReportForMedia.wfm_closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US') : t('reports.notClosed', {defaultValue: 'غير مغلق'}))}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.reportType', {defaultValue: 'نوع البلاغ'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${t('reportTypes.' + (selectedReportForMedia.report_type || 'Unknown'), {defaultValue: translateBrandingText(selectedReportForMedia.report_type || notSpecified, isRtl)})}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-weight: bold; text-align: center;">${t('reports.status', {defaultValue: 'حالة الإصلاح'})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">${t('statusMap.' + (selectedReportForMedia.status || 'Unknown'), {defaultValue: translateBrandingText(selectedReportForMedia.status || notSpecified, isRtl)})}</td>
-                <td style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; border-bottom: none; border-right: none;" colspan="2"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `;
-      document.body.appendChild(headerDiv);
-      
-      const canvas = await html2canvas(headerDiv, { scale: 2, useCORS: true });
-      const headerImg = canvas.toDataURL('image/jpeg', 1.0);
-      document.body.removeChild(headerDiv);
-      
-      const headerHeight = (canvas.height * pageWidth) / canvas.width;
-      pdf.addImage(headerImg, 'JPEG', 0, 0, pageWidth, headerHeight);
-      
-      let currentY = headerHeight + 10;
-      
-      for (let i = 0; i < selectedImages.length; i++) {
-        const imageData = selectedImages[i];
-        if (isVideo(imageData)) continue;
-        
-        try {
-          const url = resolveImageUrl(imageData);
-          const response = await fetch(url);
-          const blob = await response.blob();
-          const objUrl = window.URL.createObjectURL(blob);
-          
-          const img = new Image();
-          await new Promise((resolve) => {
-             img.onload = resolve;
-             img.onerror = resolve;
-             img.src = objUrl;
-          });
-          
-          if (img.width && img.height) {
-             const imgRatio = img.height / img.width;
-             let imgWidth = pageWidth - 20;
-             let imgHeight = imgWidth * imgRatio;
-             
-             if (imgHeight > pageHeight - 20) {
-                imgHeight = pageHeight - 20;
-                imgWidth = imgHeight / imgRatio;
-             }
-             
-             if (currentY + imgHeight > pageHeight) {
-                pdf.addPage();
-                currentY = 10;
-             }
-             
-             const xPos = (pageWidth - imgWidth) / 2;
-             pdf.addImage(img, 'JPEG', xPos, currentY, imgWidth, imgHeight);
-             currentY += imgHeight + 10;
-          }
-        } catch(e) {
-           console.error('Error loading image for PDF', e);
-        }
-      }
-      
-      // إضافة تذييل باسم المراجع في جميع صفحات الـ PDF
-      const footerDiv = document.createElement('div');
-      footerDiv.style.width = '800px';
-      footerDiv.style.position = 'fixed';
-      footerDiv.style.top = '-9999px';
-      footerDiv.innerHTML = `
-        <div style="direction: ${isRtl ? 'rtl' : 'ltr'}; font-family: Arial, Cairo, 'Tajawal', sans-serif; text-align: center; padding: 20px; background: #f8fafc; border-top: 3px solid #e2e8f0; letter-spacing: 0px !important;">
-          <p style="margin: 0; font-size: 20px; font-weight: bold; color: #1e3a8a;">${t('reports.pdf.systemEngineerLabel', {defaultValue: 'مهندس النظام وتحليل البيانات'})}-${t('reports.pdf.systemEngineerName', {defaultValue: 'م/محمود محمد هارون'})}</p>
-        </div>
-      `;
-      document.body.appendChild(footerDiv);
-      const footerCanvas = await html2canvas(footerDiv, { scale: 2 });
-      const footerImg = footerCanvas.toDataURL('image/jpeg', 1.0);
-      document.body.removeChild(footerDiv);
-      const footerHeightRender = (footerCanvas.height * pageWidth) / footerCanvas.width;
-      
-      const totalPages = pdf.internal.getNumberOfPages();
-      for (let j = 1; j <= totalPages; j++) {
-        pdf.setPage(j);
-        pdf.addImage(footerImg, 'JPEG', 0, pageHeight - footerHeightRender - 5, pageWidth, footerHeightRender);
-      }
-      
-      pdf.save(`Report_${selectedReportForMedia.report_number || selectedReportForMedia.id}_Media.pdf`);
-      toast.success(t('reports.pdf.exportSuccess', {defaultValue: 'تم التصدير إلى PDF بنجاح'}));
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error(t('reports.pdf.exportError', {defaultValue: 'حدث خطأ أثناء إنشاء الـ PDF'}));
-    }
   };
 
   const downloadImage = async (imageData, index) => {
@@ -2281,32 +2063,6 @@ const fetchReports = async () => {
                   <option value="status_wfm_closed">🔒 {t('statusMap.مغلقة بواسطة الاستشاري')}</option>
                 </optgroup>
               </select>
-              
-              {/* فلتر المستخدم في البحث الرئيسي - يظهر لمن لديه الصلاحيات */}
-              {level3Users && level3Users.length > 0 && 
-               (user?.role === 'admin' || user?.can_create_subusers || 
-                (user?.permissions || []).includes('view_all_invoices') ||
-                (user?.permissions || []).includes('reports_review') ||
-                (user?.permissions || []).includes('view_governorate_data') ||
-                Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('reports_review') || (perms || []).includes('view_governorate_data'))
-               ) && (
-                <select 
-                  value={filters.created_by || ''} 
-                  onChange={(e) => setFilters({...filters, created_by: e.target.value})}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">
-                    {((user?.permissions || []).includes('view_governorate_data') || Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('view_governorate_data'))) 
-                      ? (isRtl ? '👤 المهندسين والمراقبين' : '👤 Engineers and Observers')
-                      : `👤 ${t('reports.createdBy', {defaultValue: 'المستخدم'})}`}
-                  </option>
-                  {level3Users.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {translateBrandingText(u.full_name, isRtl)}
-                    </option>
-                  ))}
-                </select>
-              )}
             </div>
             
 
@@ -2491,7 +2247,7 @@ const fetchReports = async () => {
                  <select 
                   value={exportFilters.license_status || ''} 
                   onChange={(e) => handleExportFilterChange('license_status', e.target.value)}
-                  className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[150px] font-medium"
+                  className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[200px] font-medium"
                 >
                   <option value="">🔍 {t('reports.allStatuses', {defaultValue: 'جميع الحالات'})}</option>
                   <optgroup label={t('reports.byStatus', {defaultValue: 'حسب الحالة'})}>
@@ -2528,29 +2284,22 @@ const fetchReports = async () => {
                   </optgroup>
                 </select>
               </div>
-
-              {/* فلتر المستخدم - ديناميكي حسب المشروع والمحافظة، يظهر لمن لديه صلاحية إدارة أو مراجعة أو استثنائية */}
+              
+              {/* فلتر المستخدم - ديناميكي حسب المشروع والمحافظة، يظهر لمن لديه صلاحية إدارة أو مراجعة */}
               {level3Users && level3Users.length > 0 && 
                (user?.role === 'admin' || user?.can_create_subusers || 
                 (user?.permissions || []).includes('view_all_invoices') ||
                 (user?.permissions || []).includes('reports_review') ||
-                (user?.permissions || []).includes('view_governorate_data') ||
-                Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('reports_review') || (perms || []).includes('view_governorate_data'))
+                Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('reports_review'))
                ) && (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
-                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                    👤 {((user?.permissions || []).includes('view_governorate_data') || Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('view_governorate_data'))) ? (isRtl ? 'مراقبين الاستشاري' : 'Consultant Observers') : t('reports.createdBy', {defaultValue: 'المستخدم'})}:
-                  </label>
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">👤 {t('reports.createdBy', {defaultValue: 'المستخدم'})}:</label>
                   <select 
                     value={exportFilters.created_by || ''} 
                     onChange={(e) => handleExportFilterChange('created_by', e.target.value)}
-                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[130px]"
+                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:min-w-[180px]"
                   >
-                    <option value="">
-                      {((user?.permissions || []).includes('view_governorate_data') || Object.values(user?.project_permissions || {}).some(perms => (perms || []).includes('view_governorate_data'))) 
-                        ? (isRtl ? 'المهندسين والمراقبين' : 'Engineers and Observers')
-                        : t('reports.allUsers', {defaultValue: 'جميع المستخدمين'})}
-                    </option>
+                    <option value="">{t('reports.allUsers', {defaultValue: 'جميع المستخدمين'})}</option>
                     {level3Users.map(u => (
                       <option key={u.id} value={u.id}>
                         {translateBrandingText(u.full_name, isRtl)}
@@ -2559,10 +2308,6 @@ const fetchReports = async () => {
                   </select>
                 </div>
               )}
-            </div>
-
-            {/* الصف الثاني: التواريخ وأزرار الإجراءات */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:flex-wrap gap-3 w-full mt-4">
               
               {/* حقول التاريخ - مجمعة ومنسقة بجوار بعضها */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 border border-gray-200 bg-white p-2 sm:p-3 rounded-lg shadow-sm w-full sm:w-auto flex-wrap">
@@ -2835,16 +2580,11 @@ const fetchReports = async () => {
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">📊 {t('reports.tableHeaders.status')}</th>
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">💡 {t('reports.tableHeaders.reportType')}</th>
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">👤 {t('reports.tableHeaders.createdBy')}</th>
-                <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span>⚖️ {t('reports.review')}</span>
-                    <span className="text-[9px] font-semibold text-blue-600 normal-case leading-tight">{isRtl ? 'بواسطة مهندس النظام وتحليل البيانات' : 'By System & Data Analysis Engineer'}</span>
-                  </div>
-                </th>
+                <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">⚖️ {t('reports.review')}</th>
                 <th className="px-2 py-4 text-center text-[14px] font-extrabold text-blue-900 uppercase bg-gray-100 border-b border-r border-gray-200">⚙️</th>
                 </tr>
               </thead>
-              <tbody className={`bg-white divide-y divide-gray-200 transition-opacity duration-200 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+              <tbody className="bg-white divide-y divide-gray-200">
                 {reports.length === 0 && loading ? (
                   <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
                 ) : reports.length === 0 ? (
@@ -2948,16 +2688,9 @@ const fetchReports = async () => {
                         }
 
                         return (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className={`px-2 py-0.5 text-[14px] font-black rounded-full border shadow-sm ${colorClass}`}>
-                              {statusText}
-                            </span>
-                            {report.wfm_closed && (
-                              <span className="text-[11px] font-black text-green-700 opacity-80 mt-0.5 block text-center" title={translateBrandingText('م/ مدحت حسين', isRtl)}>
-                                {translateBrandingText('م/ مدحت حسين', isRtl)}
-                              </span>
-                            )}
-                          </div>
+                          <span className={`px-2 py-0.5 text-[14px] font-black rounded-full border shadow-sm ${colorClass}`}>
+                            {statusText}
+                          </span>
                         );
                       })()}
                     </td>
@@ -3008,8 +2741,8 @@ const fetchReports = async () => {
                         }`}
                       >
                         <span>{report.review_status === 'تمت المراجعة' ? t('statusMap.تمت المراجعة') : t('statusMap.قيد المراجعة')}</span>
-                        {report.reviewed_by_name && (
-                          <span className="text-[11px] opacity-80 mt-0.5 block text-center" title={translateBrandingText(report.reviewed_by_name, isRtl)}>
+                        {report.review_status === 'تمت المراجعة' && report.reviewed_by_name && (
+                          <span className="text-[10px] opacity-80 mt-0.5 max-w-[130px] truncate block" title={translateBrandingText(report.reviewed_by_name, isRtl)}>
                             {translateBrandingText(report.reviewed_by_name, isRtl)}
                           </span>
                         )}
@@ -3042,9 +2775,9 @@ const fetchReports = async () => {
                                 <button 
                                   onClick={() => {
                                     if (reportImages[report.id]) {
-                                      viewImages(reportImages[report.id], report);
+                                      viewImages(reportImages[report.id]);
                                     } else {
-                                      fetchReportImages(report);
+                                      fetchReportImages(report.id);
                                     }
                                     setActiveDropdown(null);
                                   }} 
@@ -3282,34 +3015,25 @@ const fetchReports = async () => {
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span>{t('reports.imagesModal.mediaTitle', {defaultValue: 'الوسائط (صور وفيديو)'})}</span>
+                <span>الوسائط (صور وفيديو)</span>
                 <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{selectedImages.length}</span>
               </h3>
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={handleDownloadImagesAsPdf}
-                  className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs sm:text-sm transition-colors"
-                >
-                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="hidden sm:inline">{t('reports.imagesModal.downloadPdf', {defaultValue: 'تحميل الصور PDF'})}</span>
-                </button>
-                <button 
                   onClick={async () => {
-                    toast.info(`📥 ${t('reports.imagesModal.downloading', {defaultValue: 'جارِ تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.files', {defaultValue: 'ملف...'})}`);
+                    toast.info(`📥 جارِ تحميل ${selectedImages.length} ملف...`);
                     for (let i = 0; i < selectedImages.length; i++) {
                       await downloadImage(selectedImages[i], i);
                       await new Promise(resolve => setTimeout(resolve, 300));
                     }
-                    toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح'})}`);
+                    toast.success(`✅ تم تحميل ${selectedImages.length} ملف بنجاح`);
                   }}
                   className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs sm:text-sm transition-colors"
                 >
                   <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  <span className="hidden sm:inline">{t('reports.imagesModal.downloadAll', {defaultValue: 'تحميل الكل'})}</span>
+                  <span className="hidden sm:inline">تحميل الكل</span>
                 </button>
                 <button onClick={() => setShowImagesModal(false)} className="p-1.5 sm:p-2 hover:bg-white/20 rounded-full transition-colors">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3332,7 +3056,7 @@ const fetchReports = async () => {
                       {isVideo(img) ? (
                         <video src={resolveImageUrl(img)} className="w-full h-full object-cover" muted playsInline preload="metadata" />
                       ) : (
-                        <img src={resolveImageUrl(img)} alt={`${t('reports.imagesModal.image', {defaultValue: 'صورة'})} ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={resolveImageUrl(img)} alt={`صورة ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
                       )}
                       {isVideo(img) && (
                         <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1 text-white">
@@ -3351,11 +3075,11 @@ const fetchReports = async () => {
                     </div>
                     {/* معلومات الصورة */}
                     <div className="p-2 sm:p-3 bg-blue-100/50 flex items-center justify-between">
-                      <p className="text-xs sm:text-sm font-semibold text-blue-800">{t('reports.imagesModal.attachment', {defaultValue: 'مرفق'})} {index + 1}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-blue-800">مرفق {index + 1}</p>
                       <button 
                         onClick={(e) => { e.stopPropagation(); downloadImage(img, index); }}
                         className="p-1.5 sm:p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                        title={t('reports.imagesModal.downloadImage', {defaultValue: 'تحميل الصورة'})}
+                        title="تحميل الصورة"
                       >
                         <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -3387,7 +3111,7 @@ const fetchReports = async () => {
           ) : (
             <img 
               src={resolveImageUrl(fullscreenImage)} 
-              alt={t('reports.imagesModal.enlargedImage', {defaultValue: 'صورة مكبرة'})} 
+              alt="صورة مكبرة" 
               className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
@@ -3410,7 +3134,7 @@ const fetchReports = async () => {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            {t('reports.imagesModal.download', {defaultValue: 'تحميل'})}
+            تحميل
           </button>
         </div>
       )}
@@ -3685,7 +3409,7 @@ const fetchReports = async () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowNotesModal(false)}>
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">📝 {t('reports.notesModal.title', {defaultValue: 'الملاحظات'})}</h3>
+              <h3 className="text-xl font-bold text-gray-900">📝 الملاحظات</h3>
               <button
                 onClick={() => setShowNotesModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -3696,14 +3420,14 @@ const fetchReports = async () => {
               </button>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 whitespace-pre-wrap text-gray-700">
-              {currentNotes || t('reports.notesModal.empty', {defaultValue: 'لا توجد ملاحظات'})}
+              {currentNotes || 'لا توجد ملاحظات'}
             </div>
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setShowNotesModal(false)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
-                {t('common.close', {defaultValue: 'إغلاق'})}
+                إغلاق
               </button>
             </div>
           </div>

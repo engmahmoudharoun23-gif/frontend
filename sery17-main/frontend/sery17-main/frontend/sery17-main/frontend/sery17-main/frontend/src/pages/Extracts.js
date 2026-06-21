@@ -953,7 +953,7 @@ function Extracts({ user, onLogout }) {
         </div>
 
         {/* الجداول */}
-        {extracts.length === 0 && loading ? (
+        {loading ? (
           <div className="text-center py-10 bg-white rounded-xl shadow"><div className="flex flex-col items-center"><div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mb-4"></div><span className="text-purple-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div></div>
         ) : filteredExtracts.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl shadow">

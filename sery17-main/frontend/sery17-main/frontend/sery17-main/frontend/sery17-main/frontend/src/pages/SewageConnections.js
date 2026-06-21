@@ -1102,7 +1102,7 @@ function SewageConnections({ user, onLogout }) {
         </div>
 
         {/* Table */}
-        {connections.length === 0 && loading ? (
+        {loading ? (
           <div className="text-center py-10 bg-white rounded-xl shadow">
             <div className="animate-spin w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full mx-auto mb-2"></div>
           </div>

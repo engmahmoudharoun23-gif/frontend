@@ -421,34 +421,7 @@ function Reports({ user, onLogout }) {
     // إذا كان الفلتر للبلاغات الجديدة
     if (filterNew === 'new') {
       setIsNewReportsFilter(true);
-      const fetchNewReports = async () => {
-        try {
-          setLoading(true);
-          const token = localStorage.getItem('token');
-          const response = await axios.get(`${API}/reports/notifications/unseen`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const fetchedReports = response.data.reports || [];
-          setReports(fetchedReports);
-          setTotalReports(response.data.total || 0);
-          setTotalPages(1);
-          setUrlFiltersApplied(true);
-          if (searchParams.get('scroll') === 'true') {
-            setTimeout(() => {
-            const tableSection = document.getElementById('reports-table-section');
-            if (tableSection) {
-              const y = tableSection.getBoundingClientRect().top + window.scrollY - 80;
-              window.scrollTo({ top: y, behavior: 'smooth' });
-            }
-          }, 300);
-          }
-        } catch (error) {
-          console.error('Failed to fetch new reports:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchNewReports();
+      setUrlFiltersApplied(true);
       return;
     } else {
       setIsNewReportsFilter(false);
@@ -812,10 +785,11 @@ function Reports({ user, onLogout }) {
   const [last24HoursCounts, setLast24HoursCounts] = useState({});
 
   useEffect(() => {
+    if (!urlFiltersApplied) return;
     fetchReports();
     // fetchLast24HoursCounts(); // تم تعطيله لتحسين الأداء
     fetchContractors();
-  }, [currentPage, reportsPerPage, filters.project, filters.license_status, filters.governorate]);
+  }, [currentPage, reportsPerPage, filters.project, filters.license_status, filters.governorate, isNewReportsFilter, urlFiltersApplied]);
   
   // جلب قائمة المستخدمين والعدد مرة واحدة عند التحميل
   useEffect(() => {
@@ -1104,9 +1078,6 @@ function Reports({ user, onLogout }) {
   };
 
 const fetchReports = async () => {
-    // لا تجلب البلاغات العادية إذا كان فلتر البلاغات الجديدة مفعّل
-    if (isNewReportsFilter) return;
-    
     setLoading(true);
     
     // إعادة تعيين التحديد عند جلب بلاغات جديدة
@@ -1115,21 +1086,28 @@ const fetchReports = async () => {
     
     try {
       const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => { 
-        if (value) {
-          if (key === 'date' || key === 'start_date') {
-            // Deprecated, these are handled via date_from, date_to etc. directly now
-          } else {
-            params.append(key, value);
-          }
-        } 
-      });
+      
+      if (isNewReportsFilter) {
+          params.append('unseen_only', 'true');
+      } else {
+          Object.entries(filters).forEach(([key, value]) => { 
+            if (value) {
+              if (key === 'date' || key === 'start_date') {
+                // Deprecated
+              } else {
+                params.append(key, value);
+              }
+            } 
+          });
+      }
       
       // إضافة معاملات الترقيم
       params.append('page', currentPage);
       params.append('limit', reportsPerPage);
       
-      const response = await axios.get(`${API}/reports?${params}`);
+      const response = await axios.get(`${API}/reports?${params}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
       
       const fetchedReports = response.data.reports || [];
       // تحديث البيانات من الاستجابة
@@ -2080,21 +2058,13 @@ const fetchReports = async () => {
               ({totalReports} {t('reports.report')})
             </span>
             
-            {/* زر العودة للبلاغات العادية */}
-            {isNewReportsFilter && (
-              <button 
-                onClick={() => window.location.href = '/reports'}
-                className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm"
-              >
-                {t('reports.viewAll')}
-              </button>
-            )}
+            {/* تم إخفاء زر عرض جميع البلاغات بناءً على طلب المستخدم */}
             
             {/* تم حذف زر بلاغاتي بناءً على طلب المستخدم */}
 
           </div>
           <div className="flex flex-wrap gap-2">
-            {hasPermission('reports_add') && (
+            {!isNewReportsFilter && hasPermission('reports_add') && (
               <Link 
                 to={`/reports/new${filters.project ? `?project=${encodeURIComponent(filters.project)}` : ''}`} 
                 state={{ from: location.pathname + location.search }}
@@ -2106,6 +2076,7 @@ const fetchReports = async () => {
           </div>
         </div>
         
+        {!isNewReportsFilter && (
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">
             <svg className="inline-block w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2807,6 +2778,7 @@ const fetchReports = async () => {
             </div>
           )}
         </div>
+        )}
         
         {totalReports > 0 && (
           <div className="mt-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-gray-50/50 rounded-xl border border-gray-100">
@@ -2915,8 +2887,8 @@ const fetchReports = async () => {
         )}
         
       {/* Table Section - Completely Free Layout */}
-      <div id="reports-table-section" className={`w-full overflow-x-auto transition-all duration-300 ${activeDropdown ? 'pb-64' : 'pb-4'}`}>
-        <table className="min-w-full divide-y divide-gray-100">
+      <div id="reports-table-section" className="w-full overflow-x-auto pb-32">
+        <table className="min-w-[1200px] w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
               <th className="w-8 py-3 text-center bg-gray-100 border-b border-gray-200">
@@ -2972,8 +2944,13 @@ const fetchReports = async () => {
                     </td>
                   </tr>
                 ) : (
-                  reports.map(report => {
+                  reports.map((report, index) => {
                     const isNew = isNewReport(report.review_status);
+                    const isLastRows = reports.length > 2 && index >= reports.length - 2;
+                    const dropdownPositionClass = isLastRows ? 'bottom-full mb-2 slide-in-from-bottom-2' : 'mt-2 slide-in-from-top-2';
+                    const dropdownOriginClass = isRtl 
+                      ? (isLastRows ? 'origin-bottom-left left-0' : 'origin-top-left left-0')
+                      : (isLastRows ? 'origin-bottom-right right-0' : 'origin-top-right right-0');
                     return (
                   <tr key={report.id} className={`${selectedReports.includes(report.id) ? 'bg-blue-50' : ''} ${isNew ? 'bg-green-50 border-l-4 border-green-500' : ''}`}>
                     <td className="w-8 py-3 whitespace-nowrap text-center bg-gray-50/50">
@@ -3004,15 +2981,25 @@ const fetchReports = async () => {
                       {report.report_number ? (report.report_number.startsWith('CCB-') ? report.report_number : (report.report_number.startsWith('CCP-') ? report.report_number.replace('CCP-', 'CCB-') : `CCB-${report.report_number}`)) : '-'}
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-[15px] border-r border-gray-100 text-center">
-                      <span className="text-blue-800 font-black">
-                        {new Date(report.created_at).toLocaleDateString('en-GB')}
-                      </span>
+                      <div className="flex flex-col items-center justify-center leading-tight">
+                        <span className="text-blue-800 font-black">
+                          {new Date(report.created_at).toLocaleDateString('en-GB')}
+                        </span>
+                        <span className="text-[12px] text-blue-600 font-extrabold mt-0.5">
+                          {new Date(report.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { weekday: 'long' })}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-[15px] border-r border-gray-100 text-center">
                       {report.start_date ? (
-                        <span className="text-amber-700 font-black">
-                          {new Date(report.start_date).toLocaleDateString('en-GB')}
-                        </span>
+                        <div className="flex flex-col items-center justify-center leading-tight">
+                          <span className="text-amber-700 font-black">
+                            {new Date(report.start_date).toLocaleDateString('en-GB')}
+                          </span>
+                          <span className="text-[12px] text-amber-600 font-extrabold mt-0.5">
+                            {new Date(report.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { weekday: 'long' })}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-gray-300 text-xs italic">{t('reports.notStarted', {defaultValue: 'لم يبدأ'})}</span>
                       )}
@@ -3086,9 +3073,14 @@ const fetchReports = async () => {
                     </td>
                     <td className="px-2 py-4 whitespace-nowrap text-center border-r border-gray-100">
                       {report.closed_at ? (
-                        <span className="text-green-700 font-black text-[14px]">
-                          {new Date(report.closed_at).toLocaleDateString('en-GB')}
-                        </span>
+                        <div className="flex flex-col items-center justify-center leading-tight">
+                          <span className="text-green-700 font-black text-[14px]">
+                            {new Date(report.closed_at).toLocaleDateString('en-GB')}
+                          </span>
+                          <span className="text-[12px] text-green-600 font-extrabold mt-0.5">
+                            {new Date(report.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { weekday: 'long' })}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-gray-400 text-[14px]">-</span>
                       )}
@@ -3152,7 +3144,7 @@ const fetchReports = async () => {
                         </button>
 
                           {activeDropdown === report.id && (
-                            <div className={`absolute mt-2 w-56 rounded-xl shadow-2xl bg-white border border-gray-200 z-[1000] divide-y divide-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${isRtl ? 'origin-top-left left-0' : 'origin-top-right right-0'}`}>
+                            <div className={`absolute ${dropdownPositionClass} w-56 rounded-xl shadow-2xl bg-white border border-gray-200 z-[1000] divide-y divide-gray-100 overflow-hidden animate-in fade-in duration-200 ${dropdownOriginClass}`}>
                               <div className="py-1">
                                 <button 
                                   onClick={() => {

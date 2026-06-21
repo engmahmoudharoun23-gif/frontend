@@ -16,21 +16,6 @@ const themeColors = {
   amber: { primary: '#d97706', secondary: '#f59e0b', accent: '#fbbf24', hover: '#b45309', light: '#fffbeb', text: '#92400e' },
   slate: { primary: '#334155', secondary: '#475569', accent: '#94a3b8', hover: '#1e293b', light: '#f8fafc', text: '#1e293b' },
 };
-const WatermarkBackground = () => (
-  <>
-    {/* Background Layer */}
-    <div className="absolute inset-0 z-0 bg-mesh"></div>
-    {/* Engineering Vivid Background Layer */}
-    <div className="absolute inset-0 z-0 opacity-75 pointer-events-none overflow-hidden">
-      <img 
-        src="/engineering-bg-vivid.png" 
-        alt="Engineering Background" 
-        className="w-full h-full object-cover object-[95%_center] transform scale-110 brightness-125 contrast-125"
-      />
-      <div className="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/70"></div>
-    </div>
-  </>
-);
 
 function Login({ onLogin }) {
   const { t, i18n } = useTranslation();
@@ -211,7 +196,21 @@ function Login({ onLogin }) {
     }
   };
 
-
+  const WatermarkBackground = () => (
+    <>
+      {/* Background Layer */}
+      <div className="absolute inset-0 z-0 bg-mesh"></div>
+      {/* Engineering Vivid Background Layer */}
+      <div className="absolute inset-0 z-0 opacity-75 pointer-events-none overflow-hidden">
+        <img 
+          src="/engineering-bg-vivid.png" 
+          alt="Engineering Background" 
+          className="w-full h-full object-cover object-[95%_center] transform scale-110 brightness-125 contrast-125"
+        />
+        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/70"></div>
+      </div>
+    </>
+  );
 
   const isRtl = i18n.language === 'ar';
 

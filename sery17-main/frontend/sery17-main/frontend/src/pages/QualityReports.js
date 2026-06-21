@@ -5,9 +5,8 @@ import Layout from '../components/Layout';
 import imageCompression from 'browser-image-compression';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
-import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ClipboardCheck, FileText, Filter, Search, Download, CheckCircle, AlertTriangle, Bell } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ClipboardCheck, FileText, Filter, Search, Download, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import ViolationsModal from '../components/ViolationsModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,18 +42,6 @@ function QualityReports({ user, onLogout }) {
   const [warehouseVisits, setWarehouseVisits] = useState([]);
   const [activeTab, setActiveTab] = useState('field_quality'); // 'field_quality' or 'warehouse_visits'
 
-  const [activeNotesReportId, setActiveNotesReportId] = useState(null);
-  const [consultantNote, setConsultantNote] = useState('');
-  const [consultantReply, setConsultantReply] = useState('');
-  const [isSavingNote, setIsSavingNote] = useState(false);
-  const [notePopupAction, setNotePopupAction] = useState('save_only');
-
-  const isLevel3 = user?.role !== 'admin' && !user?.can_create_subusers;
-  const showRedDot = (r) => {
-    if (isLevel3) return r.consultant_note && !r.report_note_processed;
-    return r.consultant_reply && !r.consultant_note_processed;
-  };
-
   const hasPermission = (permKey) => {
     if (user?.role === 'admin') return true;
     if ((user?.permissions || []).includes(permKey)) return true;
@@ -63,7 +50,6 @@ function QualityReports({ user, onLogout }) {
   };
 
   const [loading, setLoading] = useState(false);
-  const [badgesData, setBadgesData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
@@ -81,7 +67,6 @@ function QualityReports({ user, onLogout }) {
   const [tempDate, setTempDate] = useState('');
   const [tempProject, setTempProject] = useState('');
   const [tempGov, setTempGov] = useState('');
-  const [showViolations, setShowViolations] = useState(false);
 
   const [appliedDate, setAppliedDate] = useState('');
   const [appliedProject, setAppliedProject] = useState('');
@@ -102,71 +87,15 @@ function QualityReports({ user, onLogout }) {
     setAppliedGov('');
   };
 
-  const openNotesModal = (report) => {
-    setActiveNotesReportId(report.id);
-    setConsultantNote(report.consultant_note || '');
-    setConsultantReply(report.consultant_reply || '');
-
-    if (isLevel3 && report.consultant_note && !report.report_note_processed) {
-      axios.put(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${report.id}`, { report_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-      if (activeTab === 'warehouse_visits') setWarehouseVisits(prev => prev.map(rep => rep.id === report.id ? { ...rep, report_note_processed: true } : rep));
-      else setReports(prev => prev.map(rep => rep.id === report.id ? { ...rep, report_note_processed: true } : rep));
-    } else if (!isLevel3 && report.consultant_reply && !report.consultant_note_processed) {
-      axios.put(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${report.id}`, { consultant_note_processed: true }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-      if (activeTab === 'warehouse_visits') setWarehouseVisits(prev => prev.map(rep => rep.id === report.id ? { ...rep, consultant_note_processed: true } : rep));
-      else setReports(prev => prev.map(rep => rep.id === report.id ? { ...rep, consultant_note_processed: true } : rep));
-    }
-  };
-
-  const handleSaveNote = async () => {
-    if (!activeNotesReportId) return;
-    if (isSavingNote) return;
-    setIsSavingNote(true);
-    const token = localStorage.getItem('token');
-    
-    let isProcessed = false;
-    if (notePopupAction === 'save_and_close') {
-      isProcessed = true;
-    }
-
-    const updatePayload = { consultant_note: consultantNote, consultant_reply: consultantReply };
-    if (!isLevel3) updatePayload.report_note_processed = isProcessed;
-    else updatePayload.consultant_note_processed = isProcessed;
-
-    try {
-      if (activeTab === 'warehouse_visits') {
-        setWarehouseVisits(prev => prev.map(rep => rep.id === activeNotesReportId ? { ...rep, ...updatePayload } : rep));
-      } else {
-        setReports(prev => prev.map(rep => rep.id === activeNotesReportId ? { ...rep, ...updatePayload } : rep));
-      }
-      
-      toast.success(isRtl ? 'تم حفظ الملاحظة بنجاح' : 'Note saved successfully');
-      
-      if (notePopupAction === 'save_and_close') {
-        setActiveNotesReportId(null);
-      }
-
-      await axios.put(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${activeNotesReportId}`, updatePayload, { headers: { Authorization: `Bearer ${token}` } });
-      
-      fetchReports();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'حدث خطأ');
-    } finally {
-      setIsSavingNote(false);
-      setNotePopupAction('save_only');
-    }
-  };
-
   const projectOptions = useMemo(() => {
     let projs = user?.role === 'admin' 
       ? Object.keys(projectGovs) 
       : (user?.projects || []);
     if (projs.length === 0) {
-      const data = activeTab === 'warehouse_visits' ? warehouseVisits : reports;
-      projs = data.map(r => r.project).filter(Boolean);
+      projs = reports.map(r => r.project).filter(Boolean);
     }
     return [...new Set(projs)].sort();
-  }, [projectGovs, user, reports, warehouseVisits, activeTab]);
+  }, [projectGovs, user, reports]);
 
   const govOptions = useMemo(() => {
     if (tempProject) {
@@ -182,11 +111,10 @@ function QualityReports({ user, onLogout }) {
       }
     });
     if (govs.length === 0) {
-      const data = activeTab === 'warehouse_visits' ? warehouseVisits : reports;
-      govs = data.map(r => r.governorate).filter(Boolean);
+      govs = reports.map(r => r.governorate).filter(Boolean);
     }
     return [...new Set(govs)].sort();
-  }, [projectGovs, tempProject, user, reports, warehouseVisits, activeTab]);
+  }, [projectGovs, tempProject, user, reports]);
 
   const filteredReports = useMemo(() => {
     const dataList = activeTab === 'warehouse_visits' ? warehouseVisits : reports;
@@ -201,22 +129,6 @@ function QualityReports({ user, onLogout }) {
   useEffect(() => {
     setCurrentPage(1);
   }, [reports, warehouseVisits, activeTab, appliedDate, appliedProject, appliedGov]);
-
-  useEffect(() => {
-    setAppliedDate(tempDate);
-    setCurrentPage(1);
-  }, [tempDate]);
-
-  useEffect(() => {
-    // Reset filters when switching tabs
-    setTempDate('');
-    setTempProject('');
-    setTempGov('');
-    setAppliedDate('');
-    setAppliedProject('');
-    setAppliedGov('');
-    setCurrentPage(1);
-  }, [activeTab]);
 
   useEffect(() => {
     const fetchProjectGovs = async () => {
@@ -285,12 +197,6 @@ function QualityReports({ user, onLogout }) {
       }
       setWarehouseVisits([]);
     }
-    
-    try {
-      const bRes = await axios.get(`${API}/dashboard/badges?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
-      setBadgesData(bRes.data || {});
-    } catch (e) {}
-    
     setLoading(false);
   }, [t]);
 
@@ -314,16 +220,10 @@ function QualityReports({ user, onLogout }) {
   const handleReviewReport = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      if (activeTab === 'warehouse_visits') {
-        setWarehouseVisits(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'تمت المراجعة' } : rep));
-      } else {
-        setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'تمت المراجعة' } : rep));
-      }
-      toast.success(i18n.language === 'ar' ? 'تم مراجعة البلاغ بنجاح' : 'Report reviewed successfully');
       await axios.put(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(i18n.language === 'ar' ? 'تم مراجعة البلاغ بنجاح' : 'Report reviewed successfully');
       fetchReports();
     } catch (err) {
-      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
@@ -331,32 +231,26 @@ function QualityReports({ user, onLogout }) {
   const handleRevertReview = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      if (activeTab === 'warehouse_visits') {
-        setWarehouseVisits(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'قيد المراجعة' } : rep));
-      } else {
-        setReports(prev => prev.map(rep => rep.id === reportId ? { ...rep, status: 'قيد المراجعة' } : rep));
-      }
-      toast.success(i18n.language === 'ar' ? 'تم اعادة فتح حالة المراجعة' : 'Review status reopened');
       await axios.put(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(i18n.language === 'ar' ? 'تم اعادة فتح حالة المراجعة' : 'Review status reopened');
       fetchReports();
     } catch (err) {
-      fetchReports();
       toast.error(err.response?.data?.detail || 'حدث خطأ');
     }
   };
 
   const compressImage = async (file) => {
     const options = { 
-      maxSizeMB: 0.1,
-      maxWidthOrHeight: 1200, 
+      maxSizeMB: 0.09, 
+      maxWidthOrHeight: 1024, 
       useWebWorker: true,
-      initialQuality: 0.75
+      initialQuality: 0.7
     };
     try { return await imageCompression(file, options); }
     catch { return file; }
   };
 
-  const handleImageSelect = async (e) => {
+    const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
@@ -365,36 +259,34 @@ function QualityReports({ user, onLogout }) {
       const newImages = [...(form.images || [])];
       
       for (let file of files) {
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        if (isPdf) {
+        if (file.type === 'application/pdf') {
            const reader = new FileReader();
-           let base64pdf = await new Promise(resolve => {
-             reader.onloadend = () => resolve(reader.result);
-             reader.readAsDataURL(file);
+           await new Promise(resolve => {
+               reader.onloadend = () => {
+                  newPreviews.push(reader.result);
+                  newImages.push(reader.result);
+                  resolve();
+               };
+               reader.readAsDataURL(file);
            });
-           try {
-             const token = localStorage.getItem('token');
-             const res = await axios.post(`${API}/compress-pdf`, { pdf: base64pdf }, { headers: { Authorization: `Bearer ${token}` } });
-             if (res.data && res.data.pdf) base64pdf = res.data.pdf;
-           } catch (e) { console.error('PDF compression failed', e); }
-           newPreviews.push(base64pdf);
-           newImages.push(base64pdf);
         } else {
            const compressed = await compressImage(file);
-           const result = await new Promise(resolve => {
-             const r = new FileReader();
-             r.onloadend = () => resolve(r.result);
-             r.readAsDataURL(compressed);
+           const reader = new FileReader();
+           await new Promise(resolve => {
+               reader.onloadend = () => {
+                  newPreviews.push(reader.result);
+                  newImages.push(reader.result);
+                  resolve();
+               };
+               reader.readAsDataURL(compressed);
            });
-           newPreviews.push(result);
-           newImages.push(result);
         }
       }
       
       setImagePreviews(newPreviews);
       setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
       setUploading(false);
-      toast.success(i18n.language === 'ar' ? 'تم إضافة الملفات وضغطها بنجاح' : 'Files added and compressed successfully');
+      toast.success(t('safetyReports.imageAddSuccess') || 'تم إضافة الملفات بنجاح');
     } catch (e) { 
       console.error(e);
       setUploading(false); 
@@ -408,46 +300,7 @@ function QualityReports({ user, onLogout }) {
   };
 
   const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
-  
-  const handleViewReport = async (r) => {
-    if (activeTab === 'warehouse_visits') {
-      setViewReport(r);
-      return;
-    }
-    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/quality-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
-      toast.dismiss('loadingReport');
-      setViewReport(res.data);
-    } catch (err) {
-      toast.dismiss('loadingReport');
-      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
-    }
-  };
-
-  const openEdit = async (r) => { 
-    let full = r;
-    if (activeTab !== 'warehouse_visits') {
-      toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API}/quality-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
-        toast.dismiss('loadingReport');
-        full = res.data;
-      } catch (err) {
-        toast.dismiss('loadingReport');
-        toast.error('Error loading details');
-        return;
-      }
-    }
-    setEditingReport(full); 
-    setForm({ date: full.date || '', project: full.project || '', governorate: full.governorate || '', notes: full.notes || '', image: full.image || '', images: full.images || [] }); 
-    setImagePreview(full.image || ''); 
-    setImagePreviews(full.images || []); 
-    setShowModal(true); 
-    setActiveMenu(null); 
-  };
+  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '', images: r.images || [] }); setImagePreview(r.image || ''); setImagePreviews(r.images || []); setShowModal(true); setActiveMenu(null); };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -456,14 +309,13 @@ function QualityReports({ user, onLogout }) {
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
-        toast.success(t('qualityReports.updateSuccess'));
-        setShowModal(false);
         await axios.put(`${API}/quality-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('qualityReports.updateSuccess'));
       } else {
-        toast.success(t('qualityReports.saveSuccess'));
-        setShowModal(false);
         await axios.post(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}`, form, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success(t('qualityReports.saveSuccess'));
       }
+      setShowModal(false);
       fetchReports();
     } catch (err) { toast.error(err.response?.data?.detail || 'حدث خطأ'); }
     finally { setIsSubmitting(false); }
@@ -473,38 +325,15 @@ function QualityReports({ user, onLogout }) {
     if (!window.confirm(t('qualityReports.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
     try {
-      if (activeTab === 'warehouse_visits') {
-        setWarehouseVisits(prev => prev.filter(rep => rep.id !== id));
-      } else {
-        setReports(prev => prev.filter(rep => rep.id !== id));
-      }
-      toast.success(t('qualityReports.deleteSuccess'));
       await axios.delete(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(t('qualityReports.deleteSuccess'));
       fetchReports();
-    } catch {
-      fetchReports();
-      toast.error(t('qualityReports.deleteError'));
-    }
+    } catch { toast.error(t('qualityReports.deleteError')); }
     setActiveMenu(null);
   };
 
   const handleDownloadPDF = async (report, titleText) => {
-    let fullReport = report;
-    if (!fullReport.image && activeTab !== 'warehouse_visits') {
-      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API}/quality-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
-        toast.dismiss('loadingReport');
-        fullReport = res.data;
-      } catch (err) {
-        toast.dismiss('loadingReport');
-        toast.error('Error loading details');
-        return;
-      }
-    }
-
-    if (!fullReport.image) {
+    if (!report.image) {
       toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       return;
     }
@@ -512,22 +341,22 @@ function QualityReports({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      if (fullReport.image.startsWith('data:')) {
+      if (report.image.startsWith('data:')) {
         const link = document.createElement('a');
-        link.href = fullReport.image;
-        link.download = `report_attachment_${fullReport.id || 'file'}.jpg`;
+        link.href = report.image;
+        link.download = `report_attachment_${report.id || 'file'}.jpg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         toast.success(t('qualityReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
       } else {
-        const fileUrlParam = encodeURIComponent(fullReport.image);
+        const fileUrlParam = encodeURIComponent(report.image);
         const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
         
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.target = '_blank';
-        link.download = `report_attachment_${fullReport.id || 'file'}`;
+        link.download = `report_attachment_${report.id || 'file'}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -547,124 +376,6 @@ function QualityReports({ user, onLogout }) {
   return (
     <Layout user={user} onLogout={onLogout}>
       <div className="p-4 md:p-6 max-w-7xl mx-auto" dir={isRtl ? 'rtl' : 'ltr'}>
-        {showViolations ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-fade-in">
-            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
-              <button onClick={() => setShowViolations(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 text-gray-600 font-bold">
-                <span className="text-2xl leading-none">{isRtl ? '←' : '→'}</span>
-                <span>{isRtl ? 'الرجوع' : 'Back'}</span>
-              </button>
-              <h2 className="text-2xl font-bold text-gray-800 border-r-4 border-red-500 pr-4">
-                {isRtl ? 'المخالفات' : 'Violations'}
-              </h2>
-            </div>
-            <ViolationsModal isFullScreen={true} onClose={() => setShowViolations(false)} user={user} projectGovs={projectGovs} type="quality" />
-          </div>
-        ) : showModal ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in">
-            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 text-gray-600 font-bold">
-                <span className="text-2xl leading-none">{isRtl ? '←' : '→'}</span>
-                <span>{isRtl ? 'الرجوع' : 'Back'}</span>
-              </button>
-              <h2 className="text-2xl font-bold text-gray-800 border-r-4 border-teal-500 pr-4">
-                {editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.editReport')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew'))}
-              </h2>
-            </div>
-            <form onSubmit={handleSave} className="space-y-6 max-w-4xl mx-auto" dir={isRtl ? 'rtl' : 'ltr'}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('qualityReports.date')} <span className="text-red-500">*</span></label>
-                  <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('qualityReports.governorate')} <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={form.governorate}
-                    onChange={e => setForm({...form, governorate: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none bg-gray-50"
-                    disabled={!form.project}
-                  >
-                    <option value="">{t('qualityReports.selectGov')}</option>
-                    {allowedGovsList.map(g => (
-                      <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">{t('qualityReports.project')} <span className="text-red-500">*</span></label>
-                <select
-                  required
-                  value={form.project}
-                  onChange={e => setForm({...form, project: e.target.value, governorate: ''})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none bg-gray-50"
-                >
-                  <option value="">{t('qualityReports.selectProject')}</option>
-                  {allowedProjectsList.map(p => (
-                    <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">{t('qualityReports.notes')}</label>
-                <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={5} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none resize-none bg-gray-50" />
-              </div>
-              <div className="border-t border-gray-100 pt-6">
-                <label className="block text-sm font-bold text-gray-700 mb-4">📷 {t('qualityReports.image')}</label>
-                
-                <p className="text-xs text-gray-400 mb-3">{isRtl ? 'يتم ضغط الصور تلقائياً إلى 100KB والـ PDF إلى 150KB' : 'Images auto-compressed to 100KB, PDFs to 150KB'}</p>
-                <div className="flex gap-4 mb-4">
-                  <label className="flex-1 flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors bg-white">
-                    <Upload className="w-6 h-6 text-teal-500" /><span className="text-sm text-teal-700 font-bold">{t('qualityReports.selectImage')}</span>
-                    <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleImageSelect} disabled={uploading} />
-                  </label>
-                  <label className="flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors bg-white">
-                    <Camera className="w-6 h-6 text-teal-500" /><span className="text-sm text-teal-700 font-bold">{t('qualityReports.camera')}</span>
-                    <input type="file" accept="image/*,application/pdf" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
-                  </label>
-                </div>
-                {uploading && <p className="text-sm text-teal-600 mb-4 font-bold animate-pulse">{isRtl ? 'جاري ضغط ورفع الملفات...' : 'Compressing and uploading...'}</p>}
-                {imagePreviews.length > 0 ? (
-                  <div className="mb-4 flex flex-wrap gap-4">
-                    {imagePreviews.map((img, idx) => (
-                      <div key={idx} className="relative inline-block">
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
-                          <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2">
-                            <FileText className="w-8 h-8 text-teal-500 mb-1" />
-                            <span className="text-xs text-gray-600 font-bold text-center">PDF</span>
-                          </div>
-                        ) : (
-                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in shadow-sm" onClick={() => setZoomedImage(img)} />
-                        )}
-                        <button type="button" onClick={() => removeImage(idx)} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (imagePreview && (
-                  <div className="mb-4 relative inline-block">
-                    {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
-                      <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2">
-                        <FileText className="w-8 h-8 text-teal-500 mb-1" />
-                        <span className="text-xs text-gray-600 font-bold text-center">PDF</span>
-                      </div>
-                    ) : (
-                      <img src={resolveImageUrl(imagePreview)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in shadow-sm" onClick={() => setZoomedImage(imagePreview)} />
-                    )}
-                    <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold hover:bg-red-600 shadow-lg border-2 border-white">×</button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-4 pt-4 border-t border-gray-100">
-                <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-4 bg-teal-600 text-white rounded-xl font-bold text-lg transition-all shadow-md ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-teal-700 hover:shadow-lg hover:-translate-y-0.5'}`}>
-                  {isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.saveChangesBtn')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.saveBtn'))}
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
-          <>
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -674,25 +385,12 @@ function QualityReports({ user, onLogout }) {
             </h1>
             <p className="text-gray-500 text-sm mt-1 mr-12">{activeTab === 'warehouse_visits' ? t('qualityReports.warehouseVisitsSubTitle') : t('qualityReports.subTitle')}</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-md transition-all"
-            >
-              <Plus className="w-5 h-5" /> {activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew')}
-            </button>
-            <button
-              onClick={() => setShowViolations(true)}
-              className="relative flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium shadow-md transition-all"
-            >
-              <AlertTriangle className="w-5 h-5" /> {isRtl ? 'مخالفات الجودة' : 'Quality Violations'}
-              {((badgesData?.violations || 0) > 0 || (badgesData?.violations_notes || 0) > 0) && (
-                  <div className="absolute -top-3 -right-3 bg-slate-800 text-white rounded-full p-1 animate-pulse border-2 border-white shadow-sm flex items-center justify-center">
-                    <Bell className="w-3.5 h-3.5" />
-                  </div>
-              )}
-            </button>
-          </div>
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-md transition-all"
+          >
+            <Plus className="w-5 h-5" /> {activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew')}
+          </button>
         </div>
 
         {/* Tabs */}
@@ -718,63 +416,58 @@ function QualityReports({ user, onLogout }) {
               <Filter className="w-5 h-5 text-teal-600 animate-pulse" />
               <span>{t('qualityReports.filterTitle')}</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full">
-              <input
-                type="date"
-                value={tempDate}
-                onChange={e => setTempDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none text-sm text-gray-700 bg-white"
-              />
-              <select
-                value={tempProject}
-                onChange={e => {
-                  setTempProject(e.target.value);
-                  setTempGov('');
-                  if (!e.target.value) {
-                    setAppliedProject('');
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none text-sm text-gray-700 bg-white"
-              >
-                <option value="">{t('reports.allProjects')}</option>
-                {projectOptions.map(p => (
-                  <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
-                ))}
-              </select>
-              <select
-                value={tempGov}
-                onChange={e => {
-                  setTempGov(e.target.value);
-                  if (!e.target.value) {
-                    setAppliedGov('');
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none text-sm text-gray-700 bg-white"
-              >
-                <option value="">{t('reports.allGovernorates')}</option>
-                {govOptions.map(g => (
-                  <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
-                ))}
-              </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSearch}
-                  className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center shrink-0 cursor-pointer text-sm font-bold"
-                  title={t('qualityReports.searchBtn')}
-                >
-                  <Search className="w-4 h-4" />
-                  <span>{t('qualityReports.searchBtn')}</span>
-                </button>
-                {(appliedDate || appliedProject || appliedGov || tempDate || tempProject || tempGov) && (
-                  <button
-                    onClick={handleReset}
-                    className="px-4 py-2 text-xs text-red-600 hover:text-red-700 font-bold hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-dashed border-red-200 shrink-0"
+            <div className="flex flex-col sm:flex-row gap-3 w-full flex-1 max-w-3xl items-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full flex-1">
+                <div>
+                  <input
+                    type="date"
+                    value={tempDate}
+                    onChange={e => setTempDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none text-sm text-gray-700 bg-white"
+                  />
+                </div>
+                <div>
+                  <select
+                    value={tempProject}
+                    onChange={e => setTempProject(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none text-sm text-gray-700 bg-white"
                   >
-                    {t('qualityReports.resetBtn')}
+                    <option value="">{t('reports.allProjects')}</option>
+                    {projectOptions.map(p => (
+                      <option key={p} value={p}>{translateBrandingText(p, isRtl)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <select
+                    value={tempGov}
+                    onChange={e => setTempGov(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-200 outline-none text-sm text-gray-700 bg-white"
+                  >
+                    <option value="">{t('reports.allGovernorates')}</option>
+                    {govOptions.map(g => (
+                      <option key={g} value={g}>{translateBrandingText(g, isRtl)}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleSearch}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition-all shadow-md flex items-center gap-1.5 justify-center shrink-0 cursor-pointer text-sm font-bold"
+                    title={t('qualityReports.searchBtn')}
+                  >
+                    <Search className="w-4 h-4" />
+                    <span>{t('qualityReports.searchBtn')}</span>
                   </button>
-                )}
+                </div>
               </div>
             </div>
+            {(appliedDate || appliedProject || appliedGov || tempDate || tempProject || tempGov) && (
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 text-xs text-red-600 hover:text-red-700 font-bold hover:bg-red-50 rounded-xl transition-all cursor-pointer border border-dashed border-red-200"
+              >
+                {t('qualityReports.resetBtn')}
+              </button>
+            )}
           </div>
         )}
 
@@ -832,7 +525,7 @@ function QualityReports({ user, onLogout }) {
                             <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
                               r.status === 'تمت المراجعة'
                                 ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-slate-700 text-white shadow-sm border border-slate-600'
+                                : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
                             }`}>
                               {translateBrandingText(r.status || 'قيد المراجعة', isRtl)}
                             </span>
@@ -852,22 +545,17 @@ function QualityReports({ user, onLogout }) {
                               <DropdownMenuContent align="end" className="w-48 bg-white shadow-2xl border border-slate-100 rounded-2xl p-1 z-[65]">
                                 <div className="py-1">
                                   <DropdownMenuItem
-                                    onClick={() => handleViewReport(r)}
+                                    onClick={() => setViewReport(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
                                     <Eye className="w-4 h-4 text-teal-600" /> {t('qualityReports.viewDetails')}
                                   </DropdownMenuItem>
-                                  {(!r.report_note_processed || user?.role === 'admin' || user?.level === 1 || user?.level === 2 || (user?.level === 3 && r.consultant_note)) && (
-                                    <DropdownMenuItem
-                                      onClick={() => openNotesModal(r)}
-                                      className="w-full text-right px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer relative"
-                                    >
-                                      <FileText className="w-4 h-4 text-amber-600" /> {isRtl ? 'اضافة ملاحظة للتقرير' : 'Add Note to Report'}
-                                      {showRedDot(r) && (
-                                        <span className="absolute left-2 top-2 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                                      )}
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => setViewNote(r.notes || 'لا توجد ملاحظات')}
+                                    className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-amber-50 hover:text-amber-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
+                                  >
+                                    <FileText className="w-4 h-4 text-amber-600" /> {t('qualityReports.notesTitle')}
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleDownloadPDF(r, t('qualityReports.title'))}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
@@ -892,7 +580,7 @@ function QualityReports({ user, onLogout }) {
                                   )}
                                 </div>
                                 <div className="py-1 bg-slate-50/50 border-t border-slate-100">
-                                  {hasPermission('quality_reports_edit') && !(user?.role !== 'admin' && user?.can_create_subusers) && (
+                                  {hasPermission('quality_reports_edit') && (
                                     <DropdownMenuItem
                                     onClick={() => openEdit(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 hover:text-yellow-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
@@ -900,7 +588,7 @@ function QualityReports({ user, onLogout }) {
                                     <Edit2 className="w-4 h-4 text-yellow-600" /> {activeTab === 'warehouse_visits' ? t('qualityReports.editImages') : t('qualityReports.edit')}
                                   </DropdownMenuItem>
                                   )}
-                                  {hasPermission('quality_reports_delete') && !(user?.role !== 'admin' && user?.can_create_subusers) && (
+                                  {hasPermission('quality_reports_delete') && (
                                     <DropdownMenuItem
                                     onClick={() => handleDelete(r.id)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-semibold rounded-lg cursor-pointer"
@@ -1188,90 +876,6 @@ function QualityReports({ user, onLogout }) {
           </div>
         )}
 
-        {/* Consultant Notes Modal */}
-        {activeNotesReportId && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex justify-between items-center shrink-0">
-                <h3 className="text-xl font-black text-white flex items-center gap-2">
-                  <FileText className="w-6 h-6 animate-pulse" /> {isRtl ? 'اضافة ملاحظة للتقرير' : 'Add Note to Report'}
-                </h3>
-                <button onClick={() => setActiveNotesReportId(null)} className="text-white/80 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-1.5"><X className="w-5 h-5" /></button>
-              </div>
-              
-              <div className="p-6 overflow-y-auto flex-1 space-y-6">
-                {/* خانة ملاحظة الاستشاري (للمستوى 1 و 2) */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                    <span className="p-1.5 bg-amber-100 text-amber-700 rounded-lg">📝</span>
-                    {isRtl ? 'ملاحظة' : 'Note'}
-                  </label>
-                  <textarea 
-                    value={consultantNote}
-                    onChange={e => setConsultantNote(e.target.value)}
-                    disabled={user?.role !== 'admin' && user?.level !== 1 && user?.level !== 2}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500/50 outline-none resize-none text-sm text-gray-700 bg-gray-50/50 disabled:bg-gray-100 disabled:text-gray-500 min-h-[120px] transition-all"
-                    placeholder={isRtl ? 'اكتب ملاحظتك هنا...' : 'Type note here...'}
-                  />
-                </div>
-
-                {/* الديكور الفاصل */}
-                <div className="flex items-center justify-center py-2 relative">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dashed border-gray-200"></div></div>
-                  <div className="relative bg-white px-4 text-gray-400 text-xs font-bold rounded-full border border-gray-100 flex items-center gap-1.5 py-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                    {isRtl ? 'الرد والإفادة' : 'Reply & Feedback'}
-                  </div>
-                </div>
-
-                {/* خانة الرد (للمستوى 3) */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                    <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">💬</span>
-                    {isRtl ? 'الرد' : 'Reply'}
-                  </label>
-                  <textarea 
-                    value={consultantReply}
-                    onChange={e => setConsultantReply(e.target.value)}
-                    disabled={user?.role === 'admin' || user?.level === 1 || user?.level === 2}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/50 outline-none resize-none text-sm text-gray-700 bg-blue-50/10 disabled:bg-gray-100 disabled:text-gray-500 min-h-[120px] transition-all"
-                    placeholder={isRtl ? 'اكتب الرد هنا...' : 'Type reply here...'}
-                  />
-                </div>
-              </div>
-
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
-                <button 
-                  onClick={() => setActiveNotesReportId(null)} 
-                  className="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:text-gray-800 font-bold transition-colors text-sm"
-                >
-                  {isRtl ? 'إغلاق' : 'Close'}
-                </button>
-                <button 
-                  onClick={() => {
-                    setNotePopupAction('save_only');
-                    setTimeout(handleSaveNote, 0);
-                  }}
-                  disabled={isSavingNote}
-                  className="px-6 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 font-bold transition-all shadow-sm shadow-amber-200 flex items-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {isSavingNote && notePopupAction === 'save_only' ? <span className="animate-spin text-lg leading-none">⏳</span> : '💾'} {isRtl ? 'حفظ' : 'Save'}
-                </button>
-                <button 
-                  onClick={() => {
-                    setNotePopupAction('save_and_close');
-                    setTimeout(handleSaveNote, 0);
-                  }}
-                  disabled={isSavingNote}
-                  className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold transition-all shadow-sm shadow-emerald-200 flex items-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {isSavingNote && notePopupAction === 'save_and_close' ? <span className="animate-spin text-lg leading-none">⏳</span> : '📨'} {isRtl ? 'حفظ وإرسال وإغلاق' : 'Save, Send & Close'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* View Note Modal */}
         {viewNote && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -1298,8 +902,6 @@ function QualityReports({ user, onLogout }) {
             <button className="absolute top-4 right-4 text-white bg-white/20 rounded-full p-2 hover:bg-white/30"><X className="w-6 h-6" /></button>
             <img src={resolveImageUrl(zoomedImage)} alt="" className="max-w-full max-h-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />
           </div>
-        )}
-          </>
         )}
       </div>
     </Layout>

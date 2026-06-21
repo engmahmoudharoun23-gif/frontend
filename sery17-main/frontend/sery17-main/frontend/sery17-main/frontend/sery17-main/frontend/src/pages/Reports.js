@@ -338,9 +338,6 @@ function Reports({ user, onLogout }) {
   const [consultantReplyText, setConsultantReplyText] = useState('');
   const [showConsultantReplyBox, setShowConsultantReplyBox] = useState(false);
   const [selectedConsultantReportId, setSelectedConsultantReportId] = useState(null);
-  const [editingBubbleIndex, setEditingBubbleIndex] = useState(null);
-  const [editingBubbleText, setEditingBubbleText] = useState('');
-  const [activeBubbleDropdown, setActiveBubbleDropdown] = useState(null);
   const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
          // الملاحظة الحالية
   const [availableProjects, setAvailableProjects] = useState([]); // المشاريع من قاعدة البيانات
@@ -526,7 +523,7 @@ function Reports({ user, onLogout }) {
         status: '',
         license_status: newLicenseStatus || '',
         my_reports: false,
-        created_by: searchParams.get('created_by') || '',
+        created_by: '',
         exact: false,
         date_from: '',
         date_to: '',
@@ -928,11 +925,13 @@ function Reports({ user, onLogout }) {
 
   const handlePermanentDeleteNote = async () => {
     if (!selectedConsultantReportId) return;
-    if (!window.confirm(t('consultantNoteModal.confirmDeleteNote', { defaultValue: 'هل أنت متأكد من الحذف النهائي للملاحظة والردود؟' }))) return;
+    if (!window.confirm('هل أنت متأكد من الحذف النهائي للملاحظة والردود؟')) return;
     
     setIsSavingConsultantNote(true);
     try {
-      await axios.delete(`${API}/reports/${selectedConsultantReportId}/consultant_note`, {
+      await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note`, {
+        consultant_note: ''
+      }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -941,9 +940,6 @@ function Reports({ user, onLogout }) {
           return {
             ...r,
             consultant_note: '',
-            consultant_note_by: '',
-            consultant_note_reply: '',
-            consultant_note_replied_by: '',
             consultant_note_processed: false
           };
         }
@@ -951,11 +947,11 @@ function Reports({ user, onLogout }) {
       }));
       
       setCurrentConsultantNote('');
-      toast.success(t('consultantNoteModal.deleteNoteSuccess', { defaultValue: 'تم الحذف النهائي بنجاح' }));
+      toast.success('تم الحذف النهائي بنجاح');
       setShowConsultantNoteModal(false);
     } catch (error) {
       console.error('Error deleting note:', error);
-      toast.error(t('consultantNoteModal.deleteNoteError', { defaultValue: 'حدث خطأ أثناء الحذف' }));
+      toast.error('حدث خطأ أثناء الحذف');
     } finally {
       setIsSavingConsultantNote(false);
     }
@@ -978,29 +974,6 @@ function Reports({ user, onLogout }) {
     } catch (error) {
       console.error('Error toggling status:', error);
       toast.error(t('consultantNotesPage.processError', { defaultValue: 'حدث خطأ أثناء تغيير الحالة' }));
-    }
-  };
-
-  const updateConsultantReplyString = async (newReplyStr) => {
-    setIsSavingConsultantNote(true);
-    try {
-      const response = await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note_reply`, { reply: newReplyStr }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (response.data.success) {
-        setReports(reports.map(r => 
-          r.id === selectedConsultantReportId 
-            ? { ...r, consultant_note_reply: response.data.reply, consultant_note_replied_by: response.data.replied_by, consultant_note_processed: false } 
-            : r
-        ));
-        toast.success(t('consultantNoteModal.replySuccess', { defaultValue: 'تم التحديث بنجاح' }));
-        setEditingBubbleIndex(null);
-      }
-    } catch (error) {
-      console.error('Error updating reply:', error);
-      toast.error(t('consultantNoteModal.replyError', { defaultValue: 'حدث خطأ أثناء التحديث' }));
-    } finally {
-      setIsSavingConsultantNote(false);
     }
   };
 
@@ -2585,7 +2558,7 @@ const fetchReports = async () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {reports.length === 0 && loading ? (
+                {loading ? (
                   <tr><td colSpan="14" className="px-6 py-4 text-center text-gray-500"><div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div></td></tr>
                 ) : reports.length === 0 ? (
                   <tr>
@@ -2598,7 +2571,7 @@ const fetchReports = async () => {
                           {filters.project ? (
                             <>
                               <p className="text-xl">📭 {t('reports.noReportsProject')}</p>
-                              <p className="text-sm text-gray-500 mt-2">{t('reports.project')}: {translateBrandingText(filters.project, isRtl)}</p>
+                              <p className="text-sm text-gray-500 mt-2">{t('reports.project')}: {filters.project}</p>
                             </>
                           ) : (
                             <p>{t('reports.noReports')}</p>
@@ -2761,11 +2734,7 @@ const fetchReports = async () => {
                             <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                           </svg>
                           {report.notes && report.notes.trim() !== '' && (
-                            <span className="absolute -top-1 -right-1 text-orange-500 animate-bounce" title="يوجد ملاحظات">
-                              <svg className="w-4 h-4 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-                              </svg>
-                            </span>
+                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse" title="يوجد ملاحظات"></span>
                           )}
                         </button>
 
@@ -2798,15 +2767,14 @@ const fetchReports = async () => {
                                   className={`group flex items-center px-4 py-3 text-sm text-purple-700 hover:bg-purple-600 hover:text-white w-full transition-colors font-bold ${isRtl ? 'text-right' : 'text-left'}`}
                                 >
                                   <svg className={`h-5 w-5 text-purple-500 group-hover:text-white ${isRtl ? 'ml-3' : 'mr-3'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                   </svg>
                                   {t('reports.actions.viewNotes')}
                                 </button>
                                 
                                 
                                 {/* خيار ملاحظات الاستشاري */}
-                                {hasReportPermission(report, 'consultant_notes') && 
-                                  (user?.role === 'admin' || (user?.can_create_subusers && user?.has_sub_users)) && (
+                                {hasReportPermission(report, 'consultant_notes') && (user?.role === 'admin' || user?.can_create_subusers) && (
                                   <button 
                                     onClick={() => {
                                       setSelectedConsultantReportId(report.id);
@@ -3297,38 +3265,12 @@ const fetchReports = async () => {
                     
                     return (
                       <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
-                        <div className="font-bold mb-2 opacity-90 text-[12px] flex justify-between items-center">
-                          <span>{prefixText} {bubbleName}</span>
-                          {(!r.consultant_note_processed && (user?.full_name === b.name || user?.username === b.name || (b.name === 'المستوى الثالث' && !user?.full_name && !user?.username) || (b.name && user?.username?.toLowerCase().includes('medhat') && b.name.toLowerCase().includes('medhat')))) && (
-                            <div className="flex gap-2">
-                              <button onClick={() => { setEditingBubbleIndex(i); setEditingBubbleText(b.text); }} className="text-blue-600 hover:text-blue-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-blue-200">{t("common.edit", { defaultValue: "تعديل" })}</button>
-                              <button onClick={() => {
-                                if(!window.confirm(t("consultantNotesPage.confirmDeleteReply", { defaultValue: "هل أنت متأكد من حذف ردك؟" }))) return;
-                                const newBubbles = bubbles.filter((_, idx) => idx !== i);
-                                const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                updateConsultantReplyString(newStr);
-                              }} className="text-red-600 hover:text-red-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-red-200">{t("common.delete", { defaultValue: "حذف" })}</button>
-                            </div>
-                          )}
+                        <div className="font-bold mb-2 opacity-90 text-[12px]">
+                          {prefixText} {bubbleName}
                         </div>
-                        {editingBubbleIndex === i ? (
-                          <div className="mt-2">
-                            <textarea className="w-full p-2 border rounded-md" value={editingBubbleText} onChange={e => setEditingBubbleText(e.target.value)}></textarea>
-                            <div className="flex gap-2 mt-2">
-                              <button onClick={() => {
-                                const newBubbles = [...bubbles];
-                                newBubbles[i].text = editingBubbleText;
-                                const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                updateConsultantReplyString(newStr);
-                              }} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 shadow-sm border border-blue-600">{t("common.saveEdit", { defaultValue: "حفظ التعديل" })}</button>
-                              <button onClick={() => setEditingBubbleIndex(null)} className="bg-white text-gray-700 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 shadow-sm border border-gray-300">{t("common.cancel", { defaultValue: "إلغاء" })}</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="whitespace-pre-wrap break-words leading-relaxed">
-                            {translateBrandingText(b.text, isRtl)}
-                          </div>
-                        )}
+                        <div className="whitespace-pre-wrap break-words leading-relaxed">
+                          {translateBrandingText(b.text, isRtl)}
+                        </div>
                       </div>
                     );
                   });
@@ -3378,9 +3320,7 @@ const fetchReports = async () => {
                   {t('consultantNoteModal.deleteReply', { defaultValue: 'حذف الرد' })}
                 </button>
               )}
-              {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && 
-               hasReportPermission(reports.find(r => r.id === selectedConsultantReportId), 'consultant_notes') && 
-               (reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.username || reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.full_name || (!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
+              {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && (
                 <button
                   onClick={handlePermanentDeleteNote}
                   disabled={isSavingConsultantNote}

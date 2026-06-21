@@ -1,12 +1,8 @@
-from pymongo import MongoClient
 import json
+from pymongo import MongoClient
 
 client = MongoClient("mongodb://localhost:27017")
 db = client["wfm_reports"]
-
-print("Collections:", db.list_collection_names())
-projects = list(db["projects"].find({}, {"_id": 0}))
-print("Projects:", json.dumps(projects, ensure_ascii=False))
-
-users = list(db["users"].find({"username": "admin"}, {"_id": 0}))
-print("Admin User:", json.dumps(users, ensure_ascii=False))
+projects = db.reports.distinct("project")
+with open("projects.json", "w", encoding="utf-8") as f:
+    json.dump(projects, f, ensure_ascii=False)

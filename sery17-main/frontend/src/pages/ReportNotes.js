@@ -63,23 +63,6 @@ const ReportNotes = ({ user, onLogout }) => {
 
 
 
-  const handleToggleProcessed = async (reportId) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(`${API}/reports/${reportId}/report_note_processed`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success) {
-        setReports(reports.map(r => r.id === reportId ? { ...r, report_note_processed: response.data.report_note_processed, report_note_processed_date: response.data.report_note_processed_date } : r));
-        toast.success(t('reportNotesPage.statusSuccess', { defaultValue: 'تم تغيير الحالة بنجاح' }));
-        window.dispatchEvent(new Event('updateBadges'));
-      }
-    } catch (error) {
-      console.error('Error toggling processed status:', error);
-      toast.error(t('reportNotesPage.statusError', { defaultValue: 'حدث خطأ أثناء تغيير الحالة' }));
-    }
-  };
-
   const handleEditNote = async (reportId) => {
     setIsSavingNote(true);
     try {
@@ -208,15 +191,7 @@ const ReportNotes = ({ user, onLogout }) => {
                         <span className="text-gray-700 font-bold whitespace-nowrap">{translateBrandingText(report.contractor || '-', isRtl)}</span>
                       </td>
                       <td className="px-6 py-4 text-gray-800">
-                        <div className="rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-900 text-sm p-3 shadow-sm max-w-full relative">
-                          <div className="flex justify-between items-start mb-2 border-b border-indigo-100 pb-2">
-                             <div className="font-bold text-xs text-indigo-700 opacity-70">{t("common.mainNote", { defaultValue: "الملاحظة الأساسية" })}</div>
-                             {report.report_note_processed ? (
-                               <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-md text-sm font-bold border border-emerald-200 shadow-sm whitespace-nowrap">{t("common.processed", { defaultValue: "تمت المعالجة ✓" })}</span>
-                             ) : (
-                               <span className="bg-slate-800 text-slate-100 px-3 py-1 rounded-md text-sm font-bold border border-slate-900 shadow-sm whitespace-nowrap">{t("reportNotesPage.inProgress", { defaultValue: "جاري المعالجة ⏳" })}</span>
-                             )}
-                          </div>
+                        <div className="rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-900 text-sm p-3 shadow-sm max-w-full">
                           {editingNoteId === report.id ? (
                             <div className="mt-2">
                               <textarea className="w-full p-2 border rounded-md" value={editingNoteText} onChange={e => setEditingNoteText(e.target.value)}></textarea>
@@ -258,7 +233,6 @@ const ReportNotes = ({ user, onLogout }) => {
                               
                               {(user?.role === 'admin' || user?.can_create_subusers) && (
                                 <>
-
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();

@@ -45,13 +45,7 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const [showEditNoteModal, setShowEditNoteModal] = useState(false);
   const [editingNoteText, setEditingNoteText] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
-    const [showConsultantNoteModal, setShowConsultantNoteModal] = useState(false);
-  const [currentConsultantNote, setCurrentConsultantNote] = useState('');
-  const [selectedConsultantReportId, setSelectedConsultantReportId] = useState(null);
-  const [consultantReplyText, setConsultantReplyText] = useState('');
-  const [showConsultantReplyBox, setShowConsultantReplyBox] = useState(false);
-  const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
-const [isSavingNote, setIsSavingNote] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   const fetchNotes = async (page = currentPage, limit = itemsPerPage, search = searchQuery, status = statusFilter) => {
     try {
@@ -223,89 +217,6 @@ const [isSavingNote, setIsSavingNote] = useState(false);
   };
 
   // Since we use server-side pagination and search:
-
-  const handleSaveConsultantNote = async () => {
-    if (!selectedConsultantReportId) return;
-    setIsSavingConsultantNote(true);
-    
-    let finalNote = currentConsultantNote;
-    
-    try {
-      const isAuthorizedToEditNote = user?.role === 'admin' || user?.can_create_subusers || hasProjectPermission(user, reports.find(r => r.id === selectedConsultantReportId)?.project, 'consultant_notes');
-      
-      if (isAuthorizedToEditNote) {
-        await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note`, {
-          consultant_note: finalNote
-        }, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-      }
-      let finalReplyStr = reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply || '';
-      let finalRepliedBy = reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_replied_by || '';
-      
-      if (showConsultantReplyBox && consultantReplyText.trim()) {
-        const authorName = user?.full_name || user?.username || t('consultantNotesPage.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
-        const newBubble = `---رد: ${authorName}---\n${consultantReplyText.trim()}`;
-        finalReplyStr = finalReplyStr ? `${finalReplyStr}\n\n${newBubble}` : newBubble;
-        finalRepliedBy = authorName;
-        
-        const replyResponse = await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note_reply`, { reply: finalReplyStr }, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-        
-        if (replyResponse.data.success) {
-          finalReplyStr = replyResponse.data.reply;
-          finalRepliedBy = replyResponse.data.replied_by;
-        }
-      }
-      
-      setReports(reports.map(r => {
-        if (r.id === selectedConsultantReportId) {
-          const updatedReport = { ...r, consultant_note: finalNote };
-          if (showConsultantReplyBox && consultantReplyText.trim()) {
-            updatedReport.consultant_note_reply = finalReplyStr;
-            updatedReport.consultant_note_replied_by = finalRepliedBy;
-          }
-          if (r.consultant_note !== finalNote || (showConsultantReplyBox && consultantReplyText.trim())) {
-            updatedReport.consultant_note_processed = false;
-          }
-          return updatedReport;
-        }
-        return r;
-      }));
-      
-      toast.success(t('consultantNotesPage.saveSuccess', { defaultValue: 'تم الحفظ بنجاح' }));
-      setShowConsultantNoteModal(false);
-      window.dispatchEvent(new Event('updateBadges'));
-    } catch (error) {
-      console.error('Error saving consultant note:', error);
-      toast.error(t('consultantNotesPage.saveError', { defaultValue: 'حدث خطأ' }));
-    } finally {
-      setIsSavingConsultantNote(false);
-    }
-  };
-
-  const handlePermanentDeleteNote = async () => {
-    if (!selectedConsultantReportId) return;
-    if (!window.confirm(t('consultantNotesPage.confirmDeleteNote', { defaultValue: 'هل أنت متأكد من حذف الملاحظة نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.' }))) return;
-    
-    setIsSavingConsultantNote(true);
-    try {
-      await axios.delete(`${API}/reports/${selectedConsultantReportId}/consultant_note`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      
-      setReports(reports.filter(r => r.id !== selectedConsultantReportId));
-      toast.success(t('consultantNotesPage.deleteSuccess', { defaultValue: 'تم حذف الملاحظة بنجاح' }));
-      setShowConsultantNoteModal(false);
-      window.dispatchEvent(new Event('updateBadges'));
-    } catch (error) {
-      console.error('Error deleting consultant note:', error);
-      toast.error(t('consultantNotesPage.deleteError', { defaultValue: 'حدث خطأ أثناء الحذف' }));
-    } finally {
-      setIsSavingConsultantNote(false);
-    }
-  };
   const currentItems = reports;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   
@@ -339,7 +250,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
             >
               <option value="">{t("consultantNotesPage.allStatuses", { defaultValue: "جميع الحالات" })}</option>
               <option value="processed">{t("consultantNotesPage.processed", { defaultValue: "تمت المعالجة" })}</option>
-              <option value="unprocessed">{t("consultantNotesPage.underProcessing", { defaultValue: "جاري المعالجة" })}</option>
+              <option value="unprocessed">{t("consultantNotesPage.underProcessing", { defaultValue: "قيد المعالجة" })}</option>
             </select>
             <div className="relative w-full sm:w-1/2 md:w-1/3">
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -427,19 +338,19 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-md text-sm font-bold whitespace-nowrap border ${
+                        <span className={`inline-flex items-center justify-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap border ${
                           report.consultant_note_processed 
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                             : 'bg-slate-800 text-white border-slate-900'
                         }`}>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {report.consultant_note_processed ? (
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             ) : (
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             )}
                           </svg>
-                          {report.consultant_note_processed ? t('consultantNotesPage.processed', { defaultValue: 'تمت المعالجة' }) : t('consultantNotesPage.underProcessing', { defaultValue: 'جاري المعالجة' })}
+                          {report.consultant_note_processed ? t('consultantNotesPage.processed', { defaultValue: 'تمت المعالجة' }) : t('consultantNotesPage.underProcessing', { defaultValue: 'قيد المعالجة' })}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -628,96 +539,109 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                                 {t("consultantNotesPage.viewReport", { defaultValue: "عرض البلاغ" })}
                               </Link>
                               
+                              {!report.consultant_note_processed && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdown(null);
+                                    setSelectedReplyReportId(report.id);
+                                    setCurrentReply('');
+                                    setShowReplyModal(true);
+                                  }}
+                                  className="w-full text-right px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
+                                >
+                                  <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                  </svg>
+                                  {report.consultant_note_reply 
+                                    ? t("consultantNotesPage.addReply", { defaultValue: "إضافة رد" })
+                                    : t("consultantNotesPage.reply", { defaultValue: "رد" })}
+                                </button>
+                              )}
                               
-                              {(user?.role === 'admin' || user?.can_create_subusers) ? (
+                              {report.consultant_note_processed && (
+                                <div className="w-full text-right px-4 py-3 text-sm text-gray-400 font-bold flex items-center gap-3 border-b border-gray-50 cursor-not-allowed">
+                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                  </svg>
+                                  {t("consultantNotesPage.conversationClosed", { defaultValue: "المحادثة مغلقة" })}
+                                </div>
+                              )}
+
+                              {hasProjectPermission(user, report.project, 'consultant_notes') && 
+                               (user?.role === 'admin' || report.consultant_note_by === user?.username || report.consultant_note_by === user?.full_name || (!report.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
                                 <>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedConsultantReportId(report.id);
-                                      setCurrentConsultantNote(report.consultant_note || '');
-                                      setConsultantReplyText('');
-                                      setShowConsultantReplyBox(false);
-                                      setShowConsultantNoteModal(true);
-                                      setActiveDropdown(null);
-                                    }} 
-                                    className={`group flex items-center px-4 py-3 text-sm text-teal-700 hover:bg-teal-50 hover:text-teal-900 w-full transition-colors font-bold ${isRtl ? 'text-right' : 'text-left'} border-b border-gray-50`}
-                                  >
-                                    <svg className={`h-5 w-5 text-teal-500 group-hover:text-teal-700 ${isRtl ? 'ml-3' : 'mr-3'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    {t('consultantNotesPage.consultantNotesMenu', { defaultValue: 'ملاحظات الاستشاري' })}
-                                  </button>
-                                  
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActiveDropdown(null);
-                                      handleToggleProcess(report.id);
+                                      setEditingNoteId(report.id);
+                                      setEditingNoteText(report.consultant_note || '');
+                                      setShowEditNoteModal(true);
                                     }}
-                                    className={`w-full text-right px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors ${
-                                      report.consultant_note_processed 
-                                        ? 'text-emerald-700 hover:bg-emerald-50' 
-                                        : 'text-slate-700 hover:bg-slate-50'
-                                    }`}
+                                    className="w-full text-right px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
                                   >
-                                    <svg className={`w-4 h-4 ${report.consultant_note_processed ? 'text-emerald-500' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      {report.consultant_note_processed ? (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                      ) : (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      )}
+                                    <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
-                                    {report.consultant_note_processed ? t('consultantNotesPage.processed', { defaultValue: 'تمت المعالجة' }) : t('consultantNotesPage.underProcessing', { defaultValue: 'جاري المعالجة' })}
+                                    {t("common.edit", { defaultValue: "تعديل الملاحظة" })}
                                   </button>
-                                  
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActiveDropdown(null);
                                       handleDeleteNote(report.id);
                                     }}
-                                    className={`w-full text-right px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors border-t border-gray-50 text-red-600 hover:bg-red-50`}
+                                    className="w-full text-right px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
                                   >
                                     <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
-                                    {t('consultantNotesPage.permanentDelete', { defaultValue: 'حذف نهائي' })}
+                                    {t("consultantNotesPage.deleteNote", { defaultValue: "حذف الملاحظة" })}
                                   </button>
                                 </>
-                              ) : (
-                                <button 
+                              )}
+                              
+                              {(user?.role === 'admin' || user?.can_create_subusers) ? (
+                                <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedConsultantReportId(report.id);
-                                    setCurrentConsultantNote(report.consultant_note || '');
-                                    setConsultantReplyText('');
-                                    setShowConsultantReplyBox(!report.consultant_note_processed);
-                                    setShowConsultantNoteModal(true);
                                     setActiveDropdown(null);
-                                  }} 
-                                  className={`group flex items-center px-4 py-3 text-sm font-bold w-full transition-colors border-b border-gray-50 ${isRtl ? 'text-right' : 'text-left'} ${
+                                    handleToggleProcess(report.id);
+                                  }}
+                                  className={`w-full text-right px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors ${
                                     report.consultant_note_processed 
-                                      ? 'text-gray-500 bg-gray-50 cursor-not-allowed hover:bg-gray-100'
-                                      : 'text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900'
+                                      ? 'text-emerald-700 hover:bg-emerald-50' 
+                                      : 'text-slate-700 hover:bg-slate-50'
                                   }`}
                                 >
-                                  {report.consultant_note_processed ? (
-                                    <>
-                                      <svg className={`h-5 w-5 text-gray-400 group-hover:text-gray-500 ${isRtl ? 'ml-3' : 'mr-3'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                      </svg>
-                                      {t('consultantNotesPage.conversationClosed', { defaultValue: 'المحادثة مغلقة' })}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg className={`h-5 w-5 text-indigo-500 group-hover:text-indigo-700 ${isRtl ? 'ml-3' : 'mr-3'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                      </svg>
-                                      {t('consultantNotesPage.addReplyMenu', { defaultValue: 'إضافة رد' })}
-                                    </>
-                                  )}
+                                  <svg className={`w-4 h-4 ${report.consultant_note_processed ? 'text-emerald-500' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {report.consultant_note_processed ? (
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    ) : (
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    )}
+                                  </svg>
+                                  {report.consultant_note_processed ? t('consultantNotesPage.processed', { defaultValue: 'تمت المعالجة' }) : t('consultantNotesPage.underProcessing', { defaultValue: 'قيد المعالجة' })}
                                 </button>
+                              ) : (
+                                <div
+                                  className={`w-full text-right px-4 py-3 text-sm font-bold flex items-center gap-3 ${
+                                    report.consultant_note_processed 
+                                      ? 'text-emerald-700' 
+                                      : 'text-slate-700'
+                                  }`}
+                                  title={t("consultantNotesPage.processTooltip", { defaultValue: "حالة معالجة الملاحظة من قبل المستوى الثالث" })}
+                                >
+                                  <svg className={`w-4 h-4 ${report.consultant_note_processed ? 'text-emerald-500' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {report.consultant_note_processed ? (
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    ) : (
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    )}
+                                  </svg>
+                                  {report.consultant_note_processed ? t('consultantNotesPage.processed', { defaultValue: 'تمت المعالجة' }) : t('consultantNotesPage.underProcessing', { defaultValue: 'قيد المعالجة' })}
+                                </div>
                               )}
                             </div>
                           )}
@@ -750,282 +674,6 @@ const [isSavingNote, setIsSavingNote] = useState(false);
           )}
         </div>
       </div>
-
-      {/* Modal ملاحظات الاستشاري */}
-      {showConsultantNoteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowConsultantNoteModal(false)}>
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-5 border-b pb-3">
-              <h3 className="text-xl font-bold text-teal-800 flex items-center gap-2">
-                <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                {t('consultantNoteModal.title', { defaultValue: 'ملاحظات الاستشاري' })}
-                {(() => {
-                  const r = reports.find(r => r.id === selectedConsultantReportId);
-                  if (!r || !r.consultant_note || !r.consultant_note.trim()) return null;
-                  return (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleToggleProcess();
-                      }}
-                      title="تغيير حالة الملاحظة"
-                      className={`text-xs px-3 py-1.5 rounded-full mr-2 flex items-center gap-1.5 font-bold transition-colors border hover:shadow-sm cursor-pointer ${
-                        r.consultant_note_processed 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                          : 'bg-slate-800 text-white border-slate-900 hover:bg-slate-700'
-                      }`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {r.consultant_note_processed ? (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        ) : (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        )}
-                      </svg>
-                      {r.consultant_note_processed 
-                        ? t('consultantNoteModal.processed', { defaultValue: 'تمت المعالجة' }) 
-                        : t('consultantNoteModal.underProcessing', { defaultValue: 'جاري المعالجة' })}
-                    </button>
-                  );
-                })()}
-              </h3>
-              <button
-                onClick={() => setShowConsultantNoteModal(false)}
-                className="text-gray-400 hover:text-red-500 bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.writeNoteLabel', { defaultValue: 'اكتب الملاحظة هنا:' })}</label>
-              <textarea
-                value={currentConsultantNote}
-                onChange={(e) => setCurrentConsultantNote(e.target.value)}
-                placeholder={t('consultantNoteModal.writeNotePlaceholder', { defaultValue: 'اكتب ملاحظات الاستشاري...' })}
-                className={`w-full h-40 p-4 border border-gray-300 rounded-xl resize-none transition-all ${reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed ? 'bg-gray-50 text-gray-600 focus:ring-0 cursor-not-allowed' : 'focus:ring-2 focus:ring-teal-500 focus:border-teal-500'}`}
-                dir="auto"
-                disabled={reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed || !hasProjectPermission(user, reports.find(r => r.id === selectedConsultantReportId)?.project, 'consultant_notes')}
-              ></textarea>
-              <p className="text-xs text-gray-500 mt-2">{t('consultantNoteModal.helpText', { defaultValue: 'يمكنك تعديل أو حذف الملاحظة عن طريق مسح النص وحفظه.' })}</p>
-            </div>
-            
-            {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
-              <div className="mb-5 flex flex-col gap-4">
-                <div className="text-sm font-bold text-gray-700 border-b pb-1">{t('consultantNoteModal.previousReplies', { defaultValue: 'الردود السابقة:' })}</div>
-                {(() => {
-                  const r = reports.find(rep => rep.id === selectedConsultantReportId);
-                  const replyText = r.consultant_note_reply;
-                  
-                  if (!replyText.includes('---رد:') && !replyText.includes('--- إضافة جديدة ---')) {
-                    return (
-                      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 mt-3 shadow-sm">
-                        <div className="font-bold mb-2 opacity-90 text-[12px]">
-                          {t('consultantNoteModal.replyPrefix', { defaultValue: 'رد:' })} {(() => {
-                            const name = r.consultant_note_replied_by;
-                            if (!name) return t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' });
-                            const lowerName = name.toLowerCase();
-                            if (lowerName.includes('shazly') || lowerName.includes('شاذلي')) {
-                              return t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
-                            }
-                            if (lowerName.includes('motlaq') || lowerName.includes('مطلق')) {
-                              return t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
-                            }
-                            if (lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('استشاري')) {
-                              return t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
-                            }
-                            return translateBrandingText(name, isRtl);
-                          })()}
-                        </div>
-                        <div className="whitespace-pre-wrap break-words leading-relaxed">
-                          {translateBrandingText(replyText, isRtl)}
-                        </div>
-                      </div>
-                    );
-                  }
-                  // Convert legacy delimiters to the new format sequentially
-                  let currentText = replyText;
-                  if (currentText.includes('--- إضافة جديدة ---')) {
-                    const legacyParts = currentText.split(/---\s*إضافة جديدة\s*---/);
-                    const lastIndex = legacyParts.length - 1;
-                    currentText = legacyParts.map((part, index) => {
-                      if (index === 0) return part;
-                      const author = index === lastIndex ? (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' })) : t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' });
-                      return `---رد: ${author}---${part}`;
-                    }).join('');
-                  }
-                  
-                  const parts = currentText.split(/---رد:\s*(.*?)---/);
-                  const bubbles = [];
-                  
-                  if (parts[0].trim()) {
-                    const firstAuthor = parts.length > 1 && replyText.includes('--- إضافة جديدة ---') 
-                      ? t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'مطلق الغامدي' }) 
-                      : (r.consultant_note_replied_by || t('consultantNoteModal.level3', { defaultValue: 'المستوى الثالث' }));
-                    bubbles.push({ name: firstAuthor, text: parts[0].trim() });
-                  }
-                  
-                  for (let i = 1; i < parts.length; i += 2) {
-                    if (parts[i] && parts[i+1] && parts[i+1].trim()) {
-                      bubbles.push({ name: parts[i].trim(), text: parts[i+1].trim() });
-                    }
-                  }
-                  
-                  return bubbles.map((b, i) => {
-                    let bubbleName = b.name;
-                    const lowerName = bubbleName.toLowerCase();
-                    const isShazly = lowerName.includes('shazly') || lowerName.includes('شاذلي');
-                    const isMotlaq = lowerName.includes('motlaq') || lowerName.includes('مطلق');
-                    const isConsultant = lowerName.includes('medhat') || lowerName.includes('مدحت') || lowerName.includes('consultant') || lowerName.includes('الاستشاري');
-                    
-                    if (isShazly) {
-                      bubbleName = t('consultantNoteModal.shazlyHamed', { defaultValue: 'المهندس الشاذلي حامد' });
-                    } else if (isMotlaq) {
-                      bubbleName = t('consultantNoteModal.motlaqAlGhamdi', { defaultValue: 'المهندس مطلق الغامدي' });
-                    } else if (isConsultant) {
-                      bubbleName = t('consultantNoteModal.defaultConsultantName', { defaultValue: 'م/ مدحت حسين' });
-                    } else {
-                      bubbleName = translateBrandingText(bubbleName, isRtl);
-                    }
-                    
-                    let bgClass = 'bg-indigo-50 border-indigo-200 text-indigo-900';
-                    let badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
-                    let prefixText = t('consultantNoteModal.employeeReply', { defaultValue: 'رد الموظف:' });
-                    
-                    if (isMotlaq) {
-                      bgClass = 'bg-purple-50 border-purple-200 text-purple-900';
-                      badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                    } else if (isConsultant || isShazly) {
-                      bgClass = 'bg-yellow-50 border-yellow-200 text-yellow-900';
-                      badgeClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                      prefixText = t('consultantNoteModal.consultantFollowUp', { defaultValue: 'تعقيب الاستشاري:' });
-                    }
-                    
-                    return (
-                      <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
-                        <div className="font-bold mb-2 opacity-90 text-[12px] flex justify-between items-center">
-                          <span>{prefixText} {bubbleName}</span>
-                          {(!r.consultant_note_processed && (user?.full_name === b.name || user?.username === b.name || (b.name === 'المستوى الثالث' && !user?.full_name && !user?.username) || (b.name && user?.username?.toLowerCase().includes('medhat') && b.name.toLowerCase().includes('medhat')))) && (
-                            <div className="flex gap-2">
-                              <button onClick={() => { setEditingBubbleIndex(i); setEditingBubbleText(b.text); }} className="text-blue-600 hover:text-blue-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-blue-200">{t("common.edit", { defaultValue: "تعديل" })}</button>
-                              <button onClick={() => {
-                                if(!window.confirm(t("consultantNotesPage.confirmDeleteReply", { defaultValue: "هل أنت متأكد من حذف ردك؟" }))) return;
-                                const newBubbles = bubbles.filter((_, idx) => idx !== i);
-                                const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                updateConsultantReplyString(newStr);
-                              }} className="text-red-600 hover:text-red-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-red-200">{t("common.delete", { defaultValue: "حذف" })}</button>
-                            </div>
-                          )}
-                        </div>
-                        {editingBubbleIndex === i ? (
-                          <div className="mt-2">
-                            <textarea className="w-full p-2 border rounded-md" value={editingBubbleText} onChange={e => setEditingBubbleText(e.target.value)}></textarea>
-                            <div className="flex gap-2 mt-2">
-                              <button onClick={() => {
-                                const newBubbles = [...bubbles];
-                                newBubbles[i].text = editingBubbleText;
-                                const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                updateConsultantReplyString(newStr);
-                              }} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 shadow-sm border border-blue-600">{t("common.saveEdit", { defaultValue: "حفظ التعديل" })}</button>
-                              <button onClick={() => setEditingBubbleIndex(null)} className="bg-white text-gray-700 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 shadow-sm border border-gray-300">{t("common.cancel", { defaultValue: "إلغاء" })}</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="whitespace-pre-wrap break-words leading-relaxed">
-                            {translateBrandingText(b.text, isRtl)}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            )}
-            
-            {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed ? (
-              <div className="mb-5 p-5 bg-gray-50 border border-gray-200 rounded-xl text-center font-bold text-gray-500 flex flex-col items-center justify-center gap-3">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                {t('consultantNotesPage.conversationClosed', { defaultValue: 'المحادثة مغلقة' })}
-              </div>
-            ) : showConsultantReplyBox && (
-              <div className="mb-5">
-                <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.additionalReplyLabel', { defaultValue: 'تعقيب الاستشاري (إضافي):' })}</label>
-                <textarea
-                  value={consultantReplyText}
-                  onChange={(e) => setConsultantReplyText(e.target.value)}
-                  placeholder={t('consultantNoteModal.writeReplyPlaceholder', { defaultValue: 'اكتب ردك أو تعقيبك هنا...' })}
-                  className="w-full h-32 p-4 border border-teal-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none transition-all bg-teal-50"
-                  dir="auto"
-                ></textarea>
-              </div>
-            )}
-            
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowConsultantNoteModal(false)}
-                className="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 font-bold rounded-lg transition-colors"
-              >
-                {t('consultantNoteModal.cancel', { defaultValue: 'إلغاء' })}
-              </button>
-              {!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed && (
-                <>
-                  {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && !showConsultantReplyBox && (
-                    <button
-                      onClick={() => setShowConsultantReplyBox(true)}
-                      className="px-5 py-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-lg transition-colors flex items-center gap-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                      </svg>
-                      {t('consultantNoteModal.replyButton', { defaultValue: 'رد' })}
-                    </button>
-                  )}
-                  {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
-                    <button
-                      onClick={async () => { if(!window.confirm(t('consultantNotesPage.confirmDeleteReply', {defaultValue: 'هل أنت متأكد من حذف الرد؟'}))) return; await axios.put(`${API}/reports/${selectedConsultantReportId}/consultant_note_reply`, {reply:''}, {headers:{Authorization:`Bearer ${localStorage.getItem('token')}`}}); setReports(reports.map(r => r.id === selectedConsultantReportId ? {...r, consultant_note_reply:'', consultant_note_replied_by:''} : r)); setShowConsultantNoteModal(false); toast.success(t('consultantNotesPage.replyDeleted', {defaultValue: 'تم الحذف'})); }}
-                      className="px-5 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-bold rounded-lg transition-colors flex items-center gap-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      {t('consultantNoteModal.deleteReply', { defaultValue: 'حذف الرد' })}
-                    </button>
-                  )}
-                  {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note && 
-                   hasProjectPermission(user, reports.find(r => r.id === selectedConsultantReportId)?.project, 'consultant_notes') && 
-                   (reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.username || reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by === user?.full_name || (!reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_by && (user?.username?.toLowerCase().includes('medhat') || user?.full_name?.includes('مدحت')))) && (
-                    <button
-                      onClick={handlePermanentDeleteNote}
-                      disabled={isSavingConsultantNote}
-                      className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      {t('consultantNoteModal.permanentDelete', { defaultValue: 'حذف نهائي' })}
-                    </button>
-                  )}
-                  <button
-                    onClick={handleSaveConsultantNote}
-                    disabled={isSavingConsultantNote}
-                    className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    {isSavingConsultantNote ? t('consultantNoteModal.saving', { defaultValue: 'جاري الحفظ...' }) : t('consultantNoteModal.saveAndSend', { defaultValue: 'حفظ وإرسال' })}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
 
       {/* نافذة الرد */}
       {showReplyModal && (

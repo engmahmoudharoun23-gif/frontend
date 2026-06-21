@@ -423,7 +423,6 @@ function SewageConnections({ user, onLogout }) {
   const [connections, setConnections] = useState([]);
   const [filteredConnections, setFilteredConnections] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [projects, setProjects] = useState([]);
   const [contractors, setContractors] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -720,8 +719,6 @@ function SewageConnections({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
     
     // التحقق من جميع الحقول الإجبارية
     const requiredFields = [
@@ -1774,9 +1771,9 @@ function SewageConnections({ user, onLogout }) {
 
                 {/* أزرار الحفظ */}
                 <div className="flex gap-4 pt-6 border-t">
-                  <button type="submit" disabled={isSubmitting}
-                    className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-green-600 text-white rounded-2xl text-base font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-100 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    {isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : (editingConnection ? <><Edit2 className="w-5 h-5" /> {isRtl ? 'تعديل التوصيلة' : 'Edit Connection'}</> : <><Plus className="w-5 h-5" /> {isRtl ? 'إضافة التوصيلة' : 'Add Connection'}</>)}
+                  <button type="submit" 
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-green-600 text-white rounded-2xl text-base font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-100">
+                    {editingConnection ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                     {editingConnection ? translateBrandingText('حفظ التعديلات النهائية', isRtl) : translateBrandingText('إضافة التوصيلة للنظام', isRtl)}
                   </button>
                   <button type="button" onClick={() => { setShowModal(false); resetForm(); }} 

@@ -27,10 +27,9 @@ const themeColors = {
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const PROJECT_NAMES = {
-  west: 'مشروع المحافظات الغربية - القطاع الأوسط',
+  west: 'مشروع المحافظات الغربية',
   leak: 'مشروع كشف التسربات وإصلاحها',
-  eisal: 'ايصال',
-  eisal_riyadh: 'ايصال الرياض'
+  visual: 'مشروع التشوه البصري'
 };
 
 const normalizeArabic = (text) => {

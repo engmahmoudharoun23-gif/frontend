@@ -384,7 +384,7 @@ function Contractors({ user, onLogout }) {
           </div>
         )}
 
-        {contractors.length === 0 && loading ? (
+        {loading ? (
           <div className="text-center py-8"><div className="flex flex-col items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div><span className="text-blue-600 font-medium animate-pulse">{t("common.loadingData", { defaultValue: "جاري تحميل البيانات..." })}</span></div></div>
         ) : contractors.length === 0 ? (
           <div className="text-center py-8 text-gray-500">{t('contractorsPage.noContractors')}</div>

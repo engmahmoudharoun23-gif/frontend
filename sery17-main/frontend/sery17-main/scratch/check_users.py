@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv
 
-load_dotenv('../backend/.env')
+load_dotenv('backend/.env')
 
 async def main():
     mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
@@ -14,8 +14,6 @@ async def main():
     cursor = db.users.find({})
     async for u in cursor:
         print(f"Username: {u.get('username')}")
-        print(f"  Full Name: {repr(u.get('full_name'))}")
-        print(f"  Title: {repr(u.get('title'))}")
         print(f"  Role: {u.get('role')}")
         print(f"  Projects: {u.get('projects')}")
         print(f"  Governorates: {u.get('governorates')}")

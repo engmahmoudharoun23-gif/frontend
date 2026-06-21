@@ -1111,20 +1111,20 @@ function ReportForm({ user, onLogout }) {
       if (id) {
         // تحديث البلاغ (بدون الصور أولاً)
         await axios.put(`${API}/reports/${id}`, form, config);
-        toast.success('✅ ' + t('reportForm.updateSuccess', {defaultValue: 'تم تحديث البلاغ بنجاح!'}));
+        toast.success('✅ تم تحديث البلاغ بنجاح!');
       } else {
         // إضافة بلاغ جديد
         const response = await axios.post(`${API}/reports`, form, config);
         reportId = response.data?.id || response.data?._id;
-        toast.success('✅ ' + t('reportForm.addSuccess', {defaultValue: 'تم إضافة البلاغ بنجاح!'}));
-        const reviewerName = response.data?.reviewer_name || t('reportForm.designatedReviewer', {defaultValue: 'المسؤول المختص'});
-        toast.info(`📋 ` + t('reportForm.reviewerInfo', {name: reviewerName, defaultValue: `يتم مراجعة البلاغ من قبل الفريق الفني المختص والمفوض بالمراجعة م/ ${reviewerName}`}));
+        toast.success('✅ تم إضافة البلاغ بنجاح!');
+        const reviewerName = response.data?.reviewer_name || 'المسؤول المختص';
+        toast.info(`📋 يتم مراجعة البلاغ من قبل الفريق الفني المختص والمفوض بالمراجعة م/ ${reviewerName}`);
       }
 
       // ⚡ رفع الصور في الخلفية
       if (images.length > 0 && reportId) {
         setUploadingImages(true);
-        toast.info(`📤 ` + t('reportForm.uploadingBg', {count: images.length, defaultValue: `جاري رفع ${images.length} صورة في الخلفية...`}), { autoClose: 2000 });
+        toast.info(`📤 جاري رفع ${images.length} صورة في الخلفية...`, { autoClose: 2000 });
         
         // رفع الصور بشكل غير متزامن
         uploadImagesInBackground(reportId, images);
@@ -1441,7 +1441,17 @@ function ReportForm({ user, onLogout }) {
                   </p>
                 </div>
               </div>
-
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.depth')}</label>
+                <input type="number" step="0.01" required value={formData.depth_meters} onChange={(e) => setFormData({...formData, depth_meters: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.diameter')}</label>
+                <input type="number" step="0.01" required value={formData.diameter_mm} onChange={(e) => setFormData({...formData, diameter_mm: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <label className="block text-sm font-medium text-gray-700">{t('reports.contractor')} *</label>
@@ -1489,109 +1499,110 @@ function ReportForm({ user, onLogout }) {
                   </p>
                 )}
               </div>
-
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.depth', {defaultValue: 'العمق'})} ({t('reportForm.cm', {defaultValue: 'بالسنتيمتر'})})</label>
-                <input type="number" step="0.01" required value={formData.depth_meters} onChange={(e) => setFormData({...formData, depth_meters: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="" />
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.closeDate')}</label>
+                <input type="date" value={formData.closed_at} onChange={(e) => setFormData({...formData, closed_at: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <p className="text-xs text-gray-500 mt-1">{t('reportForm.closeDateTip')}</p>
               </div>
-
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.diameter', {defaultValue: 'القطر'})} ({t('reportForm.mm', {defaultValue: 'بالمليمتر'})})</label>
-                <input type="number" step="0.01" required value={formData.diameter_mm} onChange={(e) => setFormData({...formData, diameter_mm: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-
-              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                <div className="sm:col-span-2 mb-2">
-                  <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2">📍 {t('reportForm.addLocation', {defaultValue: 'إضافة الموقع (خط الطول وخط العرض)'})}</h4>
-                  <p className="text-xs text-blue-600 mt-1">{t('reportForm.locationPastingTip', {defaultValue: 'يمكنك كتابة الإحداثيات يدوياً، أو استخدام زر الموقع، أو'})} <b className="text-blue-800">{t('reportForm.locationPastingTipBold', {defaultValue: 'نسخ رابط جوجل ماب ولصقه في أي مربع'})}</b> {t('reportForm.locationPastingTipEnd', {defaultValue: 'وسيتم استخراج الإحداثيات تلقائياً.'})}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('reportForm.latitude', {defaultValue: 'خط العرض'})} (Latitude)</label>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="24.7136" 
-                      value={formData.latitude} 
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const coordsMatch = value.match(/-?\d{1,3}\.\d{4,}/g);
-                        if (coordsMatch && coordsMatch.length >= 2) {
-                          setFormData({...formData, latitude: coordsMatch[0], longitude: coordsMatch[1]});
-                          toast.success(t('reportForm.locationExtractedSuccess', {defaultValue: 'تم استخراج الإحداثيات بنجاح!'}));
-                          return;
-                        }
-                        if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                          setFormData({...formData, latitude: value});
-                        }
-                      }}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (navigator.geolocation) {
-                          const button = document.activeElement;
-                          button.disabled = true;
-                          button.innerHTML = '⏳ ' + t('reportForm.gettingLocation');
-                          
-                          navigator.geolocation.getCurrentPosition(
-                            (position) => {
-                              const lat = position.coords.latitude.toFixed(6);
-                              const lon = position.coords.longitude.toFixed(6);
-                              setFormData({
-                                ...formData,
-                                latitude: lat,
-                                longitude: lon
-                              });
-                              button.disabled = false;
-                              button.innerHTML = '📍 ' + t('reportForm.getLocation');
-                              
-                              setLocationSuccess(true);
-                              setTimeout(() => setLocationSuccess(false), 4000);
-                            },
-                            (error) => {
-                              button.disabled = false;
-                              button.innerHTML = '📍 ' + t('reportForm.getLocation');
-                              toast.error(t('reportForm.locationErrorTimeout'));
-                            },
-                            { enableHighAccuracy: false, timeout: 15000, maximumAge: 30000 }
-                          );
-                        } else {
-                          toast.warning(t('reportForm.locationBrowserNotSupported'));
-                        }
-                      }}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors whitespace-nowrap shadow-sm"
-                      title={t('reportForm.getLocation')}
-                    >
-                      📍 {t('reportForm.autoDetect', {defaultValue: 'تحديد تلقائي'})}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('reportForm.longitude', {defaultValue: 'خط الطول'})} (Longitude)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.latitude')} (Latitude)</label>
+                <div className="flex gap-2">
                   <input 
                     type="text" 
-                    placeholder="46.6753" 
-                    value={formData.longitude} 
+                    placeholder="24.7136" 
+                    value={formData.latitude} 
                     onChange={(e) => {
                       const value = e.target.value;
-                      const coordsMatch = value.match(/-?\d{1,3}\.\d{4,}/g);
-                      if (coordsMatch && coordsMatch.length >= 2) {
-                        setFormData({...formData, latitude: coordsMatch[0], longitude: coordsMatch[1]});
-                        toast.success(t('reportForm.locationExtractedSuccess', {defaultValue: 'تم استخراج الإحداثيات بنجاح!'}));
-                        return;
-                      }
+                      // السماح بالأرقام والنقطة والإشارة السالبة فقط
                       if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                        setFormData({...formData, longitude: value});
+                        setFormData({...formData, latitude: value});
                       }
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
                   />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        const button = document.activeElement;
+                        button.disabled = true;
+                        button.innerHTML = '⏳ ' + t('reportForm.gettingLocation');
+                        
+                        navigator.geolocation.getCurrentPosition(
+                          (position) => {
+                            const lat = position.coords.latitude.toFixed(6);
+                            const lon = position.coords.longitude.toFixed(6);
+                            setFormData({
+                              ...formData,
+                              latitude: lat,
+                              longitude: lon
+                            });
+                            button.disabled = false;
+                            button.innerHTML = '📍 ' + t('reportForm.getLocation');
+                            
+                            // عرض رسالة نجاح
+                            setLocationSuccess(true);
+                            setTimeout(() => setLocationSuccess(false), 4000);
+                          },
+                          (error) => {
+                            button.disabled = false;
+                            button.innerHTML = '📍 ' + t('reportForm.getLocation');
+                            
+                            let errorMsg = '';
+                            let instructions = '';
+                            
+                            if (error.code === 1) {
+                              errorMsg = t('reportForm.locationErrorBlocked');
+                              instructions = t('reportForm.locationErrorBlockedInstructions');
+                            } else if (error.code === 2) {
+                              errorMsg = t('reportForm.locationErrorUnavailable');
+                              instructions = t('reportForm.locationErrorUnavailableInstructions');
+                            } else if (error.code === 3) {
+                              errorMsg = t('reportForm.locationErrorTimeout');
+                              instructions = t('reportForm.locationErrorTimeoutInstructions');
+                            }
+                            
+                            toast.error(errorMsg + instructions);
+                          },
+                          {
+                            enableHighAccuracy: false,
+                            timeout: 15000,
+                            maximumAge: 30000
+                          }
+                        );
+                      } else {
+                        toast.warning(t('reportForm.locationBrowserNotSupported'));
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
+                    title={t('reportForm.getLocation')}
+                  >
+                    📍 {t('reportForm.getLocation')}
+                  </button>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">{t('reportForm.locationTip')}</p>
               </div>
-
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.longitude')} (Longitude)</label>
+                <input 
+                  type="text" 
+                  placeholder="46.6753" 
+                  value={formData.longitude} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // السماح بالأرقام والنقطة والإشارة السالبة فقط
+                    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                      setFormData({...formData, longitude: value});
+                    }
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('reportForm.locationTipLng')}</p>
+              </div>
+              
               {/* رسالة نجاح الموقع */}
               {locationSuccess && (
                 <div className="md:col-span-2 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2 animate-pulse">
@@ -1601,14 +1612,6 @@ function ReportForm({ user, onLogout }) {
                   </span>
                 </div>
               )}
-
-              <div className="hidden md:block"></div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.closeDate')}</label>
-                <input type="date" value={formData.closed_at} onChange={(e) => setFormData({...formData, closed_at: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <p className="text-xs text-gray-500 mt-1">{t('reportForm.closeDateTip')}</p>
-              </div>
               
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">

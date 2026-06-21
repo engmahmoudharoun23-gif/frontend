@@ -39,9 +39,6 @@ function QualityReports({ user, onLogout }) {
     return [];
   };
   const [reports, setReports] = useState(getInitialReports);
-  const [warehouseVisits, setWarehouseVisits] = useState([]);
-  const [activeTab, setActiveTab] = useState('field_quality'); // 'field_quality' or 'warehouse_visits'
-
   const hasPermission = (permKey) => {
     if (user?.role === 'admin') return true;
     if ((user?.permissions || []).includes(permKey)) return true;
@@ -115,18 +112,17 @@ function QualityReports({ user, onLogout }) {
   }, [projectGovs, tempProject, user, reports]);
 
   const filteredReports = useMemo(() => {
-    const dataList = activeTab === 'warehouse_visits' ? warehouseVisits : reports;
-    return dataList.filter(r => {
+    return reports.filter(r => {
       const matchDate = !appliedDate || (r.date && r.date.includes(appliedDate));
       const matchProject = !appliedProject || (r.project && r.project === appliedProject);
       const matchGov = !appliedGov || (r.governorate && r.governorate === appliedGov);
       return matchDate && matchProject && matchGov;
     });
-  }, [reports, warehouseVisits, activeTab, appliedDate, appliedProject, appliedGov]);
+  }, [reports, appliedDate, appliedProject, appliedGov]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [reports, warehouseVisits, activeTab, appliedDate, appliedProject, appliedGov]);
+  }, [reports, appliedDate, appliedProject, appliedGov]);
 
   useEffect(() => {
     const fetchProjectGovs = async () => {
@@ -170,32 +166,14 @@ function QualityReports({ user, onLogout }) {
   }
 
   const fetchReports = useCallback(async () => {
-    setLoading(true);
-    const token = localStorage.getItem('token');
-    // جلب تقارير الجودة الميداني
+    // setLoading(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/quality-reports`, { headers: { Authorization: `Bearer ${token}` } });
       setReports(res.data || []);
       try { localStorage.setItem('cache_QualityReports.js_reports', JSON.stringify(res.data || [])); } catch(e) {}
-    } catch (err) {
-      // 403 = لا صلاحية، نعيّن قائمة فارغة بدون خطأ
-      if (err?.response?.status !== 403) {
-        console.error('Quality reports fetch error:', err);
-        toast.error(t('qualityReports.downloadError') || 'حدث خطأ أثناء تحميل بيانات تقارير الجودة');
-      }
-      setReports([]);
-    }
-    // جلب زيارات المستودع بشكل مستقل
-    try {
-      const resVisits = await axios.get(`${API}/warehouse-visits`, { headers: { Authorization: `Bearer ${token}` } });
-      setWarehouseVisits(resVisits.data || []);
-    } catch (err) {
-      if (err?.response?.status !== 403) {
-        console.warn('Could not load warehouse visits:', err);
-      }
-      setWarehouseVisits([]);
-    }
-    setLoading(false);
+    } catch { toast.error(t('qualityReports.downloadError')); }
+    finally { setLoading(false); }
   }, [t]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
@@ -218,7 +196,7 @@ function QualityReports({ user, onLogout }) {
   const handleReviewReport = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${API}/quality-reports/${reportId}`, { status: 'تمت المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(i18n.language === 'ar' ? 'تم مراجعة البلاغ بنجاح' : 'Report reviewed successfully');
       fetchReports();
     } catch (err) {
@@ -229,7 +207,7 @@ function QualityReports({ user, onLogout }) {
   const handleRevertReview = async (reportId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${API}/quality-reports/${reportId}`, { status: 'قيد المراجعة' }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(i18n.language === 'ar' ? 'تم اعادة فتح حالة المراجعة' : 'Review status reopened');
       fetchReports();
     } catch (err) {
@@ -276,7 +254,7 @@ function QualityReports({ user, onLogout }) {
         await axios.put(`${API}/quality-reports/${editingReport.id}`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('qualityReports.updateSuccess'));
       } else {
-        await axios.post(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}`, form, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.post(`${API}/quality-reports`, form, { headers: { Authorization: `Bearer ${token}` } });
         toast.success(t('qualityReports.saveSuccess'));
       }
       setShowModal(false);
@@ -288,7 +266,7 @@ function QualityReports({ user, onLogout }) {
     if (!window.confirm(t('qualityReports.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API}/${activeTab === 'warehouse_visits' ? 'warehouse-visits' : 'quality-reports'}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`${API}/quality-reports/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(t('qualityReports.deleteSuccess'));
       fetchReports();
     } catch { toast.error(t('qualityReports.deleteError')); }
@@ -344,31 +322,15 @@ function QualityReports({ user, onLogout }) {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
               <span className="p-2 bg-teal-100 rounded-xl"><ClipboardCheck className="w-7 h-7 text-teal-600" /></span>
-              {activeTab === 'warehouse_visits' ? t('qualityReports.warehouseVisitsTab') : t('qualityReports.title')}
+              {t('qualityReports.title')}
             </h1>
-            <p className="text-gray-500 text-sm mt-1 mr-12">{activeTab === 'warehouse_visits' ? t('qualityReports.warehouseVisitsSubTitle') : t('qualityReports.subTitle')}</p>
+            <p className="text-gray-500 text-sm mt-1 mr-12">{t('qualityReports.subTitle')}</p>
           </div>
           <button
             onClick={openAdd}
             className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-md transition-all"
           >
-            <Plus className="w-5 h-5" /> {activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew')}
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <button
-            onClick={() => setActiveTab('field_quality')}
-            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 ${activeTab === 'field_quality' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            {t('qualityReports.fieldQualityReportsTab')}
-          </button>
-          <button
-            onClick={() => setActiveTab('warehouse_visits')}
-            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 ${activeTab === 'warehouse_visits' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            {t('qualityReports.warehouseVisitsTab')}
+            <Plus className="w-5 h-5" /> {t('qualityReports.addNew')}
           </button>
         </div>
 
@@ -435,12 +397,12 @@ function QualityReports({ user, onLogout }) {
         )}
 
         {/* Table & Content */}
-        {filteredReports.length === 0 && loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{isRtl ? 'جاري تحميل البيانات...' : 'Loading Data...'}</span></div>
-        ) : filteredReports.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{typeof isRtl !== 'undefined' && !isRtl ? 'Loading Data...' : 'جاري تحميل البيانات...'}</span></div>
+        ) : reports.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
             <ClipboardCheck className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 font-medium">{activeTab === 'warehouse_visits' ? t('qualityReports.noWarehouseVisits') : t('qualityReports.noReports')}</p>
+            <p className="text-gray-500 font-medium">{t('qualityReports.noReports')}</p>
           </div>
         ) : filteredReports.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
@@ -523,7 +485,7 @@ function QualityReports({ user, onLogout }) {
                                     onClick={() => handleDownloadPDF(r, t('qualityReports.title'))}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
-                                    <Download className="w-4 h-4 text-teal-600" /> {activeTab === 'warehouse_visits' ? t('qualityReports.downloadImages') : t('qualityReports.downloadReport')}
+                                    <Download className="w-4 h-4 text-teal-600" /> {t('qualityReports.downloadReport')}
                                   </DropdownMenuItem>
                                   {canReviewReport(r) && (r.status || 'قيد المراجعة') === 'قيد المراجعة' && (
                                     <DropdownMenuItem
@@ -548,7 +510,7 @@ function QualityReports({ user, onLogout }) {
                                     onClick={() => openEdit(r)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 hover:text-yellow-700 flex items-center gap-2 transition-colors font-medium rounded-lg cursor-pointer"
                                   >
-                                    <Edit2 className="w-4 h-4 text-yellow-600" /> {activeTab === 'warehouse_visits' ? t('qualityReports.editImages') : t('qualityReports.edit')}
+                                    <Edit2 className="w-4 h-4 text-yellow-600" /> {t('qualityReports.edit')}
                                   </DropdownMenuItem>
                                   )}
                                   {hasPermission('quality_reports_delete') && (
@@ -556,7 +518,7 @@ function QualityReports({ user, onLogout }) {
                                     onClick={() => handleDelete(r.id)}
                                     className="w-full text-right px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-semibold rounded-lg cursor-pointer"
                                   >
-                                    <Trash2 className="w-4 h-4 text-red-600" /> {activeTab === 'warehouse_visits' ? t('qualityReports.deleteImages') : t('qualityReports.delete')}
+                                    <Trash2 className="w-4 h-4 text-red-600" /> {t('qualityReports.delete')}
                                   </DropdownMenuItem>
                                   )}
                                 </div>
@@ -685,7 +647,7 @@ function QualityReports({ user, onLogout }) {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
               <div className="sticky top-0 bg-teal-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
-                <h3 className="text-lg font-bold text-white">{editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.editReport')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew'))}</h3>
+                <h3 className="text-lg font-bold text-white">{editingReport ? t('qualityReports.editReport') : t('qualityReports.addNew')}</h3>
                 <button onClick={() => setShowModal(false)} className="text-white text-2xl hover:text-teal-200"><X className="w-6 h-6" /></button>
               </div>
               <form onSubmit={handleSave} className="p-6 space-y-4">
@@ -750,7 +712,7 @@ function QualityReports({ user, onLogout }) {
                   )}
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-bold transition-all">{editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.saveChangesBtn')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.saveBtn'))}</button>
+                  <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-bold transition-all">{editingReport ? t('qualityReports.saveChangesBtn') : t('qualityReports.saveBtn')}</button>
                   <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium">{t('qualityReports.cancel')}</button>
                 </div>
               </form>

@@ -1486,7 +1486,17 @@ function NewDashboard({ user, onLogout }) {
                     </div>
                   </div>
 
-
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
+                    <div className="bg-gray-800 text-white p-2 rounded-lg">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">{translateBrandingText(branding.project_manager_title, isRtl) || d('مدير عام المشاريع', 'General Projects Manager')}</p>
+                      <p className="text-xs sm:text-sm font-bold text-blue-700">{translateBrandingText(branding.project_manager_name, isRtl) || d('المهندس أحمد عبيدات', 'Eng. Ahmed Obeidat')}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1705,19 +1715,19 @@ function NewDashboard({ user, onLogout }) {
                                 </span>
                               </td>
                               <td className="px-2 py-1 text-gray-600">
-                                {new Date(item.created_at).toLocaleDateString('en-GB')}
+                                {new Date(item.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
                               </td>
                               <td className="px-2 py-1 text-gray-600 font-bold">
                                 {selectedCategory72h === 'reports' ? 
-                                  (item.start_date ? new Date(item.start_date).toLocaleDateString('en-GB') : '-') : 
-                                  (item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : '-')}
+                                  (item.start_date ? new Date(item.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB') : '-') : 
+                                  (item.created_at ? new Date(item.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB') : '-')}
                               </td>
                               <td className="px-2 py-1 text-center text-gray-700 font-semibold">
                                 {translatedType}
                               </td>
                               {selectedCategory72h === 'reports' && (
                                 <td className="px-2 py-1 text-center text-gray-600 font-bold">
-                                  {item.closed_at ? new Date(item.closed_at).toLocaleDateString('en-GB') : '-'}
+                                  {item.closed_at ? new Date(item.closed_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB') : '-'}
                                 </td>
                               )}
                               <td className="px-2 py-1 text-center">
@@ -1758,8 +1768,8 @@ function NewDashboard({ user, onLogout }) {
               <span>{d('المحافظات', 'Governorates')} - {selectedCategory72h === 'reports' ? d('بلاغات الإصلاح', 'Repair Reports') : selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'Water Connections') : d('توصيلات الصرف', 'Sewage Connections')} ({d('24 ساعة', '24 Hours')})</span>
             </h3>
             <p className="text-xs text-gray-600 mb-3">
-              ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : d('التوصيلات', 'connections')} {d(' من تاريخ المباشرة ', ' from start date ')} <strong dir="ltr" className="inline-block mx-1">{selectedDate72h ? new Date(selectedDate72h).toLocaleString('en-GB') : new Date(Date.now() - 24*60*60*1000).toLocaleString('en-GB', {
-                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+              ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : d('التوصيلات', 'connections')} {d(' من تاريخ المباشرة ', ' from start date ')} <strong>{selectedDate72h ? new Date(selectedDate72h).toLocaleString(isRtl ? 'ar-EG' : 'en-GB') : new Date(Date.now() - 24*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', {
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
               })}</strong> {d('حتى الآن', 'until now')}
             </p>
             
@@ -1841,7 +1851,7 @@ function NewDashboard({ user, onLogout }) {
               </div>
               {selectedMonth && (
                 <span className="text-xs text-blue-600 font-medium bg-blue-50 border border-blue-200 px-2 py-1 rounded-lg">
-                  📅 {d('يعرض بلاغات شهر:', 'Showing reports for:')} {isRtl ? `${new Date(selectedMonth + '-01').toLocaleDateString('ar-EG', { month: 'long' })} ${selectedMonth.split('-')[0]}` : new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  📅 {d('يعرض بلاغات شهر:', 'Showing reports for:')} {new Date(selectedMonth + '-01').toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { month: 'long', year: 'numeric' })}
                 </span>
               )}
             </div>
@@ -2030,13 +2040,12 @@ function NewDashboard({ user, onLogout }) {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-blue-800">
                 ⏰ {d('يعرض ', 'Displays ')} {selectedCategory72h === 'reports' ? d('البلاغات', 'reports') : 
-                         selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'water connections') : d('توصيلات الصرف', 'sewage connections')} {d('من تاريخ المباشرة ', ' from start date ')} <strong dir="ltr" className="inline-block mx-1">{new Date(Date.now() - 24*60*60*1000).toLocaleString('en-GB', { 
+                         selectedCategory72h === 'water_connections' ? d('توصيلات المياه', 'water connections') : d('توصيلات الصرف', 'sewage connections')} {d('من تاريخ المباشرة ', ' from start date ')} <strong>{new Date(Date.now() - 24*60*60*1000).toLocaleString(isRtl ? 'ar-EG' : 'en-GB', { 
                   year: 'numeric', 
-                  month: '2-digit', 
-                  day: '2-digit',
+                  month: 'numeric', 
+                  day: 'numeric',
                   hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
+                  minute: '2-digit'
                 })}</strong> {d('حتى الآن', 'until now')}
               </p>
             </div>

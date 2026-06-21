@@ -3,7 +3,7 @@
 // قائمة الصلاحيات المرتبطة بمشروع (يمكن منحها لكل مشروع على حدة)
 export const PROJECT_SCOPED_PERMISSIONS = new Set([
   'support_messages', 'trash', 'settings', 'reports_view', 'reports_add', 'reports_edit', 'reports_delete',
-  'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes', 'owner_notes',
+  'reports_review', 'reports_import', 'reports_notifications', 'consultant_notes',
   'water_connections', 'water_connections_import',
   'sewage_connections', 'sewage_connections_import',
   'invoices', 'review_invoices', 'review_invoices_3', 'view_all_invoices',
@@ -15,7 +15,7 @@ export const PROJECT_SCOPED_PERMISSIONS = new Set([
   'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit',
   'quality_reports_delete', 'business_reports_edit', 'business_reports_delete',
   'business_reports_review',
-  'work_permits', 'work_permits_edit', 'work_permits_delete', 'meetings', 'meetings_add'
+  'work_permits', 'work_permits_edit', 'work_permits_delete'
 ]);
 
 /**

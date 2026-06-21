@@ -597,7 +597,7 @@ function Login({ onLogin }) {
               <p className="text-[11px] font-black uppercase tracking-[0.35em] text-white/50">
                 {t('footer.developedBy')}
               </p>
-              <h5 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-tight drop-shadow-lg">
+              <h5 className="text-3xl font-black text-white leading-tight drop-shadow-lg">
                 {t('footer.developerName')}
               </h5>
               <div className="flex flex-wrap items-center gap-3 mt-1.5">
@@ -615,9 +615,9 @@ function Login({ onLogin }) {
           
           <div className="text-center md:text-end space-y-3">
             <div className="flex items-center gap-5 justify-center md:justify-end">
-               <span className="text-2xl sm:text-3xl md:text-4xl font-black text-white whitespace-nowrap">© {branding.footer_year || "2026"}</span>
+               <span className="text-4xl font-black text-white whitespace-nowrap">© {branding.footer_year || "2026"}</span>
                <div className="h-6 w-[1px] bg-white/20"></div>
-               <span className="text-xs sm:text-sm md:text-base font-black text-white/70 whitespace-nowrap">
+               <span className="text-base font-black text-white/70 whitespace-nowrap">
                  {getBrandingCopyright()}
                </span>
             </div>

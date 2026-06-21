@@ -16,7 +16,7 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const emptyForm = { date: '', project: '', governorate: '', notes: '', image: '', images: [] };
+const emptyForm = { date: '', project: '', governorate: '', notes: '', image: '' };
 
 function QualityReports({ user, onLogout }) {
   const { t, i18n } = useTranslation();
@@ -50,12 +50,10 @@ function QualityReports({ user, onLogout }) {
   };
 
   const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [imagePreview, setImagePreview] = useState('');
-  const [imagePreviews, setImagePreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
   const [viewReport, setViewReport] = useState(null);
@@ -250,62 +248,28 @@ function QualityReports({ user, onLogout }) {
     catch { return file; }
   };
 
-    const handleImageSelect = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
+  const handleImageSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
     setUploading(true);
     try {
-      const newPreviews = [...imagePreviews];
-      const newImages = [...(form.images || [])];
-      
-      for (let file of files) {
-        if (file.type === 'application/pdf') {
-           const reader = new FileReader();
-           await new Promise(resolve => {
-               reader.onloadend = () => {
-                  newPreviews.push(reader.result);
-                  newImages.push(reader.result);
-                  resolve();
-               };
-               reader.readAsDataURL(file);
-           });
-        } else {
-           const compressed = await compressImage(file);
-           const reader = new FileReader();
-           await new Promise(resolve => {
-               reader.onloadend = () => {
-                  newPreviews.push(reader.result);
-                  newImages.push(reader.result);
-                  resolve();
-               };
-               reader.readAsDataURL(compressed);
-           });
-        }
-      }
-      
-      setImagePreviews(newPreviews);
-      setForm(prev => ({ ...prev, images: newImages, image: newImages[0] || '' }));
-      setUploading(false);
-      toast.success(t('safetyReports.imageAddSuccess') || 'تم إضافة الملفات بنجاح');
-    } catch (e) { 
-      console.error(e);
-      setUploading(false); 
-    }
-  };
-  const removeImage = (idx) => {
-    const updatedPreviews = imagePreviews.filter((_, i) => i !== idx);
-    const updatedImages = (form.images || []).filter((_, i) => i !== idx);
-    setImagePreviews(updatedPreviews);
-    setForm(prev => ({...prev, images: updatedImages, image: updatedImages[0] || ''}));
+      const compressed = await compressImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+        setForm(prev => ({ ...prev, image: reader.result }));
+        setUploading(false);
+        toast.success(t('qualityReports.compressedSuccess'));
+      };
+      reader.readAsDataURL(compressed);
+    } catch { setUploading(false); }
   };
 
-  const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
-  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '', images: r.images || [] }); setImagePreview(r.image || ''); setImagePreviews(r.images || []); setShowModal(true); setActiveMenu(null); };
+  const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setShowModal(true); };
+  const openEdit = (r) => { setEditingReport(r); setForm({ date: r.date || '', project: r.project || '', governorate: r.governorate || '', notes: r.notes || '', image: r.image || '' }); setImagePreview(r.image || ''); setShowModal(true); setActiveMenu(null); };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
       if (editingReport) {
@@ -318,7 +282,6 @@ function QualityReports({ user, onLogout }) {
       setShowModal(false);
       fetchReports();
     } catch (err) { toast.error(err.response?.data?.detail || 'حدث خطأ'); }
-    finally { setIsSubmitting(false); }
   };
 
   const handleDelete = async (id) => {
@@ -771,44 +734,23 @@ function QualityReports({ user, onLogout }) {
                   <div className="flex gap-2 mb-3">
                     <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors">
                       <Upload className="w-5 h-5 text-teal-500" /><span className="text-sm text-teal-700 font-medium">{t('qualityReports.selectImage')}</span>
-                      <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} disabled={uploading} />
                     </label>
                     <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-teal-300 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors">
                       <Camera className="w-5 h-5 text-teal-500" /><span className="text-sm text-teal-700 font-medium">{t('qualityReports.camera')}</span>
-                      <input type="file" accept="image/*,application/pdf" multiple capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageSelect} disabled={uploading} />
                     </label>
                   </div>
                   {uploading && <p className="text-sm text-teal-600 mb-3 animate-pulse">{t('qualityReports.uploadingImage')}</p>}
-                                    {imagePreviews.length > 0 ? (
-                    <div className="mb-3 flex flex-wrap gap-3">
-                      {imagePreviews.map((img, idx) => (
-                        <div key={idx} className="relative inline-block">
-                          {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
-                            <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
-                              <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                            </div>
-                          ) : (
-                            <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in" onClick={() => setZoomedImage(img)} />
-                          )}
-                          <button type="button" onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg">×</button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (imagePreview && (
+                  {imagePreview && (
                     <div className="mb-3 relative inline-block">
-                      {imagePreview.startsWith('data:application/pdf') || imagePreview.endsWith('.pdf') ? (
-                        <div className="w-32 h-32 bg-gray-100 rounded-xl border-2 border-teal-200 flex flex-col items-center justify-center p-2 cursor-pointer">
-                          <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                        </div>
-                      ) : (
-                        <img src={resolveImageUrl(imagePreview)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in" onClick={() => setZoomedImage(imagePreview)} />
-                      )}
-                      <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg">×</button>
+                      <img src={resolveImageUrl(imagePreview)} alt="" className="w-32 h-32 rounded-xl object-cover border-2 border-teal-200 cursor-zoom-in" onClick={() => setZoomedImage(imagePreview)} />
+                      <button type="button" onClick={() => { setImagePreview(''); setForm(prev => ({...prev, image: ''})); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">×</button>
                     </div>
-                  ))}
+                  )}
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={isSubmitting || uploading} className={`flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold transition-all ${isSubmitting || uploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-teal-700'}`}>{isSubmitting ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.saveChangesBtn')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.saveBtn'))}</button>
+                  <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-bold transition-all">{editingReport ? (activeTab === 'warehouse_visits' ? t('qualityReports.editWarehouseVisit') : t('qualityReports.saveChangesBtn')) : (activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.saveBtn'))}</button>
                   <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium">{t('qualityReports.cancel')}</button>
                 </div>
               </form>
@@ -832,35 +774,12 @@ function QualityReports({ user, onLogout }) {
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('qualityReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('qualityReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
-                {(viewReport.images && viewReport.images.length > 0) ? (
+                {viewReport.image && (
                   <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    <div className="flex flex-wrap gap-2">
-                    {viewReport.images.map((img, idx) => (
-                      <div key={idx}>
-                        {img.startsWith('data:application/pdf') || img.endsWith('.pdf') ? (
-                          <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: img })}>
-                            <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
-                          </div>
-                        ) : (
-                          <img src={resolveImageUrl(img)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(img)} />
-                        )}
-                      </div>
-                    ))}
-                    </div>
+                    <p className="text-xs text-gray-400 mb-2">{t('qualityReports.image')}</p>
+                    <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} />
                   </div>
-                ) : (viewReport.image && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
-                    {viewReport.image.startsWith('data:application/pdf') || viewReport.image.endsWith('.pdf') ? (
-                      <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: viewReport.image })}>
-                        <span className="text-xs text-gray-600 font-bold text-center">PDF File</span>
-                      </div>
-                    ) : (
-                      <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} />
-                    )}
-                  </div>
-                ))}
+                )}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
                   <p>{t('qualityReports.addedBy')}: {viewReport.created_by || '-'} | {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}</p>
                   <button

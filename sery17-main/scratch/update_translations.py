@@ -1,135 +1,21 @@
 import json
 
-def update(f, d):
-    with open(f, 'r', encoding='utf-8') as file: 
-        data = json.load(file)
-    data['meetings'] = d
-    with open(f, 'w', encoding='utf-8') as file: 
-        json.dump(data, file, ensure_ascii=False, indent=2)
+def update_json(filepath, lang):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        
+    if 'statusMap' not in data:
+        data['statusMap'] = {}
+        
+    if lang == 'en':
+        data['statusMap']['رخصة غير صادرة'] = "License Not Issued"
+        data['statusMap']['تمت المعالجة بواسطة الاستشاري'] = "Processed by Consultant"
+    else:
+        data['statusMap']['رخصة غير صادرة'] = "رخصة غير صادرة"
+        data['statusMap']['تمت المعالجة بواسطة الاستشاري'] = "تمت المعالجة بواسطة الاستشاري"
+        
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-ar_d = {
-    'title': 'سجل الاجتماعات',
-    'subtitle': 'إدارة اجتماعات المقاولين والاستشاريين',
-    'addMeeting': 'إضافة اجتماع',
-    'search': 'بحث في الاجتماعات...',
-    'allTypes': 'كل أنواع الاجتماعات',
-    'weekly': 'أسبوعي',
-    'monthly': 'شهري',
-    'meetingName': 'اسم الاجتماع',
-    'type': 'النوع',
-    'date': 'التاريخ',
-    'governorate': 'المحافظة التي تم فيها الاجتماع',
-    'project': 'المشروع',
-    'contractor': 'المقاول',
-    'consultant': "الاستشاري",
-    'attachments': 'المرفقات',
-    'actions': 'إجراءات',
-    'viewDetails': 'عرض التفاصيل',
-    'viewImages': 'عرض الصور',
-    'viewPdf': 'عرض ال pdf',
-    'edit': 'تعديل',
-    'delete': 'حذف',
-    'noMeetings': 'لا توجد اجتماعات مسجلة حالياً',
-    'loading': 'جاري تحميل البيانات...',
-    'meetingItem': 'اجتماع',
-    'editMeeting': 'تعديل الاجتماع',
-    'addNewMeeting': 'إضافة اجتماع جديد',
-    'titleLabel': 'اسم الاجتماع *',
-    'titlePlaceholder': 'مثال: اجتماع التنسيق الأسبوعي',
-    'typeLabel': 'نوع الاجتماع *',
-    'contractorLabel': 'المقاول',
-    'contractorPlaceholder': 'أدخل اسم المقاول',
-    'consultantLabel': 'الاستشاري',
-    'consultantPlaceholder': 'أدخل اسم الاستشاري',
-    'dateLabel': 'التاريخ *',
-    'projectLabel': 'المشروع *',
-    'projectPlaceholder': 'اختر المشروع',
-    'governorateLabel': "المحافظة",
-    'governoratePlaceholder': 'المحافظة (اختياري)',
-    'detailsLabel': 'تفاصيل ومخرجات الاجتماع',
-    'detailsPlaceholder': 'اكتب النقاط الرئيسية، القرارات، والمخرجات...',
-    'imagesLabel': 'الصور',
-    'imagesHelp': 'مسموح بالصور وفيديو قصير (أقل من 20 ميجا)',
-    'pdfLabel': 'ملفات PDF',
-    'pdfHelp': 'اختر ملفات PDF',
-    'cancel': 'إلغاء',
-    'saving': 'جاري الحفظ...',
-    'save': 'حفظ بيانات الاجتماع',
-    'detailsTitle': 'تفاصيل ومخرجات الاجتماع',
-    'noDetails': 'لا توجد تفاصيل',
-    'confirmDelete': 'هل أنت متأكد من حذف هذا الاجتماع؟',
-    'imagesTitle': 'صور الاجتماع',
-    'videoSupport': 'متصفحك لا يدعم تشغيل الفيديو.',
-    'noMedia': 'لا توجد وسائط',
-    'successAdd': 'تم إضافة الاجتماع بنجاح',
-    'successEdit': 'تم تعديل الاجتماع بنجاح',
-    'successDelete': 'تم حذف الاجتماع بنجاح',
-    'errorFetch': 'حدث خطأ في جلب الاجتماعات',
-    'errorSave': 'حدث خطأ في حفظ الاجتماع',
-    'errorDelete': 'حدث خطأ في حذف الاجتماع'
-}
-
-en_d = {
-    'title': 'Meetings Record',
-    'subtitle': 'Manage Contractors and Consultants Meetings',
-    'addMeeting': 'Add Meeting',
-    'search': 'Search meetings...',
-    'allTypes': 'All Meeting Types',
-    'weekly': 'Weekly',
-    'monthly': 'Monthly',
-    'meetingName': 'Meeting Name',
-    'type': 'Type',
-    'date': 'Date',
-    'governorate': 'Governorate',
-    'project': 'Project',
-    'contractor': 'Contractor',
-    'consultant': 'Consultant',
-    'attachments': 'Attachments',
-    'actions': 'Actions',
-    'viewDetails': 'View Details',
-    'viewImages': 'View Images',
-    'viewPdf': 'View PDF',
-    'edit': 'Edit',
-    'delete': 'Delete',
-    'noMeetings': 'No meetings registered',
-    'loading': 'Loading data...',
-    'meetingItem': 'meeting',
-    'editMeeting': 'Edit Meeting',
-    'addNewMeeting': 'Add New Meeting',
-    'titleLabel': 'Meeting Name *',
-    'titlePlaceholder': 'e.g., Weekly Coordination Meeting',
-    'typeLabel': 'Meeting Type *',
-    'contractorLabel': 'Contractor',
-    'contractorPlaceholder': 'Enter contractor name',
-    'consultantLabel': 'Consultant',
-    'consultantPlaceholder': 'Enter consultant name',
-    'dateLabel': 'Date *',
-    'projectLabel': 'Project *',
-    'projectPlaceholder': 'Select project',
-    'governorateLabel': 'Governorate',
-    'governoratePlaceholder': 'Governorate (optional)',
-    'detailsLabel': 'Details and Outcomes',
-    'detailsPlaceholder': 'Write main points, decisions, and outcomes...',
-    'imagesLabel': 'Images',
-    'imagesHelp': 'Images and short videos allowed (under 20MB)',
-    'pdfLabel': 'PDF Files',
-    'pdfHelp': 'Choose PDF files',
-    'cancel': 'Cancel',
-    'saving': 'Saving...',
-    'save': 'Save Meeting Data',
-    'detailsTitle': 'Meeting Details and Outcomes',
-    'noDetails': 'No details',
-    'confirmDelete': 'Are you sure you want to delete this meeting?',
-    'imagesTitle': 'Meeting Images',
-    'videoSupport': 'Your browser does not support the video tag.',
-    'noMedia': 'No media',
-    'successAdd': 'Meeting added successfully',
-    'successEdit': 'Meeting updated successfully',
-    'successDelete': 'Meeting deleted successfully',
-    'errorFetch': 'Error fetching meetings',
-    'errorSave': 'Error saving meeting',
-    'errorDelete': 'Error deleting meeting'
-}
-
-update('frontend/src/i18n/locales/ar.json', ar_d)
-update('frontend/src/i18n/locales/en.json', en_d)
+update_json('frontend/src/i18n/locales/en.json', 'en')
+update_json('frontend/src/i18n/locales/ar.json', 'ar')

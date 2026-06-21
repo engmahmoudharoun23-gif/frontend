@@ -1092,7 +1092,24 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   {translateBrandingText(platformName, isRtl)}
                 </h1>
               </div>
-
+              <div className="hidden sm:flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 md:w-4 md:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <p className="text-[10px] md:text-xs text-white/90" data-testid="header-pm-label">
+                    {translateBrandingText(branding.project_manager_title, isRtl) || t('header.projectManager')}/{translateBrandingText(branding.project_manager_name, isRtl) || ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 md:w-4 md:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <p className="text-[10px] md:text-xs text-white/90" data-testid="header-pc-label">
+                    {translateBrandingText(branding.project_coordinator_name, isRtl) || ''} - {translateBrandingText(branding.project_coordinator_title, isRtl) || t('header.projectCoordinator')}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* User Info & Actions - Responsive */}
@@ -1444,8 +1461,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                             markReportAsSeen(report.id, report);
                                             setReportNotificationsOpen(false);
                                             navigate(`/reports?search=${report.report_number}&exact=true&t=${Date.now()}`);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
                                           }}
                                         >
                                           <p className="font-bold text-gray-900 text-sm flex items-center gap-2">
@@ -1503,8 +1518,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                             } catch(e){}
                                             setReportNotificationsOpen(false);
                                             navigate(`/water-connections`);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
                                           }}
                                         >
                                           <p className="font-bold text-gray-900 text-sm flex items-center gap-2">
@@ -1561,8 +1574,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                             } catch(e){}
                                             setReportNotificationsOpen(false);
                                             navigate(`/sewage-connections`);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 500);
                                           }}
                                         >
                                           <p className="font-bold text-gray-900 text-sm flex items-center gap-2">
@@ -1621,8 +1632,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                       onClick={() => {
                                         setReportNotificationsOpen(false);
                                         navigate(`/reports?search=${report.report_number}&exact=true&t=${Date.now()}`);
-                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 300);
                                       }}
                                     >
                                       <p className="font-medium text-gray-700 text-sm flex items-center gap-2">
@@ -1773,27 +1782,19 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
 
       {/* Global Announcement Banner */}
       {(showDynamicAnnouncement !== null ? showDynamicAnnouncement : branding.show_announcement) && (dynamicAnnouncement ? dynamicAnnouncement : branding.global_announcement) && (
-        <div className="w-full z-40 relative border-b-2 border-[#b71c1c] bg-[#e53935] overflow-hidden">
+        <div className={`w-full z-40 relative border-b-2 overflow-hidden ${branding.flash_announcement !== false ? 'border-[#b71c1c]' : 'border-red-700 bg-red-600'}`}
+             style={branding.flash_announcement !== false ? { animation: 'flashWarning 1s infinite' } : {}}>
           <style>{`
-            @keyframes smoothScrollRtl {
-              0% { transform: translate3d(-100%, 0, 0); }
-              100% { transform: translate3d(100vw, 0, 0); }
+            @keyframes flashWarning { 
+              0%, 49% { background-color: #e53935; box-shadow: inset 0 0 15px rgba(0,0,0,0.15); } 
+              50%, 100% { background-color: #7f0000; box-shadow: inset 0 0 25px rgba(0,0,0,0.4); } 
             }
-            @keyframes smoothScrollLtr {
-              0% { transform: translate3d(100vw, 0, 0); }
-              100% { transform: translate3d(-100%, 0, 0); }
-            }
+            @keyframes marqueeScrollRtl { 0% { transform: translateX(-100%); } 100% { transform: translateX(100vw); } }
+            @keyframes marqueeScrollLtr { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
           `}</style>
-          <div className="mx-auto flex items-center overflow-hidden w-full relative h-10 sm:h-12 md:h-14">
-            <p 
-              className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-widest whitespace-nowrap absolute"
-              style={{
-                animation: `${isRtl ? 'smoothScrollRtl' : 'smoothScrollLtr'} 25s linear infinite`,
-                willChange: 'transform',
-                left: 0,
-                textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
-              }}
-            >
+          <div className="mx-auto py-3 sm:py-4 flex items-center overflow-hidden w-full relative h-12 sm:h-14">
+            <p className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-widest whitespace-nowrap absolute drop-shadow-lg" 
+               style={{ animation: `${isRtl ? 'marqueeScrollRtl' : 'marqueeScrollLtr'} 20s linear infinite`, left: 0, textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>
               ⚠️ {translateBrandingText(dynamicAnnouncement ? dynamicAnnouncement : branding.global_announcement, isRtl)} ⚠️
             </p>
           </div>
@@ -2059,14 +2060,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <Link to="/fleet-maintenance" onClick={(e) => handleLinkClick(e, "/fleet-maintenance")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/fleet-maintenance') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                   {t('sidebar.fleet')}
-                </Link>
-              )}
-              
-              {/* الاجتماعات */}
-              {hasPermission('meetings') && (
-                <Link to="/meetings" onClick={(e) => handleLinkClick(e, "/meetings")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/meetings') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
-                  <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  {t('sidebar.meetings', { defaultValue: 'الاجتماعات' })}
                 </Link>
               )}
               
@@ -2476,21 +2469,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </svg>
                 </div>
                 <span className="sidebar-text">{t('sidebar.fleet')}</span>
-              </Link>
-            )}
-            
-            {/* الاجتماعات */}
-            {hasPermission('meetings') && (
-              <Link
-                to="/meetings" onClick={(e) => handleLinkClick(e, "/meetings")}
-                className={`sidebar-item ${isActive('/meetings') ? 'sidebar-item-active' : 'text-gray-700'}`}
-              >
-                <div className="sidebar-icon-box">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <span className="sidebar-text">{t('sidebar.meetings', { defaultValue: 'الاجتماعات' })}</span>
               </Link>
             )}
             

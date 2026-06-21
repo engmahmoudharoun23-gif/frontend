@@ -3,7 +3,6 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { resolveImageUrl } from '../utils/imageUrl';
 import Pagination from '../components/Pagination';
 import { useTranslation } from 'react-i18next';
 import { translateBrandingText } from '../utils/brandingTranslation';
@@ -259,7 +258,7 @@ function TeamManagement({ user, onLogout }) {
                   <div className="relative group cursor-pointer" onClick={() => document.getElementById('profile_picture_upload').click()}>
                     <div className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 hover:bg-gray-100 transition-colors">
                       {formData.profile_picture ? (
-                        <img src={resolveImageUrl(formData.profile_picture)} alt="Profile" className="w-full h-full object-cover" />
+                        <img src={formData.profile_picture} alt="Profile" className="w-full h-full object-cover" />
                       ) : (
                         <UserPlus className="w-8 h-8 text-gray-400" />
                       )}
@@ -334,7 +333,7 @@ function TeamManagement({ user, onLogout }) {
                       {member.profile_picture ? (
                         <div className="w-10 h-10">
                           <img 
-                            src={resolveImageUrl(member.profile_picture)} 
+                            src={member.profile_picture} 
                             alt={member.name} 
                             className={`w-10 h-10 rounded-full object-cover border border-gray-200 cursor-zoom-in transition-all duration-300 relative z-10 hover:z-50 hover:scale-[4] hover:rounded-xl hover:shadow-2xl ${isRtl ? 'origin-right' : 'origin-left'}`}
                           />
