@@ -1,8 +1,0 @@
-              </select>
-              <select name="governorate" value={filters.governorate} onChange={handleFilterChange} 
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                <option value="">جميع المحافظات</option>
-                {filterGovernorates.map(g => <option key={g.id || g.name} value={g.name}>{g.name}</option>)}
-              </select>
-              <input type="text" name="request_number" value={filters.request_number} onChange={handleFilterChange}
-                placeholder="رقم الطلب" className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />

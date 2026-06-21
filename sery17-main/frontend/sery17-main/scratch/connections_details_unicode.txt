@@ -1,7 +1,0 @@
---- WATER CONNECTIONS DETAIL ---
-ID: 836f6bb9-d2fd-40c1-8af8-dc93e731b8b9, Project: 'مشروع ايصال' (مشروع ايصال), Gov: 'جدة' (جدة), CreatedBy: b619d398-1927-4c57-8c56-8499ad5ef297, CreatedByName: م/ محمود
-ID: e1d591d6-3bc8-4bd1-bcd0-9c2336a19f74, Project: 'مشروع ايصال' (مشروع ايصال), Gov: 'الطائف' (الطائف), CreatedBy: c6c09074-876c-4aa8-95ec-2ef94cf92e5c, CreatedByName: م/ محمود
-
---- SEWAGE CONNECTIONS DETAIL ---
-ID: 7d901a6f-5b0d-40a1-b43f-82ecb90dbcd9, Project: 'مشروع ايصال' (مشروع ايصال), Gov: 'جدة' (جدة), CreatedBy: b619d398-1927-4c57-8c56-8499ad5ef297, CreatedByName: م/ محمود
-ID: 4f68453a-de55-40a8-b7ae-1fa1baa4f443, Project: 'مشروع ايصال' (مشروع ايصال), Gov: 'الطائف' (الطائف), CreatedBy: c6c09074-876c-4aa8-95ec-2ef94cf92e5c, CreatedByName: م/ محمود
