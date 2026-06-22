@@ -409,27 +409,20 @@ function WorkPermits({ user, onLogout }) {
   };
 
   const handleDownloadPDF = async (report, titleText) => {
-    toast.info(isRtl ? 'جاري بدء التحميل...' : 'Starting download...', { autoClose: 2000, toastId: 'downloading' });
-    
-    let fullReport = report;
-    if (fullReport.image === undefined) {
-      try {
+    const toastId = toast.loading(isRtl ? 'جاري تجهيز وتحميل الملف، يرجى الانتظار...' : 'Preparing and downloading file, please wait...');
+    try {
+      let fullReport = report;
+      if (fullReport.image === undefined) {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/work-permits/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
         fullReport = res.data;
-      } catch (err) {
-        toast.error('Error loading details');
+      }
+
+      if (!fullReport.image) {
+        toast.update(toastId, { render: 'لا يوجد صورة أو ملف مرفق للتحميل', type: 'error', isLoading: false, autoClose: 3000 });
         return;
       }
-    }
-
-    if (!fullReport.image) {
-      toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token') || '';
+      
       let ext = '.jpg';
       if (fullReport.image.toLowerCase().endsWith('.pdf') || fullReport.image.startsWith('data:application/pdf')) ext = '.pdf';
       else if (fullReport.image.toLowerCase().endsWith('.png') || fullReport.image.startsWith('data:image/png')) ext = '.png';
@@ -442,20 +435,27 @@ function WorkPermits({ user, onLogout }) {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        toast.update(toastId, { render: isRtl ? 'تم التحميل بنجاح!' : 'Downloaded successfully!', type: 'success', isLoading: false, autoClose: 2000 });
       } else {
+        const token = localStorage.getItem('token') || '';
         const fileUrlParam = encodeURIComponent(fullReport.image);
         const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+        
+        const response = await axios.get(downloadUrl, { responseType: 'blob' });
+        const objUrl = window.URL.createObjectURL(response.data);
         const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_blank';
+        link.href = objUrl;
         link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(objUrl), 100);
+        
+        toast.update(toastId, { render: isRtl ? 'تم التحميل بنجاح!' : 'Downloaded successfully!', type: 'success', isLoading: false, autoClose: 2000 });
       }
     } catch (e) {
       console.error('File download error:', e);
-      toast.error(t('workPermits.downloadError') || 'فشل تحميل الملف');
+      toast.update(toastId, { render: isRtl ? 'فشل التحميل' : 'Download failed', type: 'error', isLoading: false, autoClose: 3000 });
     }
   };
 

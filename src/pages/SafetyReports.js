@@ -394,34 +394,23 @@ function SafetyReports({ user, onLogout }) {
   const handleDownloadPDF = async (report, titleText) => {
     let fullReport = report;
     const hasAnyFile = (r) => r.image || r.file || r.file_url || (r.images && r.images.length > 0) || (r.files && r.files.length > 0);
+    let toastId = null;
     
-    let dirHandle = null;
-    if ('showDirectoryPicker' in window && !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-      try {
-        dirHandle = await window.showDirectoryPicker({
-          id: 'safety_reports_dir',
-          mode: 'readwrite',
-          startIn: 'downloads'
-        });
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-      }
-    }
-
     if (!hasAnyFile(fullReport)) {
-      toast.info(isRtl ? 'جاري تجهيز الملفات...' : 'Preparing files...', { autoClose: 2000, toastId: 'dl_prep' });
+      toastId = toast.loading(isRtl ? 'جاري جلب تفاصيل المرفقات...' : 'Fetching attachment details...');
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/safety-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
         fullReport = res.data;
       } catch (err) {
-        toast.error('Error loading details');
+        toast.update(toastId, { render: 'Error loading details', type: 'error', isLoading: false, autoClose: 3000 });
         return;
       }
     }
 
     if (!hasAnyFile(fullReport)) {
-      toast.error('لا يوجد صور أو ملفات مرفقة للتحميل');
+      if (toastId) toast.update(toastId, { render: 'لا يوجد صور أو ملفات مرفقة للتحميل', type: 'error', isLoading: false, autoClose: 3000 });
+      else toast.error('لا يوجد صور أو ملفات مرفقة للتحميل');
       return;
     }
     
@@ -430,7 +419,9 @@ function SafetyReports({ user, onLogout }) {
         try {
           const isString = typeof fileData === 'string';
           const dataUrl = isString ? fileData : (fileData.data || fileData.url);
-          const url = resolveImageUrl(dataUrl);
+          let url = resolveImageUrl(dataUrl);
+          
+          if (!url.startsWith('http') && !url.startsWith('data:')) url = resolveImageUrl(url);
           const response = await fetch(url);
           const blob = await response.blob();
           
@@ -439,12 +430,11 @@ function SafetyReports({ user, onLogout }) {
           link.href = objUrl;
           const isPdf = url.toLowerCase().includes('.pdf');
           const extension = isPdf ? 'pdf' : (url.toLowerCase().includes('.png') ? 'png' : 'jpg');
-          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}.${extension}`;
+          const name = (!isString && fileData.name) ? fileData.name : `safety_report_${fullReport.id || 'file'}_attachment_${idx}.${extension}`;
           link.download = name;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          
           setTimeout(() => window.URL.revokeObjectURL(objUrl), 100);
         } catch (error) {
           console.error('Error downloading media:', error);
@@ -469,50 +459,22 @@ function SafetyReports({ user, onLogout }) {
       const allFiles = Array.from(uniqueFilesMap.values());
 
       if (allFiles.length > 0) {
-        toast.info(isRtl ? 'جارِ تحميل المرفقات...' : 'Downloading attachments...', { toastId: 'dl_toast', autoClose: 3000 });
+        if (!toastId) toastId = toast.loading(isRtl ? 'جارِ تحميل المرفقات، يرجى الانتظار...' : 'Downloading attachments, please wait...');
+        else toast.update(toastId, { render: isRtl ? 'جارِ تحميل المرفقات، يرجى الانتظار...' : 'Downloading attachments, please wait...' });
         
-        if (dirHandle) {
-          try {
-            for (let i = 0; i < allFiles.length; i++) {
-              const img = allFiles[i];
-              const isString = typeof img === 'string';
-              let dataUrl = isString ? img : (img.data || img.url);
-              let url = resolveImageUrl(dataUrl);
-              if (!url.startsWith('http') && !url.startsWith('data:')) url = resolveImageUrl(url);
-              
-              const response = await fetch(url);
-              const blob = await response.blob();
-              
-              const isPdf = url.toLowerCase().includes('.pdf');
-              const extension = isPdf ? 'pdf' : (url.toLowerCase().includes('.png') ? 'png' : 'jpg');
-              const name = (!isString && img.name) ? img.name : `safety_report_${fullReport.id || 'file'}_attachment_${i + 1}.${extension}`;
-              
-              const fileHandle = await dirHandle.getFileHandle(name, { create: true });
-              const writable = await fileHandle.createWritable();
-              await writable.write(blob);
-              await writable.close();
-            }
-            toast.success(isRtl ? 'تم حفظ الصور والمرفقات في المجلد المحدد بنجاح ✅' : 'Files saved successfully to the selected folder ✅');
-            return;
-          } catch (err) {
-            if (err.name === 'AbortError') return; // User cancelled
-            console.error('Directory picker error:', err);
-          }
-        }
-
-        // Fallback for browsers that do not support showDirectoryPicker (e.g. mobile Safari, Firefox)
         for (let i = 0; i < allFiles.length; i++) {
           await downloadSingleFile(allFiles[i], i + 1);
-          await new Promise(resolve => setTimeout(resolve, 300));
         }
-        toast.success(t('safetyReports.downloadSuccess') || 'تم تحميل المرفقات بنجاح');
+        toast.update(toastId, { render: t('safetyReports.downloadSuccess') || 'تم تحميل المرفقات بنجاح', type: 'success', isLoading: false, autoClose: 3000 });
       } else {
-        toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
+        if (toastId) toast.update(toastId, { render: 'لا يوجد صورة أو ملف مرفق للتحميل', type: 'error', isLoading: false, autoClose: 3000 });
+        else toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       }
       
     } catch (e) {
       console.error('File download error:', e);
-      toast.error(t('safetyReports.downloadError') || 'فشل تحميل الملف');
+      if (toastId) toast.update(toastId, { render: t('safetyReports.downloadError') || 'فشل تحميل الملف', type: 'error', isLoading: false, autoClose: 3000 });
+      else toast.error(t('safetyReports.downloadError') || 'فشل تحميل الملف');
     }
   };
 
