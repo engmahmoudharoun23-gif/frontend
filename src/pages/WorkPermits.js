@@ -429,37 +429,56 @@ function WorkPermits({ user, onLogout }) {
     
     try {
       const token = localStorage.getItem('token') || '';
+      let ext = '.jpg';
+      if (fullReport.image.toLowerCase().endsWith('.pdf') || fullReport.image.startsWith('data:application/pdf')) ext = '.pdf';
+      else if (fullReport.image.toLowerCase().endsWith('.png') || fullReport.image.startsWith('data:image/png')) ext = '.png';
+      const filename = `report_attachment_${fullReport.id || 'file'}${ext}`;
+
+      let handle = null;
+      if (window.showSaveFilePicker && !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        try {
+          handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: 'File', accept: { '*/*': [ext] } }],
+          });
+        } catch (err) {
+          if (err.name === 'AbortError') return; // Cancelled
+        }
+      }
+
+      toast.info(isRtl ? 'جاري التحميل...' : 'Downloading...', { autoClose: false, toastId: 'downloading' });
       
+      let blob = null;
       if (fullReport.image.startsWith('data:')) {
-        const link = document.createElement('a');
-        link.href = fullReport.image;
-        let ext = '.jpg';
-        if (fullReport.image.startsWith('data:application/pdf')) ext = '.pdf';
-        else if (fullReport.image.startsWith('data:image/png')) ext = '.png';
-        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(t('workPermits.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        const res = await fetch(fullReport.image);
+        blob = await res.blob();
       } else {
         const fileUrlParam = encodeURIComponent(fullReport.image);
         const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
-        
+        const res = await axios.get(downloadUrl, { responseType: 'blob' });
+        blob = res.data;
+      }
+      
+      toast.dismiss('downloading');
+
+      if (handle) {
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        toast.success(isRtl ? 'تم حفظ الملف بنجاح!' : 'File saved successfully!');
+      } else {
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_blank';
-        let ext = '';
-        if (fullReport.image.toLowerCase().endsWith('.pdf')) ext = '.pdf';
-        else if (fullReport.image.toLowerCase().endsWith('.png')) ext = '.png';
-        else if (fullReport.image.toLowerCase().endsWith('.jpg') || fullReport.image.toLowerCase().endsWith('.jpeg')) ext = '.jpg';
-        link.download = `report_attachment_${fullReport.id || 'file'}${ext}`;
+        link.href = url;
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success(t('workPermits.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        window.URL.revokeObjectURL(url);
       }
     } catch (e) {
       console.error('File download error:', e);
+      toast.dismiss('downloading');
       toast.error(t('workPermits.downloadError') || 'فشل تحميل الملف');
     }
   };
@@ -931,43 +950,57 @@ function WorkPermits({ user, onLogout }) {
         {/* View Modal */}
         {viewReport && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
-              <div className="bg-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]">
+              
+              {/* Header */}
+              <div className="bg-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl shrink-0">
                 <h3 className="text-lg font-bold text-white">{t('workPermits.detailsTitle')}</h3>
-                <button onClick={() => setViewReport(null)} className="text-white"><X className="w-6 h-6" /></button>
+                <button onClick={() => setViewReport(null)} className="text-white hover:text-gray-200 transition-colors"><X className="w-6 h-6" /></button>
               </div>
-              <div className="p-6 space-y-4">
+              
+              {/* Body (Scrollable) */}
+              <div className="p-6 space-y-4 overflow-y-auto grow custom-scrollbar">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('workPermits.date')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{viewReport.date || '-'}</p></div>
-                  <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('workPermits.governorate')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.governorate, isRtl) || '-'}</p></div>
-                  <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('workPermits.status')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.status || 'قيد المراجعة', isRtl)}</p></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('workPermits.date')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{viewReport.date || '-'}</p></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('workPermits.governorate')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.governorate, isRtl) || '-'}</p></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('workPermits.status')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.status || 'قيد المراجعة', isRtl)}</p></div>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('workPermits.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('workPermits.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('workPermits.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('workPermits.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
                 {viewReport.image && (
                   <div>
-                    <p className="text-xs text-gray-400 mb-2">{t('workPermits.image')}</p>
+                    <p className="text-xs text-gray-400 mb-2 font-bold">{t('workPermits.image')}</p>
                     {viewReport.image.startsWith('data:application/pdf') || viewReport.image.endsWith('.pdf') ? (
-                      <div className="p-6 bg-orange-50 rounded-xl border-2 border-dashed border-orange-200 flex flex-col items-center justify-center">
+                      <div className="p-6 bg-orange-50 rounded-xl border border-orange-200 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-100 transition-colors" onClick={() => handleDownloadPDF(viewReport, t('workPermits.title'))}>
                         <FileText className="w-16 h-16 text-orange-500 mb-3" />
-                        <span className="text-sm font-bold text-orange-800 mb-4">ملف PDF مرفق</span>
+                        <span className="text-sm font-bold text-orange-800 mb-2">ملف PDF مرفق</span>
+                        <span className="text-xs text-orange-600">انقر للتحميل</span>
                       </div>
                     ) : (
-                      <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover max-h-64 cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(viewReport.image)} />
+                      <div className="relative group w-full sm:w-64">
+                        <img src={resolveImageUrl(viewReport.image)} alt="" className="w-full rounded-xl object-cover cursor-zoom-in border border-gray-200 shadow-sm" onClick={() => setZoomedImage(viewReport.image)} />
+                      </div>
                     )}
                   </div>
                 )}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
-                  <p>{t('workPermits.addedBy')}: {viewReport.created_by || '-'} | {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}</p>
-                  <button
-                    onClick={() => handleDownloadPDF(viewReport, t('workPermits.title'))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition-all text-xs"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>{t('workPermits.downloadReport')}</span>
-                  </button>
-                </div>
               </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 rounded-b-2xl border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+                <p className="text-xs text-gray-500 font-medium text-center sm:text-left w-full sm:w-auto">
+                  {t('workPermits.addedBy')}: {viewReport.created_by || '-'} 
+                  <span className="block sm:inline sm:mx-1 text-gray-300">|</span> 
+                  {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}
+                </p>
+                <button
+                  onClick={() => handleDownloadPDF(viewReport, t('workPermits.title'))}
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all text-sm shadow-md"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{t('workPermits.downloadReport')}</span>
+                </button>
+              </div>
+
             </div>
           </div>
         )}

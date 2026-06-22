@@ -1018,21 +1018,26 @@ function SafetyReports({ user, onLogout }) {
         )}
 
         {/* View Modal */}
+        {/* View Modal */}
         {viewReport && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
-              <div className="bg-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]">
+              
+              {/* Header */}
+              <div className="bg-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl shrink-0">
                 <h3 className="text-lg font-bold text-white">{t('safetyReports.detailsTitle')}</h3>
-                <button onClick={() => setViewReport(null)} className="text-white"><X className="w-6 h-6" /></button>
+                <button onClick={() => setViewReport(null)} className="text-white hover:text-gray-200 transition-colors"><X className="w-6 h-6" /></button>
               </div>
-              <div className="p-6 space-y-4">
+              
+              {/* Body (Scrollable) */}
+              <div className="p-6 space-y-4 overflow-y-auto grow custom-scrollbar">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.date')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{viewReport.date || '-'}</p></div>
-                  <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.governorate')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.governorate, isRtl) || '-'}</p></div>
-                  <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.status')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.status || 'قيد المراجعة', isRtl)}</p></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('safetyReports.date')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{viewReport.date || '-'}</p></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('safetyReports.governorate')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.governorate, isRtl) || '-'}</p></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('safetyReports.status')}</p><p className="font-bold text-gray-800 mt-1 text-sm">{translateBrandingText(viewReport.status || 'قيد المراجعة', isRtl)}</p></div>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-xs text-gray-400">{t('safetyReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('safetyReports.project')}</p><p className="font-bold text-gray-800 mt-1">{translateBrandingText(viewReport.project, isRtl) || '-'}</p></div>
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><p className="text-xs text-gray-400">{t('safetyReports.notes')}</p><p className="text-gray-700 mt-1 leading-relaxed">{viewReport.notes || '-'}</p></div>
                 {(() => {
                   const rawFiles = [];
                   if (viewReport.images && viewReport.images.length > 0) rawFiles.push(...viewReport.images);
@@ -1054,7 +1059,7 @@ function SafetyReports({ user, onLogout }) {
                   if (allFiles.length > 0) {
                     return (
                       <div>
-                        <p className="text-xs text-gray-400 mb-2">{t('safetyReports.attachments') || 'المرفقات'}</p>
+                        <p className="text-xs text-gray-400 mb-2 font-bold">{t('safetyReports.attachments') || 'المرفقات'}</p>
                         <div className="flex flex-wrap gap-2">
                         {allFiles.map((fileObj, idx) => {
                           const imgStr = typeof fileObj === 'string' ? fileObj : (fileObj.data || fileObj.url || '');
@@ -1062,8 +1067,8 @@ function SafetyReports({ user, onLogout }) {
                           return (
                           <div key={idx}>
                             {imgStr.startsWith('data:application/pdf') || imgStr.toLowerCase().includes('.pdf') ? (
-                              <div className="relative group w-32 h-32">
-                                <div className="w-full h-full bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                              <div className="relative group w-24 h-24 sm:w-32 sm:h-32">
+                                <div className="w-full h-full bg-gray-50 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleDownloadPDF({ image: imgStr })}>
                                   <FileText className="w-8 h-8 text-orange-600 mb-1" />
                                   <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
                                 </div>
@@ -1076,8 +1081,8 @@ function SafetyReports({ user, onLogout }) {
                                 </button>
                               </div>
                             ) : (
-                              <div className="relative group w-32 h-32">
-                                <img src={resolveImageUrl(imgStr)} alt="" className="w-full h-full rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
+                              <div className="relative group w-24 h-24 sm:w-32 sm:h-32">
+                                <img src={resolveImageUrl(imgStr)} alt="" className="w-full h-full rounded-xl object-cover cursor-zoom-in border border-gray-200 shadow-sm" onClick={() => setZoomedImage(imgStr)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDownloadPDF({ image: imgStr }); }}
                                   className="absolute top-1 right-1 bg-white/90 hover:bg-white text-orange-600 p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1085,7 +1090,7 @@ function SafetyReports({ user, onLogout }) {
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
-                                <div style={{ display: 'none' }} className="w-full h-full bg-gray-100 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                                <div style={{ display: 'none' }} className="w-full h-full bg-gray-50 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
                                   <span className="text-xs text-gray-600 font-bold text-center">File {idx+1}</span>
                                 </div>
                               </div>
@@ -1099,17 +1104,24 @@ function SafetyReports({ user, onLogout }) {
                   }
                   return null;
                 })()}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
-                  <p>{t('safetyReports.addedBy')}: {viewReport.created_by || '-'} | {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}</p>
-                  <button
-                    onClick={() => handleDownloadPDF(viewReport, t('safetyReports.title'))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition-all text-xs"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>{t('safetyReports.downloadReport')}</span>
-                  </button>
-                </div>
               </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 rounded-b-2xl border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+                <p className="text-xs text-gray-500 font-medium text-center sm:text-left w-full sm:w-auto">
+                  {t('safetyReports.addedBy')}: {viewReport.created_by || '-'} 
+                  <span className="block sm:inline sm:mx-1 text-gray-300">|</span> 
+                  {viewReport.created_at ? new Date(viewReport.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US') : ''}
+                </p>
+                <button
+                  onClick={() => handleDownloadPDF(viewReport, t('safetyReports.title'))}
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all text-sm shadow-md"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{t('safetyReports.downloadReport')}</span>
+                </button>
+              </div>
+
             </div>
           </div>
         )}
