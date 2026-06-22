@@ -341,16 +341,18 @@ function WorkPermits({ user, onLogout }) {
 
   const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
   
-  const handleViewReport = async (r) => {
-    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
-    try {
+  const handleViewReport = (r) => {
+    setViewReport({ ...r, _isLoadingImage: r.image === undefined });
+    if (r.image === undefined) {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/work-permits/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
-      toast.dismiss('loadingReport');
-      setViewReport(res.data);
-    } catch (err) {
-      toast.dismiss('loadingReport');
-      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
+      axios.get(`${API}/work-permits/${r.id}`, { headers: { Authorization: `Bearer ${token}` }})
+        .then(res => {
+          setViewReport(prev => prev && prev.id === r.id ? { ...prev, image: res.data.image, images: res.data.images, _isLoadingImage: false } : prev);
+        })
+        .catch(err => {
+          console.error(err);
+          setViewReport(prev => prev && prev.id === r.id ? { ...prev, _isLoadingImage: false } : prev);
+        });
     }
   };
 
@@ -407,16 +409,15 @@ function WorkPermits({ user, onLogout }) {
   };
 
   const handleDownloadPDF = async (report, titleText) => {
+    toast.info(isRtl ? 'جاري بدء التحميل...' : 'Starting download...', { autoClose: 2000, toastId: 'downloading' });
+    
     let fullReport = report;
-    if (!fullReport.image) {
-      toast.info(isRtl ? 'جاري تجهيز الملف...' : 'Preparing file...', { autoClose: false, toastId: 'loadingReport' });
+    if (fullReport.image === undefined) {
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/work-permits/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
-        toast.dismiss('loadingReport');
         fullReport = res.data;
       } catch (err) {
-        toast.dismiss('loadingReport');
         toast.error('Error loading details');
         return;
       }
@@ -434,51 +435,26 @@ function WorkPermits({ user, onLogout }) {
       else if (fullReport.image.toLowerCase().endsWith('.png') || fullReport.image.startsWith('data:image/png')) ext = '.png';
       const filename = `report_attachment_${fullReport.id || 'file'}${ext}`;
 
-      let handle = null;
-      if (window.showSaveFilePicker && !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        try {
-          handle = await window.showSaveFilePicker({
-            suggestedName: filename,
-            types: [{ description: 'File', accept: { '*/*': [ext] } }],
-          });
-        } catch (err) {
-          if (err.name === 'AbortError') return; // Cancelled
-        }
-      }
-
-      toast.info(isRtl ? 'جاري التحميل...' : 'Downloading...', { autoClose: false, toastId: 'downloading' });
-      
-      let blob = null;
       if (fullReport.image.startsWith('data:')) {
-        const res = await fetch(fullReport.image);
-        blob = await res.blob();
-      } else {
-        const fileUrlParam = encodeURIComponent(fullReport.image);
-        const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
-        const res = await axios.get(downloadUrl, { responseType: 'blob' });
-        blob = res.data;
-      }
-      
-      toast.dismiss('downloading');
-
-      if (handle) {
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        toast.success(isRtl ? 'تم حفظ الملف بنجاح!' : 'File saved successfully!');
-      } else {
-        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = url;
+        link.href = fullReport.image;
         link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+      } else {
+        const fileUrlParam = encodeURIComponent(fullReport.image);
+        const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=1&auth=${encodeURIComponent(token)}`;
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.target = '_blank';
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (e) {
       console.error('File download error:', e);
-      toast.dismiss('downloading');
       toast.error(t('workPermits.downloadError') || 'فشل تحميل الملف');
     }
   };

@@ -320,16 +320,18 @@ function SafetyReports({ user, onLogout }) {
 
   const openAdd = () => { setEditingReport(null); setForm(emptyForm); setImagePreview(''); setImagePreviews([]); setShowModal(true); };
   
-  const handleViewReport = async (r) => {
-    toast.info(isRtl ? 'جاري التحميل...' : 'Loading...', { autoClose: false, toastId: 'loadingReport' });
-    try {
+  const handleViewReport = (r) => {
+    setViewReport({ ...r, _isLoadingImage: r.image === undefined && r.images === undefined });
+    if (r.image === undefined && r.images === undefined) {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }});
-      toast.dismiss('loadingReport');
-      setViewReport(res.data);
-    } catch (err) {
-      toast.dismiss('loadingReport');
-      toast.error(isRtl ? 'خطأ في جلب التفاصيل' : 'Error loading details');
+      axios.get(`${API}/safety-reports/${r.id}`, { headers: { Authorization: `Bearer ${token}` }})
+        .then(res => {
+          setViewReport(prev => prev && prev.id === r.id ? { ...prev, image: res.data.image, images: res.data.images, _isLoadingImage: false } : prev);
+        })
+        .catch(err => {
+          console.error(err);
+          setViewReport(prev => prev && prev.id === r.id ? { ...prev, _isLoadingImage: false } : prev);
+        });
     }
   };
 
@@ -393,28 +395,37 @@ function SafetyReports({ user, onLogout }) {
     let fullReport = report;
     const hasAnyFile = (r) => r.image || r.file || r.file_url || (r.images && r.images.length > 0) || (r.files && r.files.length > 0);
     
+    let dirHandle = null;
+    if ('showDirectoryPicker' in window && !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      try {
+        dirHandle = await window.showDirectoryPicker({
+          id: 'safety_reports_dir',
+          mode: 'readwrite',
+          startIn: 'downloads'
+        });
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
     if (!hasAnyFile(fullReport)) {
-      toast.info(isRtl ? 'جاري تحضير ملف الـ PDF...' : 'Preparing PDF file...', { autoClose: false, toastId: 'loadingReport' });
+      toast.info(isRtl ? 'جاري تجهيز الملفات...' : 'Preparing files...', { autoClose: 2000, toastId: 'dl_prep' });
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/safety-reports/${report.id}`, { headers: { Authorization: `Bearer ${token}` }});
-        toast.dismiss('loadingReport');
         fullReport = res.data;
       } catch (err) {
-        toast.dismiss('loadingReport');
         toast.error('Error loading details');
         return;
       }
     }
 
     if (!hasAnyFile(fullReport)) {
-      toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
+      toast.error('لا يوجد صور أو ملفات مرفقة للتحميل');
       return;
     }
     
     try {
-      const token = localStorage.getItem('token') || '';
-      
       const downloadSingleFile = async (fileData, idx) => {
         try {
           const isString = typeof fileData === 'string';
@@ -458,15 +469,10 @@ function SafetyReports({ user, onLogout }) {
       const allFiles = Array.from(uniqueFilesMap.values());
 
       if (allFiles.length > 0) {
-        toast.info(isRtl ? 'جارِ تجهيز المرفقات لحفظها...' : 'Preparing attachments to save...', { toastId: 'dl_toast' });
+        toast.info(isRtl ? 'جارِ تحميل المرفقات...' : 'Downloading attachments...', { toastId: 'dl_toast', autoClose: 3000 });
         
-        if ('showDirectoryPicker' in window) {
+        if (dirHandle) {
           try {
-            const dirHandle = await window.showDirectoryPicker({
-              id: 'safety_reports_dir',
-              mode: 'readwrite',
-              startIn: 'downloads'
-            });
             for (let i = 0; i < allFiles.length; i++) {
               const img = allFiles[i];
               const isString = typeof img === 'string';
