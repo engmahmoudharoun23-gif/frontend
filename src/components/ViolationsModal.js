@@ -269,16 +269,53 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
     }
 
     if (!fullV.images || fullV.images.length === 0) return;
-    fullV.images.forEach((img, idx) => {
+    toast.info(isRtl ? 'جارِ تجهيز المرفقات لحفظها...' : 'Preparing attachments to save...', { toastId: 'dl_toast_v' });
+
+    if ('showDirectoryPicker' in window) {
+      try {
+        const dirHandle = await window.showDirectoryPicker({
+          id: 'violations_dir',
+          mode: 'readwrite',
+          startIn: 'downloads'
+        });
+        for (let idx = 0; idx < fullV.images.length; idx++) {
+          const img = fullV.images[idx];
+          const isString = typeof img === 'string';
+          const isPdf = !isString && img.type === 'pdf';
+          let dataUrl = isString ? resolveImageUrl(img) : (img.data ? img.data : resolveImageUrl(img));
+          if (!dataUrl.startsWith('http') && !dataUrl.startsWith('data:')) dataUrl = resolveImageUrl(dataUrl);
+          
+          const extension = isPdf ? 'pdf' : (dataUrl.toLowerCase().includes('.png') ? 'png' : 'jpg');
+          const name = (!isString && img.name) ? img.name : `violation_${v.date || 'file'}_${idx + 1}.${extension}`;
+          
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          
+          const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        }
+        toast.success(d('تم حفظ الصور والمرفقات في المجلد المحدد بنجاح ✅', 'Files saved successfully to the selected folder ✅'));
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Directory picker error:', err);
+      }
+    }
+
+    for (let idx = 0; idx < fullV.images.length; idx++) {
+      const img = fullV.images[idx];
       const isString = typeof img === 'string';
       const isPdf = !isString && img.type === 'pdf';
-      const dataUrl = isString ? resolveImageUrl(img) : (img.data ? img.data : resolveImageUrl(img));
+      let dataUrl = isString ? resolveImageUrl(img) : (img.data ? img.data : resolveImageUrl(img));
+      if (!dataUrl.startsWith('http') && !dataUrl.startsWith('data:')) dataUrl = resolveImageUrl(dataUrl);
       
-      const extension = isPdf ? 'pdf' : 'jpg';
+      const extension = isPdf ? 'pdf' : (dataUrl.toLowerCase().includes('.png') ? 'png' : 'jpg');
       const name = (!isString && img.name) ? img.name : `violation_${v.date || 'file'}_${idx + 1}.${extension}`;
       
       try {
-        if (isPdf && dataUrl.startsWith('data:')) {
+        if (dataUrl.startsWith('data:')) {
           const blob = base64ToBlob(dataUrl);
           if (blob) {
             const blobUrl = URL.createObjectURL(blob);
@@ -289,19 +326,25 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
             link.click();
             document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-            return;
           }
+        } else {
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          const objUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = objUrl;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => window.URL.revokeObjectURL(objUrl), 100);
         }
-      } catch (e) { console.error(e); }
-      
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-    toast.success(d('بدأ التحميل...', 'Download started...'));
+      } catch (e) {
+        console.error('Error downloading media:', e);
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    toast.success(d('تم التحميل بنجاح', 'Downloaded successfully'));
   };
 
   const removeImage = (idx) => {
@@ -1036,25 +1079,57 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
                 
                 if (isPdf) {
                   return (
-                    <div 
-                      key={idx} 
-                      className="w-36 h-36 rounded-xl flex flex-col items-center justify-center border-2 border-red-200 bg-red-50 hover:bg-red-100 cursor-pointer transition-all shadow-sm hover:shadow-md" 
-                      onClick={(e) => openPdfViewer(e, dataUrl)}
-                      title={d('فتح ملف PDF', 'Open PDF')}
-                    >
-                      <FileText className="w-12 h-12 text-red-500 mb-2" />
-                      <span className="text-xs text-red-700 font-bold px-3 text-center line-clamp-2">{img.name || 'PDF Document'}</span>
+                    <div key={idx} className="relative group w-36 h-36">
+                      <div 
+                        className="w-full h-full rounded-xl flex flex-col items-center justify-center border-2 border-red-200 bg-red-50 hover:bg-red-100 cursor-pointer transition-all shadow-sm hover:shadow-md" 
+                        onClick={(e) => openPdfViewer(e, dataUrl)}
+                        title={d('فتح ملف PDF', 'Open PDF')}
+                      >
+                        <FileText className="w-12 h-12 text-red-500 mb-2" />
+                        <span className="text-xs text-red-700 font-bold px-3 text-center line-clamp-2">{img.name || 'PDF Document'}</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const link = document.createElement('a');
+                          link.href = dataUrl;
+                          link.download = img.name || `violation_document_${idx+1}.pdf`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="absolute top-1 right-1 bg-white/90 hover:bg-white text-red-600 p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={d('تحميل الملف', 'Download File')}
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
                     </div>
                   );
                 } else {
                   return (
-                    <img
-                      key={idx}
-                      src={dataUrl}
-                      alt=""
-                      className="w-36 h-36 rounded-xl object-cover border-2 border-gray-200 cursor-zoom-in hover:border-red-400 transition-colors shadow-sm"
-                      onClick={() => setZoomedImage(dataUrl)}
-                    />
+                    <div key={idx} className="relative group w-36 h-36">
+                      <img
+                        src={dataUrl}
+                        alt=""
+                        className="w-full h-full rounded-xl object-cover border-2 border-gray-200 cursor-zoom-in hover:border-red-400 transition-colors shadow-sm"
+                        onClick={() => setZoomedImage(dataUrl)}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const link = document.createElement('a');
+                          link.href = dataUrl;
+                          link.download = `violation_image_${idx+1}.jpg`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="absolute top-1 right-1 bg-white/90 hover:bg-white text-blue-600 p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={d('تحميل الصورة', 'Download Image')}
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
                   );
                 }
               })}

@@ -360,6 +360,7 @@ function Reports({ user, onLogout }) {
   const [exportDynamicStatuses, setExportDynamicStatuses] = useState([]); // حالات التصدير الديناميكية
   const [isNewReportsFilter, setIsNewReportsFilter] = useState(false); // فلتر البلاغات الجديدة
   const [activeDropdown, setActiveDropdown] = useState(null); // التحكم في الدروب بوكس للإجراءات
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, right: 0 }); // موقع القائمة المنسدلة الثابت
   
   const isAdmin = user.role === 'admin';
   
@@ -394,15 +395,32 @@ function Reports({ user, onLogout }) {
     fetchDynamicStatuses();
   }, [filters.project, currentProject]);
   
-  // إغلاق القائمة المنسدلة عند الضغط خارجها
+  // إغلاق القائمة المنسدلة عند الضغط خارجها أو التمرير
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (activeDropdown && !event.target.closest('.relative.inline-block')) {
+      if (activeDropdown && !event.target.closest('.dropdown-container')) {
+        setActiveDropdown(null);
+      }
+    };
+    const handleScroll = (e) => {
+      if (!activeDropdown) return;
+      
+      // If e.target is an Element, we can check if the scroll was inside the dropdown
+      if (e.target && typeof e.target.closest === 'function') {
+        if (!e.target.closest('.dropdown-container')) {
+          setActiveDropdown(null);
+        }
+      } else {
+        // If scrolling the document or window itself, just close it
         setActiveDropdown(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
   }, [activeDropdown]);
   
   // تم نقل حالة الترقيم للأعلى
@@ -1582,17 +1600,71 @@ const fetchReports = async () => {
     }
   };
 
+  const getFileHandleSafely = async (filename) => {
+    if ('showSaveFilePicker' in window) {
+      try {
+        let types = [];
+        if (filename.endsWith('.pdf')) {
+          types = [{ description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] } }];
+        } else if (filename.endsWith('.xlsx')) {
+          types = [{ description: 'Excel Spreadsheet', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }];
+        } else if (filename.endsWith('.jpg')) {
+          types = [{ description: 'JPEG Image', accept: { 'image/jpeg': ['.jpg', '.jpeg'] } }];
+        } else if (filename.endsWith('.png')) {
+          types = [{ description: 'PNG Image', accept: { 'image/png': ['.png'] } }];
+        }
+        const handle = await window.showSaveFilePicker({ 
+          suggestedName: filename,
+          types: types.length > 0 ? types : undefined
+        });
+        return handle;
+      } catch (err) {
+        if (err.name === 'AbortError') return 'abort'; // user cancelled
+        console.error('SaveFilePicker error:', err);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const saveToHandleOrFallback = async (blobData, filename, fileHandle) => {
+    if (fileHandle && fileHandle !== 'abort') {
+      try {
+        const writable = await fileHandle.createWritable();
+        await writable.write(blobData);
+        await writable.close();
+        return true;
+      } catch (err) {
+        console.error('Error writing to file handle:', err);
+      }
+    }
+    // Fallback
+    const url = window.URL.createObjectURL(new Blob([blobData]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    return true;
+  };
+
   const handleExport = async (format) => {
     try {
       if (exportCount === 0 && selectedReports.length === 0) {
         toast.warning(t('reports.pleaseSelectReportsToExport', {defaultValue: 'يرجى تحديد العدد او البلاغ للتصدير'}));
         return;
       }
+
+      const filename = `reports_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+      const fileHandle = await getFileHandleSafely(filename);
+      if (fileHandle === 'abort') return;
+
       toast.info(format === 'pdf' ? 'جاري تحضير ملف الـ PDF... الرجاء الانتظار' : 'جاري تحضير ملف الإكسيل... الرجاء الانتظار', { autoClose: 3500 });
       
       const params = new URLSearchParams();
       
-      // إضافة جميع فلاتر التصدير مع الاعتماد على الفلاتر الرئيسية كبديل
       const projectToUse = exportFilters.project || filters.project;
       if (projectToUse) params.append('project', projectToUse);
       
@@ -1627,19 +1699,12 @@ const fetchReports = async () => {
       
       const response = await axios.get(`${API}/reports/export/${format}?${params}`, { 
         responseType: 'blob',
-        timeout: 120000 // 2 دقيقة timeout
+        timeout: 120000
       });
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      const filename = `reports_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      await saveToHandleOrFallback(response.data, filename, fileHandle);
       toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
+
     } catch (error) {
       console.error('Failed to export:', error);
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
@@ -1658,104 +1723,53 @@ const fetchReports = async () => {
     }
     
     const exportCount = isAllSelected ? totalReports : selectedReports.length;
-    
     if (!window.confirm(t('reports.confirmExport', { count: exportCount, defaultValue: `هل تريد تصدير ${exportCount} بلاغ؟` }))) {
       return;
     }
     
+    let filename = '';
+    if (isAllSelected) filename = `all_reports_${totalReports}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    else if (selectedReports.length > 50) filename = `reports_${selectedReports.length}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    else filename = `selected_reports_${selectedReports.length}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+
+    const fileHandle = await getFileHandleSafely(filename);
+    if (fileHandle === 'abort') return;
+    
     setLoading(true);
     toast.info(format === 'pdf' ? 'جاري تحضير ملف الـ PDF... الرجاء الانتظار' : 'جاري تحضير ملف الإكسيل... الرجاء الانتظار', { autoClose: 3500 });
     try {
-      // إذا تم تحديد "الكل"، استخدم التصدير بالفلاتر (أسرع وأكثر موثوقية)
-      if (isAllSelected) {
-        console.log('🚀 Exporting all reports using filters...');
+      if (isAllSelected || selectedReports.length > 50) {
+        console.log('🚀 Exporting using filters...');
         const params = new URLSearchParams();
-        
-        // إضافة جميع الفلاتر الحالية
         Object.entries(filters).forEach(([key, value]) => { 
           if (value) params.append(key, value); 
         });
         
         const response = await axios.get(
           `${API}/reports/export/${format}?${params}`, 
-          { 
-            responseType: 'blob',
-            timeout: 300000 // 5 دقائق
-          }
+          { responseType: 'blob', timeout: 300000 }
         );
         
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `all_reports_${totalReports}.${format === 'excel' ? 'xlsx' : 'pdf'}`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        
+        await saveToHandleOrFallback(response.data, filename, fileHandle);
         toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
-        
-        // إعادة تعيين
         setSelectedReports([]);
         setIsAllSelected(false);
       } 
-      // إذا كان العدد المحدد > 50، استخدم أيضاً التصدير بالفلاتر
-      else if (selectedReports.length > 50) {
-        console.log('🚀 Exporting large selection using filters...');
-        const params = new URLSearchParams();
-        
-        // إضافة الفلاتر الحالية
-        Object.entries(filters).forEach(([key, value]) => { 
-          if (value) params.append(key, value); 
-        });
-        
-        const response = await axios.get(
-          `${API}/reports/export/${format}?${params}`, 
-          { 
-            responseType: 'blob',
-            timeout: 300000
-          }
-        );
-        
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `reports_${selectedReports.length}.${format === 'excel' ? 'xlsx' : 'pdf'}`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        
-        toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
-        setSelectedReports([]);
-      }
-      // للأعداد الصغيرة فقط، استخدم export-selected
       else {
         console.log('📦 Exporting small selection using IDs...');
         const payload = { 
           report_ids: selectedReports,
-            lang: i18n.language || 'ar'
-          };
-        
-        if (filters.project) {
-          payload.project = filters.project;
-        }
+          lang: i18n.language || 'ar'
+        };
+        if (filters.project) payload.project = filters.project;
         
         const response = await axios.post(
           `${API}/reports/export-selected/${format}`,
           payload,
-          { 
-            responseType: 'blob',
-            timeout: 120000
-          }
+          { responseType: 'blob', timeout: 120000 }
         );
         
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `selected_reports_${selectedReports.length}.${format === 'excel' ? 'xlsx' : 'pdf'}`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        
+        await saveToHandleOrFallback(response.data, filename, fileHandle);
         toast.success(t('reports.exportSuccess', {defaultValue: 'تم تصدير الملف بنجاح'}));
         setSelectedReports([]);
       }
@@ -1767,6 +1781,7 @@ const fetchReports = async () => {
       setLoading(false);
     }
   };
+
 
   // جلب الصور لبلاغ معين
   const fetchReportImages = async (report) => {
@@ -1805,6 +1820,10 @@ const fetchReports = async () => {
   const handleDownloadImagesAsPdf = async () => {
     if (!selectedReportForMedia || selectedImages.length === 0) return;
     
+    const filename = `Report_${selectedReportForMedia.report_number || selectedReportForMedia.id}_Media.pdf`;
+    const fileHandle = await getFileHandleSafely(filename);
+    if (fileHandle === 'abort') return;
+
     toast.info(t('reports.pdf.preparing', {defaultValue: 'جاري تجهيز ملف الـ PDF... الرجاء الانتظار'}));
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -1998,7 +2017,8 @@ const fetchReports = async () => {
         pdf.addImage(footerImg, 'JPEG', 0, pageHeight - footerHeightRender - 5, pageWidth, footerHeightRender);
       }
       
-      pdf.save(`Report_${selectedReportForMedia.report_number || selectedReportForMedia.id}_Media.pdf`);
+      const pdfBlob = pdf.output('blob');
+      await saveToHandleOrFallback(pdfBlob, filename, fileHandle);
       toast.success(t('reports.pdf.exportSuccess', {defaultValue: 'تم التصدير إلى PDF بنجاح'}));
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -2008,21 +2028,16 @@ const fetchReports = async () => {
 
   const downloadImage = async (imageData, index) => {
     try {
-      // resolve إلى URL مع التوكن إن لزم
+      const extension = isVideo(imageData) ? 'webm' : 'jpg';
+      const filename = `media_${index + 1}.${extension}`;
+      const fileHandle = await getFileHandleSafely(filename);
+      if (fileHandle === 'abort') return;
+
       const url = resolveImageUrl(imageData);
       const response = await fetch(url);
       const blob = await response.blob();
       
-      const objUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objUrl;
-      const extension = isVideo(imageData) ? 'webm' : 'jpg';
-      link.download = `media_${index + 1}.${extension}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      setTimeout(() => window.URL.revokeObjectURL(objUrl), 100);
+      await saveToHandleOrFallback(blob, filename, fileHandle);
     } catch (error) {
       console.error('Error downloading media:', error);
       toast.error(`❌ فشل تحميل الملف ${index + 1}`);
@@ -2887,7 +2902,7 @@ const fetchReports = async () => {
         )}
         
       {/* Table Section - Completely Free Layout */}
-      <div id="reports-table-section" className="w-full overflow-x-auto pb-32">
+      <div id="reports-table-section" className="w-full overflow-x-auto">
         <table className="min-w-[1200px] w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -3123,11 +3138,22 @@ const fetchReports = async () => {
                       </button>
                     </td>
                     <td className="py-4 whitespace-nowrap text-center relative overflow-visible">
-                      <div className="relative inline-block text-right overflow-visible">
+                      <div className="inline-block text-right overflow-visible dropdown-container">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveDropdown(activeDropdown === report.id ? null : report.id);
+                            if (activeDropdown === report.id) {
+                              setActiveDropdown(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              let leftPos = isRtl ? rect.left : rect.right - 224;
+                              leftPos = Math.max(10, Math.min(leftPos, window.innerWidth - 234));
+                              setDropdownPos({
+                                top: rect.bottom + 5,
+                                left: leftPos
+                              });
+                              setActiveDropdown(report.id);
+                            }
                           }}
                           className="relative p-1 rounded-full hover:bg-gray-100 text-gray-500 transition-colors focus:outline-none"
                         >
@@ -3144,7 +3170,10 @@ const fetchReports = async () => {
                         </button>
 
                           {activeDropdown === report.id && (
-                            <div className={`absolute ${dropdownPositionClass} w-56 rounded-xl shadow-2xl bg-white border border-gray-200 z-[1000] divide-y divide-gray-100 overflow-hidden animate-in fade-in duration-200 ${dropdownOriginClass}`}>
+                            <div 
+                              className={`fixed w-56 rounded-xl shadow-2xl bg-white border border-gray-200 z-[9999] divide-y divide-gray-100 overflow-hidden animate-in fade-in duration-200`}
+                              style={{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }}
+                            >
                               <div className="py-1">
                                 <button 
                                   onClick={() => {
@@ -3402,6 +3431,27 @@ const fetchReports = async () => {
                 <button 
                   onClick={async () => {
                     toast.info(`📥 ${t('reports.imagesModal.downloading', {defaultValue: 'جارِ تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.files', {defaultValue: 'ملف...'})}`);
+                    if ('showDirectoryPicker' in window) {
+                      try {
+                        const dirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
+                        for (let i = 0; i < selectedImages.length; i++) {
+                          const imgData = selectedImages[i];
+                          const url = resolveImageUrl(imgData);
+                          const response = await fetch(url);
+                          const blob = await response.blob();
+                          const extension = isVideo(imgData) ? 'webm' : 'jpg';
+                          const name = `media_${i + 1}.${extension}`;
+                          const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+                          const writable = await fileHandle.createWritable();
+                          await writable.write(blob);
+                          await writable.close();
+                        }
+                        toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح'})}`);
+                        return;
+                      } catch (e) {
+                        if (e.name === 'AbortError') return;
+                      }
+                    }
                     for (let i = 0; i < selectedImages.length; i++) {
                       await downloadImage(selectedImages[i], i);
                       await new Promise(resolve => setTimeout(resolve, 300));

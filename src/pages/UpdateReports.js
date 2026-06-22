@@ -23,6 +23,7 @@ function UpdateReports({ user, onLogout }) {
     platformTotal: 0,
     newReports: 0,
     updatedReports: 0,
+    excelCount: 0,
     newReportList: [],
     updatedReportList: [],
     downloadUrl: null
@@ -97,6 +98,7 @@ function UpdateReports({ user, onLogout }) {
         platformTotal: response.data.platform_total || 0,
         newReports: response.data.new_reports_count,
         updatedReports: response.data.updated_reports_count,
+        excelCount: response.data.uploaded_excel_count || 0,
         newReportList: response.data.new_reports,
         updatedReportList: response.data.updated_reports,
         downloadUrl: response.data.url
@@ -227,7 +229,12 @@ function UpdateReports({ user, onLogout }) {
                 {t('updateReports.summaryTitle', 'نتائج وإحصائيات التحديث')}
               </h2>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col items-center text-center">
+                  <p className="text-xs font-bold text-blue-700 mb-1">{t('updateReports.excelCount', 'بلاغات الإكسيل المرفوع')}</p>
+                  <p className="text-2xl font-black text-blue-700">{stats.excelCount}</p>
+                </div>
+
                 <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex flex-col items-center text-center">
                   <p className="text-xs font-bold text-emerald-700 mb-1">{t('updateReports.newCount', 'بلاغات جديدة أُضيفت')}</p>
                   <p className="text-2xl font-black text-emerald-700">{stats.newReports}</p>
@@ -323,7 +330,7 @@ function UpdateReports({ user, onLogout }) {
                         <td className="px-4 py-3 text-gray-500 font-mono text-xs" dir="ltr">{formattedDate}</td>
                         <td className="px-4 py-3 text-gray-600">{r.observer || '-'}</td>
                         <td className="px-4 py-3 text-gray-500">{r.old_status || '-'}</td>
-                        <td className="px-4 py-3 font-black text-yellow-600 bg-yellow-50/30">{r.new_status}</td>
+                        <td className="px-4 py-3 font-black text-yellow-600 bg-yellow-50/30">{r.new_status || '-'}</td>
                       </tr>
                     )}) : <tr><td colSpan="6" className="text-center py-8 text-gray-400">{t('updateReports.noUpdates', 'لا توجد بلاغات محدثة')}</td></tr>}
                   </tbody>
@@ -355,7 +362,7 @@ function UpdateReports({ user, onLogout }) {
                         <td className="px-4 py-3 text-gray-600">{translateBrandingText(r.gov, isRtl) || '-'}</td>
                         <td className="px-4 py-3 text-gray-500 font-mono text-xs" dir="ltr">{formattedDate}</td>
                         <td className="px-4 py-3 text-gray-600">{r.observer || '-'}</td>
-                        <td className="px-4 py-3 font-black text-green-600 bg-green-50/30">{r.status}</td>
+                        <td className="px-4 py-3 font-black text-green-600 bg-green-50/30">{r.status || '-'}</td>
                       </tr>
                     )}) : <tr><td colSpan="5" className="text-center py-8 text-gray-400">{t('updateReports.noNew', 'لا توجد بلاغات جديدة')}</td></tr>}
                   </tbody>

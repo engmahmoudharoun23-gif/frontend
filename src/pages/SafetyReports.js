@@ -415,49 +415,28 @@ function SafetyReports({ user, onLogout }) {
     try {
       const token = localStorage.getItem('token') || '';
       
-      const downloadSingleFile = (fileData, idx) => {
-        const isString = typeof fileData === 'string';
-        const dataUrl = isString ? fileData : (fileData.data || fileData.url);
-        
-        if (dataUrl.startsWith('data:')) {
-          if (dataUrl.startsWith('data:application/pdf')) {
-            fetch(dataUrl)
-              .then(res => res.blob())
-              .then(blob => {
-                 const blobUrl = URL.createObjectURL(blob);
-                 window.open(blobUrl, '_blank');
-              });
-          } else {
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            let ext = '.jpg';
-            if (dataUrl.startsWith('data:image/png')) ext = '.png';
-            const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
-            link.download = name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }
-        } else {
-          const isPdf = dataUrl.toLowerCase().includes('.pdf');
-          const fileUrlParam = encodeURIComponent(dataUrl);
-          const downloadUrl = `${process.env.REACT_APP_BACKEND_URL || ''}/api/storage/files/${fileUrlParam}?download=${isPdf ? '0' : '1'}&auth=${encodeURIComponent(token)}`;
+      const downloadSingleFile = async (fileData, idx) => {
+        try {
+          const isString = typeof fileData === 'string';
+          const dataUrl = isString ? fileData : (fileData.data || fileData.url);
+          const url = resolveImageUrl(dataUrl);
+          const response = await fetch(url);
+          const blob = await response.blob();
           
-          if (isPdf) {
-            window.open(downloadUrl, '_blank');
-          } else {
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.target = '_blank';
-            let ext = '';
-            if (dataUrl.toLowerCase().includes('.png')) ext = '.png';
-            else if (dataUrl.toLowerCase().includes('.jpg') || dataUrl.toLowerCase().includes('.jpeg')) ext = '.jpg';
-            const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}${ext}`;
-            link.download = name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }
+          const objUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = objUrl;
+          const isPdf = url.toLowerCase().includes('.pdf');
+          const extension = isPdf ? 'pdf' : (url.toLowerCase().includes('.png') ? 'png' : 'jpg');
+          const name = (!isString && fileData.name) ? fileData.name : `report_attachment_${fullReport.id || 'file'}_${idx}.${extension}`;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          setTimeout(() => window.URL.revokeObjectURL(objUrl), 100);
+        } catch (error) {
+          console.error('Error downloading media:', error);
         }
       };
 
@@ -479,10 +458,48 @@ function SafetyReports({ user, onLogout }) {
       const allFiles = Array.from(uniqueFilesMap.values());
 
       if (allFiles.length > 0) {
-        allFiles.forEach((img, idx) => {
-          downloadSingleFile(img, idx + 1);
-        });
-        toast.success(t('safetyReports.downloadSuccess') || 'تم بدء التحميل بنجاح');
+        toast.info(isRtl ? 'جارِ تجهيز المرفقات لحفظها...' : 'Preparing attachments to save...', { toastId: 'dl_toast' });
+        
+        if ('showDirectoryPicker' in window) {
+          try {
+            const dirHandle = await window.showDirectoryPicker({
+              id: 'safety_reports_dir',
+              mode: 'readwrite',
+              startIn: 'downloads'
+            });
+            for (let i = 0; i < allFiles.length; i++) {
+              const img = allFiles[i];
+              const isString = typeof img === 'string';
+              let dataUrl = isString ? img : (img.data || img.url);
+              let url = resolveImageUrl(dataUrl);
+              if (!url.startsWith('http') && !url.startsWith('data:')) url = resolveImageUrl(url);
+              
+              const response = await fetch(url);
+              const blob = await response.blob();
+              
+              const isPdf = url.toLowerCase().includes('.pdf');
+              const extension = isPdf ? 'pdf' : (url.toLowerCase().includes('.png') ? 'png' : 'jpg');
+              const name = (!isString && img.name) ? img.name : `safety_report_${fullReport.id || 'file'}_attachment_${i + 1}.${extension}`;
+              
+              const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+            }
+            toast.success(isRtl ? 'تم حفظ الصور والمرفقات في المجلد المحدد بنجاح ✅' : 'Files saved successfully to the selected folder ✅');
+            return;
+          } catch (err) {
+            if (err.name === 'AbortError') return; // User cancelled
+            console.error('Directory picker error:', err);
+          }
+        }
+
+        // Fallback for browsers that do not support showDirectoryPicker (e.g. mobile Safari, Firefox)
+        for (let i = 0; i < allFiles.length; i++) {
+          await downloadSingleFile(allFiles[i], i + 1);
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        toast.success(t('safetyReports.downloadSuccess') || 'تم تحميل المرفقات بنجاح');
       } else {
         toast.error('لا يوجد صورة أو ملف مرفق للتحميل');
       }
@@ -1045,16 +1062,33 @@ function SafetyReports({ user, onLogout }) {
                           return (
                           <div key={idx}>
                             {imgStr.startsWith('data:application/pdf') || imgStr.toLowerCase().includes('.pdf') ? (
-                              <div className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
-                                <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                              <div className="relative group w-32 h-32">
+                                <div className="w-full h-full bg-gray-100 rounded-xl border border-gray-200 flex flex-col items-center justify-center p-2 cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                                  <FileText className="w-8 h-8 text-orange-600 mb-1" />
+                                  <span className="text-xs text-gray-600 font-bold text-center">PDF {idx+1}</span>
+                                </div>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDownloadPDF({ image: imgStr }); }}
+                                  className="absolute top-1 right-1 bg-white/90 hover:bg-white text-orange-600 p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title={t('safetyReports.download') || 'تحميل'}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
                               </div>
                             ) : (
-                              <>
-                                <img src={resolveImageUrl(imgStr)} alt="" className="w-32 h-32 rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
-                                <div style={{ display: 'none' }} className="w-32 h-32 bg-gray-100 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
+                              <div className="relative group w-32 h-32">
+                                <img src={resolveImageUrl(imgStr)} alt="" className="w-full h-full rounded-xl object-cover cursor-zoom-in border border-gray-100" onClick={() => setZoomedImage(imgStr)} onError={(e) => { e.target.style.display = 'none'; if(e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }} />
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDownloadPDF({ image: imgStr }); }}
+                                  className="absolute top-1 right-1 bg-white/90 hover:bg-white text-orange-600 p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title={t('safetyReports.download') || 'تحميل'}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                                <div style={{ display: 'none' }} className="w-full h-full bg-gray-100 rounded-xl border border-gray-200 flex-col items-center justify-center p-2 cursor-pointer" onClick={() => handleDownloadPDF({ image: imgStr })}>
                                   <span className="text-xs text-gray-600 font-bold text-center">File {idx+1}</span>
                                 </div>
-                              </>
+                              </div>
                             )}
                           </div>
                           );
