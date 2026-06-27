@@ -2294,7 +2294,7 @@ function ReportForm({ user, onLogout }) {
                           setFormData({...formData, latitude: value});
                         }
                       }}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
+                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
                     />
                     <button
                       type="button"
@@ -2435,10 +2435,10 @@ function ReportForm({ user, onLogout }) {
                   <div className="flex gap-2">
                     <input 
                       type="text" 
-                      placeholder={isRtl ? 'سيتم استخراجه تلقائياً أو يمكنك كتابته يدوياً' : 'It will be extracted automatically or you can type it manually'} 
+                      placeholder={isRtl ? 'سيتم استخراجه تلقائياً أو يمكنك كتابته' : 'Extracted automatically or type manually'} 
                       value={formData.neighborhood || ''} 
                       onChange={(e) => setFormData({...formData, neighborhood: e.target.value})}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
+                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
                     />
                     <button
                       type="button"

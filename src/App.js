@@ -167,6 +167,9 @@ function App() {
       toast.error(t('network.offline', { defaultValue: '🔴 لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة.' }), {
         position: "top-center",
         autoClose: false,
+        closeOnClick: false,
+        draggable: false,
+        closeButton: false,
         toastId: 'offline-toast'
       });
     };
@@ -178,6 +181,10 @@ function App() {
         autoClose: 3000
       });
     };
+
+    if (!navigator.onLine) {
+      handleOffline();
+    }
 
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
