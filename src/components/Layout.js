@@ -1876,6 +1876,14 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
               
+              {/* مؤشرات الأداء وتحليل البيانات */}
+                {hasPermission('performance_indicators') && (
+                  <Link to="/performance-indicators" onClick={(e) => handleLinkClick(e, "/performance-indicators")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/performance-indicators') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                    <svg className="inline-block w-4 h-4 ml-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    {t('sidebar.performance_indicators')}
+                  </Link>
+                )}
+              
               {/* قائمة المشاريع - تظهر لمن لديه صلاحية عرض البلاغات أو التوصيلات */}
               {(hasPermission('reports_view') || hasPermission('reports_add') || hasPermission('water_connections') || hasPermission('sewage_connections')) && (
                 <div>
@@ -2119,7 +2127,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   {t('sidebar.updateReports', { defaultValue: 'تحديث البلاغات' })}
                 </Link>
               )}
-              
+
               {/* إدارة المستخدمين */}
               {hasPermission('users_manage') && (
                 <Link to="/users" onClick={(e) => handleLinkClick(e, "/users")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/users') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -2235,6 +2243,21 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <span className="sidebar-text">{t('sidebar.dashboard')}</span>
               </Link>
             )}
+            
+            {/* مؤشرات الأداء وتحليل البيانات */}
+              {hasPermission('performance_indicators') && (
+                <Link
+                  to="/performance-indicators" onClick={(e) => handleLinkClick(e, "/performance-indicators")}
+                  className={`sidebar-item ${isActive('/performance-indicators') ? 'sidebar-item-active' : 'text-gray-700'}`}
+                >
+                  <div className="sidebar-icon-box" style={{ background: isActive('/performance-indicators') ? 'linear-gradient(135deg,#7c3aed,#1e40af)' : '' }}>
+                    <svg className={`w-5 h-5 ${isActive('/performance-indicators') ? 'text-white' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <span className="sidebar-text font-semibold">{t('sidebar.performance_indicators')}</span>
+                </Link>
+              )}
             
             {/* Projects Menu - تظهر لمن لديه صلاحية عرض البلاغات أو التوصيلات */}
             {(hasPermission('reports_view') || hasPermission('reports_add') || hasPermission('water_connections') || hasPermission('sewage_connections')) && (
@@ -2572,6 +2595,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <span className="sidebar-text">{t('sidebar.updateReports', { defaultValue: 'تحديث البلاغات' })}</span>
               </Link>
             )}
+
             
             {/* إدارة المستخدمين */}
             {hasPermission('users_manage') && (

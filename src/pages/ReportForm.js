@@ -278,7 +278,7 @@ function ReportForm({ user, onLogout }) {
     governorate: id ? (location.state?.governorate || '') : '', 
     project: getDefaultProject(),
     depth_meters: '', diameter_mm: '', contractor: '',
-    latitude: '', longitude: '', asphalt_license_issued: false,
+    latitude: '', longitude: '', neighborhood: '', asphalt_license_issued: false,
     notes: '',
     created_at: '', closed_at: '', start_date: ''
   });
@@ -295,6 +295,518 @@ function ReportForm({ user, onLogout }) {
   const [addingContractor, setAddingContractor] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState(0);
+  
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [scanningImages, setScanningImages] = useState(false);
+  const [imageViewerModal, setImageViewerModal] = useState({
+    open: false,
+    imageUrl: null,
+    imageFile: null,
+    manualLat: '',
+    manualLon: '',
+    manualNeighborhood: '',
+    ocrText: '',
+    ocrLoading: false,
+    ocrDone: false
+  });
+
+  // ── استخراج النص من الصورة عبر OCR.space API (مباشر من المتصفح) ──
+  const runOcrOnImage = async (file) => {
+    setImageViewerModal(prev => ({ ...prev, ocrLoading: true, ocrText: '', ocrDone: false }));
+    try {
+      const processedBlob = await preprocessImageForOcr(file);
+      const compressedFile = new File([processedBlob], "image.jpg", { type: "image/jpeg" });
+
+      const fd = new FormData();
+      fd.append('file', compressedFile);
+      fd.append('apikey', 'helloworld');
+      fd.append('language', 'ara');
+      fd.append('OCREngine', '2');
+      fd.append('scale', 'true');
+      fd.append('detectOrientation', 'true');
+
+      const res = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
+      const data = await res.json();
+      const parsed = data?.ParsedResults?.[0]?.ParsedText || '';
+
+      if (!parsed.trim()) {
+        const fd2 = new FormData();
+        fd2.append('file', compressedFile);
+        fd2.append('apikey', 'helloworld');
+        fd2.append('language', 'eng');
+        fd2.append('OCREngine', '1');
+        fd2.append('scale', 'true');
+        const res2 = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd2 });
+        const data2 = await res2.json();
+        const parsed2 = data2?.ParsedResults?.[0]?.ParsedText || '';
+        setImageViewerModal(prev => ({ ...prev, ocrText: parsed2 || '(لم يتم استخراج نص واضح)', ocrLoading: false, ocrDone: true }));
+      } else {
+        setImageViewerModal(prev => ({ ...prev, ocrText: parsed, ocrLoading: false, ocrDone: true }));
+      }
+    } catch (err) {
+      setImageViewerModal(prev => ({ ...prev, ocrText: '(حدث خطأ أثناء قراءة الصورة - يرجى المحاولة مرة أخرى)', ocrLoading: false, ocrDone: true }));
+    }
+  };
+
+
+  const loadTesseract = () => {
+    return new Promise((resolve, reject) => {
+      if (window.Tesseract) {
+        resolve(window.Tesseract);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js';
+      script.onload = () => resolve(window.Tesseract);
+      script.onerror = (err) => reject(err);
+      document.body.appendChild(script);
+    });
+  };
+
+
+
+  const preprocessImageForOcr = (fileOrBlob) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const maxDim = 1000;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        
+        canvas.toBlob((blob) => {
+          resolve(blob || fileOrBlob);
+        }, 'image/jpeg', 0.85);
+      };
+      
+      img.onerror = () => resolve(fileOrBlob);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(fileOrBlob);
+    });
+  };
+
+  const rotateImageCanvas = (fileOrBlob, degrees) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (degrees === 90 || degrees === 270) {
+          canvas.width = img.height;
+          canvas.height = img.width;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+        
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((degrees * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        
+        canvas.toBlob((blob) => {
+          resolve(blob || fileOrBlob);
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = () => resolve(fileOrBlob);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(fileOrBlob);
+    });
+  };
+
+  const parseImageOcrText = async (text) => {
+    // ── NEW APPROACH: Extract coordinates AS-IS from image ─────────────────
+    // وظيفتنا: نقل ما هو على الصورة كما هو بدون قيود جغرافية
+
+    // الهدف: نقل الإحداثيات كما هي من الصورة بدون قيود جغرافية
+
+    // ── Step 1: Normalize Eastern/Persian Arabic numerals ──────────────────
+    const convertArabicNumerals = (str) =>
+      str.replace(/[\u0660\u06f0]/g, '0').replace(/[\u0661\u06f1]/g, '1')
+         .replace(/[\u0662\u06f2]/g, '2').replace(/[\u0663\u06f3]/g, '3')
+         .replace(/[\u0664\u06f4]/g, '4').replace(/[\u0665\u06f5]/g, '5')
+         .replace(/[\u0666\u06f6]/g, '6').replace(/[\u0667\u06f7]/g, '7')
+         .replace(/[\u0668\u06f8]/g, '8').replace(/[\u0669\u06f9]/g, '9');
+
+    let normalized = convertArabicNumerals(text);
+    console.log('[OCR] Raw normalized:', normalized);
+
+    // ── Step 2: Collect all decimal numbers from raw text ─────────────────
+    // نجمع كل الأرقام العشرية كما هي بدون قيود
+    let deSpaced = normalized.replace(/(\d)\s*[NSEWnsew](?=[\s,\n\r\d]|$)/gi, '$1 ');
+    for (let i = 0; i < 6; i++) {
+      const prev = deSpaced;
+      deSpaced = deSpaced.replace(/(\d)\s*[.,،٫]\s*(\d)/g, '$1.$2');
+      deSpaced = deSpaced.replace(/(\d) (\d)/g, '$1$2');
+      if (deSpaced === prev) break;
+    }
+    console.log('[OCR] De-spaced:', deSpaced);
+
+    // ── Step 3: Extract ALL decimal numbers (no geographic restrictions) ───
+    // نستخرج كل الأرقام العشرية من النص كما هي بدون قيود جغرافية
+    const allDecimals = [];
+    const patAll = /(-?\d{1,4}\.\d{2,15})/g;
+    for (const m of deSpaced.matchAll(patAll)) {
+      const n = parseFloat(m[1]);
+      if (!isNaN(n)) allDecimals.push({ val: n, raw: m[1] });
+    }
+
+    // Strategy B: Long unbroken digit string
+    const patB = /(\d{6,20})/g;
+    for (const m of deSpaced.matchAll(patB)) {
+      const s = m[1];
+      for (let split = 1; split <= Math.min(5, s.length - 4); split++) {
+        const raw = `${s.slice(0, split)}.${s.slice(split)}`;
+        const n = parseFloat(raw);
+        if (!isNaN(n)) allDecimals.push({ val: n, raw });
+      }
+    }
+
+    // DMS format
+    const dmsRe = /(\d{1,3})\s*[°d*o]\s*(\d{1,2})\s*['\u2019m]\s*(\d{1,2}(?:\.\d+)?)\s*["s]?\s*([NSEWnsew])?/gi;
+    for (const m of deSpaced.matchAll(dmsRe)) {
+      const dec = parseFloat(m[1]) + parseFloat(m[2]) / 60 + parseFloat(m[3]) / 3600;
+      if (!isNaN(dec)) {
+        const val = (m[4] === 'S' || m[4] === 'W') ? -dec : dec;
+        allDecimals.push({ val, raw: val.toFixed(8) });
+      }
+    }
+
+    console.log('[OCR] All decimal candidates:', allDecimals);
+
+    // ── Step 4: Smart coordinate assignment ───────────────────────────────
+    // الأولوية: KSA ranges → أي زوج عشري
+    let lat = '';
+    let lon = '';
+    let rawLat = '';
+    let rawLon = '';
+
+    // Priority 1: Use KSA-range numbers
+    for (const { val, raw } of allDecimals) {
+      if (!lat && val >= 15.0 && val <= 33.0) { lat = raw; rawLat = raw; }
+      else if (!lon && val >= 34.0 && val <= 56.0) { lon = raw; rawLon = raw; }
+      if (lat && lon) break;
+    }
+
+    // Priority 2: If not found, take the first two distinct decimals as-is
+    if (!lat || !lon) {
+      const used = new Set();
+      const unique = allDecimals.filter(d => {
+        const k = d.raw.split('.')[0];
+        if (used.has(k)) return false;
+        used.add(k);
+        return true;
+      });
+      if (!lat && unique[0]) { lat = unique[0].raw; rawLat = unique[0].raw; }
+      if (!lon && unique[1]) { lon = unique[1].raw; rawLon = unique[1].raw; }
+    }
+
+    console.log('[OCR] Found lat:', lat, ' lon:', lon);
+
+    // ── Step 5: Extract neighborhood + city from original text ─────────────
+    // استخراج الحي والمحافظة كما هي من الصورة بما فيها الرموز
+    const lines = normalized.split('\n');
+    let ocrNeighborhood = '';
+    let ocrCity = '';
+    // rawOcrLines: النص الكامل المستخرج من الصورة لعرضه في خانة استخراج الهيئة
+    const rawOcrLines = lines.map(l => l.trim()).filter(l => l.length > 0);
+
+    for (const line of lines) {
+      const cl = line.trim();
+      if (!ocrNeighborhood) {
+        // استخراج الحي مع السماح بالرموز
+        const nm = cl.match(/(?:^|[\s])(?:\u0627\u0644\u062d\u064a|\u062d\u064a|District|Hay)[:\s]+(.{2,40}?)(?:[\n\r]|$)/i);
+        if (nm && nm[1]) {
+          let name = nm[1].trim();
+          if (name.length > 1) ocrNeighborhood = name;
+        }
+      }
+      if (!ocrCity) {
+        const cm = cl.match(/(\u0636\u0631\u0645\u0627|\u0627\u0644\u0645\u0632\u0627\u062d\u0645\u064a\u0629|\u0627\u0644\u062f\u0631\u0639\u064a\u0629|\u0627\u0644\u0631\u064a\u0627\u0636|\u062c\u062f\u0629|\u0645\u0643\u0629|\u0627\u0644\u0645\u062f\u064a\u0646\u0629|\u0627\u0644\u062f\u0645\u0627\u0645|\u0627\u0644\u062e\u0628\u0631|\u0627\u0644\u062c\u0628\u064a\u0644|\u0627\u0644\u0647\u0641\u0648\u0641|\u0627\u0644\u062e\u0631\u062c|\u062d\u0648\u0637\u0629|\u062d\u0631\u064a\u0645\u0644\u0627\u0621|\u062b\u0627\u062f\u0642|\u0634\u0631\u0627\u0621|\u0645\u0631\u0627\u062a|\u0627\u0644\u0642\u0648\u064a\u0639\u064a\u0629|\u0627\u0644\u0623\u0641\u0644\u0627\u062c|\u0627\u0644\u0633\u0644\u064a\u0644|\u0648\u0627\u062f\u064a \u0627\u0644\u062f\u0648\u0627\u0633\u0631)/);
+        if (cm) ocrCity = cm[1];
+      }
+    }
+
+    // Fuzzy neighborhood fallback
+    if (!ocrNeighborhood) {
+      const tl = normalized;
+      if      (/\u063a\u0631\u0628\u064a|\u063a\u0631 \u0628\u064a|\u063a\u0631\u0628/.test(tl))                   ocrNeighborhood = '\u0627\u0644\u0628\u062f\u064a\u0639 \u0627\u0644\u063a\u0631\u0628\u064a';
+      else if (/\u0628\u062f\u064a\u0639|\u062f\u0627\u064a\u0639|\u0627\u0644\u062f\u064a\u0639|\u0634\u0631\u0642\u064a|\u0634\u0631\u0641\u064a/.test(tl)) ocrNeighborhood = '\u0627\u0644\u0628\u062f\u064a\u0639 \u0627\u0644\u0634\u0631\u0642\u064a';
+      else if (/\u0641\u064a\u0635\u0644/.test(tl))                                        ocrNeighborhood = '\u0627\u0644\u0641\u064a\u0635\u0644\u064a\u0629';
+      else if (/\u062e\u0627\u0644\u062f/.test(tl))                                        ocrNeighborhood = '\u0627\u0644\u062e\u0627\u0644\u062f\u064a\u0629';
+      else if (/\u0633\u0644\u064a\u0645\u0627\u0646/.test(tl))                                      ocrNeighborhood = '\u0627\u0644\u0633\u0644\u064a\u0645\u0627\u0646\u064a\u0629';
+      else if (/\u0631\u0648\u0636/.test(tl))                                          ocrNeighborhood = '\u0627\u0644\u0631\u0648\u0636\u0629';
+    }
+
+    return { lat, lon, ocrNeighborhood, ocrCity, rawOcrLines };
+  };
+
+  const performOcrScan = async (fileOrBlob, Tesseract) => {
+    // Pass 1: Original resized image
+    const preprocessed = await preprocessImageForOcr(fileOrBlob);
+    let { data: { text } } = await Tesseract.recognize(preprocessed, 'ara+eng', {
+      langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0/'
+    });
+    let result = await parseImageOcrText(text);
+    
+    if (result && result.lat && result.lon) {
+      return result;
+    }
+    
+    // Pass 2: Rotate 90 degrees CW (in case image is sideways)
+    console.log('Pass 1 failed to find coordinates. Trying Pass 2 (90 deg CW)...');
+    const rotated90 = await rotateImageCanvas(preprocessed, 90);
+    const ocr90 = await Tesseract.recognize(rotated90, 'ara+eng', {
+      langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0/'
+    });
+    result = await parseImageOcrText(ocr90.data.text);
+    if (result && result.lat && result.lon) {
+      return result;
+    }
+    
+    // Pass 3: Rotate 270 degrees CW (90 degrees CCW)
+    console.log('Pass 2 failed. Trying Pass 3 (90 deg CCW)...');
+    const rotated270 = await rotateImageCanvas(preprocessed, 270);
+    const ocr270 = await Tesseract.recognize(rotated270, 'ara+eng', {
+      langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0/'
+    });
+    result = await parseImageOcrText(ocr270.data.text);
+    return result;
+  };
+
+  /**
+   * resolveNeighborhoodFromOcrResult
+   * المنطق:
+   *   1. إذا وُجد اسم الحي مكتوباً على الصورة (ocrNeighborhood) → استخدمه مباشرة
+   *   2. إذا لم يوجد → اجلبه من الإحداثيات عبر خرائط Nominatim (geoNeighborhood)
+   *   3. ادمج دائماً مع اسم المدينة بصيغة "المدينة - حي الحي"
+   */
+  const resolveNeighborhoodFromOcrResult = async (result) => {
+    if (!result || !result.lat || !result.lon) return '';
+
+    let ocrNeigh = result.ocrNeighborhood ? result.ocrNeighborhood.replace(/^(حي\s+)/, '').trim() : '';
+    let ocrCity  = result.ocrCity ? result.ocrCity.trim() : '';
+
+    // إذا الحي موجود على الصورة → أرجعه مباشرة بدون طلب الخرائط
+    if (ocrNeigh) {
+      if (ocrCity) {
+        if (ocrNeigh === ocrCity) return ocrCity;
+        if (ocrNeigh.includes(ocrCity)) return `حي ${ocrNeigh}`;
+        return `${ocrCity} - حي ${ocrNeigh}`;
+      }
+      return `حي ${ocrNeigh}`;
+    }
+
+    // الحي غير مكتوب → استخرجه من الإحداثيات
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${result.lat}&lon=${result.lon}&format=json&accept-language=ar&zoom=18&addressdetails=1`
+      );
+      const data = await res.json();
+      const road          = data.address?.road || data.address?.pedestrian || data.address?.path || '';
+      const neighbourhood = data.address?.quarter || data.address?.neighbourhood || data.address?.suburb ||
+                            data.address?.residential || data.address?.village || data.address?.city_district || '';
+      const town          = data.address?.town || data.address?.city || data.address?.municipality || '';
+
+      let geoNeigh = '';
+      if (neighbourhood) geoNeigh = neighbourhood;
+      else if (road)      geoNeigh = road;
+      else if (data.display_name) geoNeigh = data.display_name.split(',')[0].trim();
+
+      const finalCity  = ocrCity || town || '';
+      const finalNeigh = geoNeigh ? geoNeigh.replace(/^(حي\s+)/, '').trim() : '';
+
+      if (finalCity && finalNeigh) {
+        if (finalNeigh === finalCity) return finalCity;
+        if (finalNeigh.includes(finalCity)) return `حي ${finalNeigh}`;
+        return `${finalCity} - حي ${finalNeigh}`;
+      }
+      if (finalNeigh) return `حي ${finalNeigh}`;
+      if (finalCity)  return finalCity;
+    } catch (e) {
+      console.error('Nominatim reverse geocoding error:', e);
+      if (ocrCity) return ocrCity;
+    }
+
+    return '';
+  };
+
+  const handleImageOcrChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setOcrLoading(true);
+    toast.info(isRtl ? 'جاري قراءة الصورة واستخراج الإحداثيات والحي...' : 'Reading image and extracting coordinates & neighborhood...');
+
+    try {
+      const Tesseract = await loadTesseract();
+      const result = await performOcrScan(file, Tesseract);
+
+      if (result && (result.lat || result.lon)) {
+        let neighborhoodText = '';
+        if (result.ocrNeighborhood) {
+          neighborhoodText = result.ocrNeighborhood;
+          if (result.ocrCity && !neighborhoodText.includes(result.ocrCity)) {
+            neighborhoodText = `${result.ocrCity} - ${neighborhoodText}`;
+          }
+        } else if (result.ocrCity) {
+          neighborhoodText = result.ocrCity;
+        }
+        if (!neighborhoodText && result.lat && result.lon) {
+          neighborhoodText = await resolveNeighborhoodFromOcrResult(result);
+        }
+        setFormData(prev => ({
+          ...prev,
+          latitude: result.lat || prev.latitude,
+          longitude: result.lon || prev.longitude,
+          neighborhood: neighborhoodText || prev.neighborhood
+        }));
+        toast.success(isRtl ? 'تم استخراج الإحداثيات والحي بنجاح!' : 'Coordinates and neighborhood extracted successfully!');
+      } else {
+        toast.warning(isRtl ? 'لم نتمكن من العثور على إحداثيات في الصورة' : 'Could not find coordinates in the image');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(isRtl ? 'حدث خطأ أثناء قراءة الصورة' : 'Error reading the image');
+    } finally {
+      setOcrLoading(false);
+      event.target.value = '';
+    }
+  };
+
+
+  const fetchImageAsBlob = async (url) => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return blob;
+  };
+
+  const handleScanAllExistingImages = async () => {
+    const imageUrls = existingImages.filter(img => !isVideo(img)).map(img => resolveImageUrl(img));
+    if (imageUrls.length === 0) {
+      toast.warning(isRtl ? 'لا توجد صور مضافة لقراءتها' : 'No images found to scan');
+      return;
+    }
+
+    setScanningImages(true);
+    toast.info(isRtl ? 'جاري فحص جميع الصور المرفقة بحثاً عن إحداثيات...' : 'Scanning all attached images for coordinates...');
+
+    try {
+      const Tesseract = await loadTesseract();
+      let found = false;
+
+      for (let i = 0; i < imageUrls.length; i++) {
+        toast.info(isRtl ? `جاري فحص الصورة ${i + 1} من ${imageUrls.length}...` : `Scanning image ${i + 1} of ${imageUrls.length}...`);
+        try {
+          const blob = await fetchImageAsBlob(imageUrls[i]);
+          const result = await performOcrScan(blob, Tesseract);
+
+          if (result && (result.lat || result.lon)) {
+            let neighborhoodText = '';
+            if (result.ocrNeighborhood) {
+              neighborhoodText = result.ocrNeighborhood;
+              if (result.ocrCity && !neighborhoodText.includes(result.ocrCity)) {
+                neighborhoodText = `${result.ocrCity} - ${neighborhoodText}`;
+              }
+            } else if (result.ocrCity) {
+              neighborhoodText = result.ocrCity;
+            }
+            if (!neighborhoodText && result.lat && result.lon) {
+              neighborhoodText = await resolveNeighborhoodFromOcrResult(result);
+            }
+            setFormData(prev => ({
+              ...prev,
+              latitude: result.lat || prev.latitude,
+              longitude: result.lon || prev.longitude,
+              neighborhood: neighborhoodText || prev.neighborhood
+            }));
+            toast.success(isRtl ? `تم استخراج الإحداثيات والحي بنجاح من الصورة ${i + 1}!` : `Coordinates and neighborhood extracted successfully from image ${i + 1}!`);
+            found = true;
+            break;
+          }
+        } catch (err) {
+          console.error(`Error scanning image ${i + 1}:`, err);
+        }
+      }
+
+      if (!found) {
+        toast.warning(isRtl ? 'لم نتمكن من العثور على إحداثيات واضحة في أي من الصور المرفقة' : 'Could not find clear coordinates in any of the attached images');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(isRtl ? 'حدث خطأ أثناء فحص الصور' : 'Error scanning the images');
+    } finally {
+      setScanningImages(false);
+    }
+  };
+
+  const handleScanSingleExistingImage = async (imgUrl, index) => {
+    if (isVideo(imgUrl)) {
+      toast.warning(isRtl ? 'لا يمكن قراءة الإحداثيات من ملفات الفيديو' : 'Cannot read coordinates from videos');
+      return;
+    }
+
+    setScanningImages(true);
+    toast.info(isRtl ? `جاري قراءة الصورة ${index + 1}...` : `Scanning image ${index + 1}...`);
+
+    try {
+      const Tesseract = await loadTesseract();
+      const blob = await fetchImageAsBlob(resolveImageUrl(imgUrl));
+      const result = await performOcrScan(blob, Tesseract);
+
+      if (result && (result.lat || result.lon)) {
+        let neighborhoodText = '';
+        if (result.ocrNeighborhood) {
+          neighborhoodText = result.ocrNeighborhood;
+          if (result.ocrCity && !neighborhoodText.includes(result.ocrCity)) {
+            neighborhoodText = `${result.ocrCity} - ${neighborhoodText}`;
+          }
+        } else if (result.ocrCity) {
+          neighborhoodText = result.ocrCity;
+        }
+        if (!neighborhoodText && result.lat && result.lon) {
+          neighborhoodText = await resolveNeighborhoodFromOcrResult(result);
+        }
+        setFormData(prev => ({
+          ...prev,
+          latitude: result.lat || prev.latitude,
+          longitude: result.lon || prev.longitude,
+          neighborhood: neighborhoodText || prev.neighborhood
+        }));
+        toast.success(isRtl ? 'تم استخراج الإحداثيات والحي بنجاح من هذه الصورة!' : 'Coordinates and neighborhood extracted successfully from this image!');
+      } else {
+        toast.warning(isRtl ? 'لم نتمكن من العثور على إحداثيات واضحة في هذه الصورة' : 'Could not find clear coordinates in this image');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(isRtl ? 'حدث خطأ أثناء قراءة هذه الصورة' : 'Error reading this image');
+    } finally {
+      setScanningImages(false);
+    }
+  };
   
   // أنواع البلاغ
   const [reportTypes, setReportTypes] = useState([]);
@@ -577,15 +1089,16 @@ function ReportForm({ user, onLogout }) {
 
   // الحصول على الموقع تلقائياً عند فتح صفحة إضافة بلاغ جديد
   useEffect(() => {
-    // فقط للبلاغات الجديدة (ليس للتعديل)
-    if (!id && navigator.geolocation) {
-      console.log('🔄 محاولة الحصول على الموقع تلقائياً...');
+    // فقط للبلاغات الجديدة (ليس للتعديل) والأجهزة الذكية فقط (الجوال/التابلت)
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (!id && navigator.geolocation && isMobile) {
+      console.log('🔄 محاولة الحصول على الموقع تلقائياً من الهاتف الذكي...');
       
       // استخدام إعدادات أقل صرامة لتحسين التوافق
       const options = {
-        enableHighAccuracy: false, // استخدام دقة عادية بدلاً من عالية
-        timeout: 15000, // وقت أطول
-        maximumAge: 30000 // السماح بموقع محفوظ حديثاً
+        enableHighAccuracy: true, // استخدام دقة عالية (GPS) لضمان عدم الاعتماد على شبكة الـ 5G أو الآي بي
+        timeout: 15000,
+        maximumAge: 0 // عدم استخدام موقع محفوظ مسبقاً
       };
       
       // محاولة الحصول على الموقع
@@ -680,6 +1193,7 @@ function ReportForm({ user, onLogout }) {
         contractor: report.contractor,
         latitude: report.latitude || '',
         longitude: report.longitude || '',
+        neighborhood: report.neighborhood || '',
         asphalt_license_issued: report.asphalt_license_issued || false,
         notes: report.notes || '',
         created_at: report.created_at ? report.created_at.split('T')[0] : '',
@@ -1054,6 +1568,28 @@ function ReportForm({ user, onLogout }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate coordinates and neighborhood
+    if (!formData.latitude || !formData.longitude) {
+      toast.error(
+        isRtl 
+          ? '🚨 لا يمكن إضافة بلاغ جديد إلا بعد إضافة الإحداثيات (خط الطول والعرض).' 
+          : '🚨 Cannot add a new report without adding coordinates (latitude and longitude).',
+        { autoClose: false, closeOnClick: false }
+      );
+      return;
+    }
+    
+    if (!formData.neighborhood || formData.neighborhood.trim() === '') {
+      toast.error(
+        isRtl 
+          ? '🚨 لا يمكن إضافة بلاغ جديد إلا بعد استخراج أو كتابة اسم الحي.' 
+          : '🚨 Cannot add a new report without extracting or typing the neighborhood name.',
+        { autoClose: false, closeOnClick: false }
+      );
+      return;
+    }
+
     if (loading) return; // منع التكرار
     setLoading(true);
     setErrorMessage('');
@@ -1073,6 +1609,7 @@ function ReportForm({ user, onLogout }) {
       form.append('contractor', formData.contractor);
       form.append('latitude', formData.latitude || '');
       form.append('longitude', formData.longitude || '');
+      form.append('neighborhood', formData.neighborhood || '');
       form.append('asphalt_license_issued', formData.asphalt_license_issued.toString());
       form.append('notes', formData.notes || '');
       
@@ -1525,10 +2062,196 @@ function ReportForm({ user, onLogout }) {
               </div>
 
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                <div className="sm:col-span-2 mb-2">
-                  <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2">📍 {t('reportForm.addLocation', {defaultValue: 'إضافة الموقع (خط الطول وخط العرض)'})}</h4>
-                  <p className="text-xs text-blue-600 mt-1">{t('reportForm.locationPastingTip', {defaultValue: 'يمكنك كتابة الإحداثيات يدوياً، أو استخدام زر الموقع، أو'})} <b className="text-blue-800">{t('reportForm.locationPastingTipBold', {defaultValue: 'نسخ رابط جوجل ماب ولصقه في أي مربع'})}</b> {t('reportForm.locationPastingTipEnd', {defaultValue: 'وسيتم استخراج الإحداثيات تلقائياً.'})}</p>
+                <div className="sm:col-span-2 mb-2 flex justify-between items-center flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2">📍 {t('reportForm.addLocation', {defaultValue: 'إضافة الموقع (خط الطول وخط العرض)'})}</h4>
+                    <p className="text-xs text-blue-600 mt-1">{t('reportForm.locationPastingTip', {defaultValue: 'يمكنك كتابة الإحداثيات يدوياً، أو استخدام زر الموقع، أو'})} <b className="text-blue-800">{t('reportForm.locationPastingTipBold', {defaultValue: 'نسخ رابط جوجل ماب ولصقه في أي مربع'})}</b> {t('reportForm.locationPastingTipEnd', {defaultValue: 'وسيتم استخراج الإحداثيات تلقائياً، أو افتح صورة الموقع لقراءة الإحداثيات منها.'})}</p>
+                  </div>
+                  <div>
+                    {/* زر عرض صورة الموقع */}
+                    <input
+                      type="file"
+                      id="location-image-viewer-input"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files[0];
+                        if (!f) return;
+                        const url = URL.createObjectURL(f);
+                        setImageViewerModal(prev => ({
+                          ...prev,
+                          open: true,
+                          imageUrl: url,
+                          imageFile: f,
+                          manualLat: formData.latitude || '',
+                          manualLon: formData.longitude || '',
+                          manualNeighborhood: formData.neighborhood || '',
+                          ocrText: '',
+                          ocrLoading: false,
+                          ocrDone: false
+                        }));
+                        e.target.value = '';
+                        // تشغيل القراءة تلقائياً
+                        setTimeout(() => runOcrOnImage(f), 300);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('location-image-viewer-input').click()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition-all bg-indigo-600 hover:bg-indigo-700 active:scale-95"
+                    >
+                      🔍 {isRtl ? 'عرض صورة الموقع' : 'View Location Image'}
+                    </button>
+                  </div>
                 </div>
+
+                {/* ══ Modal عرض صورة الموقع ══ */}
+                {imageViewerModal.open && (
+                  <div
+                    style={{
+                      position: 'fixed', inset: 0, zIndex: 9999,
+                      backgroundColor: 'rgba(0,0,0,0.85)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '16px'
+                    }}
+                  >
+                    <div style={{
+                      background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '900px',
+                      maxHeight: '95vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0'
+                    }}>
+                      {/* Header */}
+                      <div style={{ background: '#4338ca', borderRadius: '16px 16px 0 0', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '15px' }}>🔍 {isRtl ? 'عرض صورة الموقع - اقرأ الإحداثيات وأدخلها' : 'Location Image Viewer - Read & Enter Coordinates'}</span>
+                        <button onClick={() => setImageViewerModal(prev => ({...prev, open: false}))} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                      </div>
+
+                      {/* Image */}
+                      <div style={{ padding: '12px', background: '#f1f5f9', display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
+                        <img
+                          src={imageViewerModal.imageUrl}
+                          alt="location"
+                          style={{ 
+                            maxWidth: '100%', maxHeight: 'none', objectFit: 'contain', 
+                            borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+                            userSelect: 'auto', WebkitUserSelect: 'auto', WebkitTouchCallout: 'default'
+                          }}
+                        />
+                      </div>
+                      <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginTop: '-8px', marginBottom: '4px' }}>{isRtl ? '💡 اضغط على الصورة لتكبيرها' : '💡 Click image to zoom'}</p>
+
+                      {/* حقول الإدخال */}
+                      <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        
+                        {/* مربع نص الإحداثيات المستخرجة للتحديد والنسخ */}
+                        {(imageViewerModal.ocrLoading || imageViewerModal.ocrText) && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#0369a1', display: 'block', marginBottom: '8px' }}>
+                              📋 {isRtl ? 'كل النص الموجود في الصورة (حدد ما تريد ثم انسخه):' : 'All text found in the image (select and copy):'}
+                            </label>
+                            {imageViewerModal.ocrLoading ? (
+                              <div style={{ padding: '20px', textAlign: 'center', color: '#0369a1', fontSize: '15px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+                                ⏳ {isRtl ? 'جاري قراءة جميع النصوص والأرقام من الصورة...' : 'Reading all text and numbers from image...'}
+                              </div>
+                            ) : (
+                              <textarea
+                                readOnly
+                                value={imageViewerModal.ocrText}
+                                style={{
+                                  width: '100%', minHeight: '150px', maxHeight: '300px', // كبرنا المربع هنا
+                                  padding: '12px 15px',
+                                  border: '2px solid #0284c7', borderRadius: '8px',
+                                  fontSize: '16px', lineHeight: '1.8', // كبرنا الخط
+                                  background: '#f8fafc', color: '#0f172a',
+                                  resize: 'vertical', fontFamily: 'monospace',
+                                  boxSizing: 'border-box', direction: 'rtl', // جعلنا الاتجاه من اليمين لتسهيل قراءة العربي
+                                  userSelect: 'text', cursor: 'text'
+                                }}
+                                onClick={(e) => { e.stopPropagation(); }}
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, borderTop: '1px solid #e5e7eb', paddingTop: '10px' }}>
+                          {isRtl ? '✏️ ألصق ما نسخته أو اكتب الإحداثيات والحي هنا:' : '✏️ Paste copied text or type coordinates here:'}
+                        </p>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <div>
+                            <label style={{ fontSize: '12px', fontWeight: '700', color: '#4338ca', display: 'block', marginBottom: '4px' }}>📍 {isRtl ? 'خط العرض (Latitude)' : 'Latitude'}</label>
+                            <input
+                              type="text"
+                              placeholder={isRtl ? 'مثال: 24.7136' : 'e.g. 24.7136'}
+                              value={imageViewerModal.manualLat}
+                              onChange={(e) => setImageViewerModal(prev => ({...prev, manualLat: e.target.value}))}
+                              style={{ width: '100%', padding: '8px 12px', border: '2px solid #c7d2fe', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                              autoComplete="off"
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '12px', fontWeight: '700', color: '#4338ca', display: 'block', marginBottom: '4px' }}>📍 {isRtl ? 'خط الطول (Longitude)' : 'Longitude'}</label>
+                            <input
+                              type="text"
+                              placeholder={isRtl ? 'مثال: 46.6753' : 'e.g. 46.6753'}
+                              value={imageViewerModal.manualLon}
+                              onChange={(e) => setImageViewerModal(prev => ({...prev, manualLon: e.target.value}))}
+                              style={{ width: '100%', padding: '8px 12px', border: '2px solid #c7d2fe', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                              autoComplete="off"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '700', color: '#4338ca', display: 'block', marginBottom: '4px' }}>🏘️ {isRtl ? 'الحي / المنطقة' : 'Neighborhood / Area'}</label>
+                          <input
+                            type="text"
+                            placeholder={isRtl ? 'مثال: المحافظة - الحي' : 'e.g. Governorate - Neighborhood'}
+                            value={imageViewerModal.manualNeighborhood}
+                            onChange={(e) => setImageViewerModal(prev => ({...prev, manualNeighborhood: e.target.value}))}
+                            style={{ width: '100%', padding: '8px 12px', border: '2px solid #c7d2fe', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
+                            autoComplete="off"
+                          />
+                        </div>
+                        {/* Buttons */}
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setImageViewerModal(prev => ({...prev, open: false}))}
+                            style={{ padding: '9px 20px', background: '#e5e7eb', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', color: '#374151' }}
+                          >
+                            {isRtl ? 'إلغاء' : 'Cancel'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const lat = imageViewerModal.manualLat.trim();
+                              const lon = imageViewerModal.manualLon.trim();
+                              const neigh = imageViewerModal.manualNeighborhood.trim();
+                              if (!lat && !lon && !neigh) {
+                                toast.warning(isRtl ? 'يرجى إدخال إحداثية أو حي واحد على الأقل' : 'Please enter at least one coordinate or neighborhood');
+                                return;
+                              }
+                              setFormData(prev => ({
+                                ...prev,
+                                latitude: lat || prev.latitude,
+                                longitude: lon || prev.longitude,
+                                neighborhood: neigh || prev.neighborhood
+                              }));
+                              setImageViewerModal(prev => ({...prev, open: false}));
+                              if (imageViewerModal.imageUrl) URL.revokeObjectURL(imageViewerModal.imageUrl);
+                              toast.success(isRtl ? '✅ تم تطبيق البيانات بنجاح!' : '✅ Data applied successfully!');
+                            }}
+                            style={{ padding: '9px 24px', background: '#4338ca', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: '#fff' }}
+                          >
+                            ✅ {isRtl ? 'تطبيق في النموذج' : 'Apply to Form'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
                 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">{t('reportForm.latitude', {defaultValue: 'خط العرض'})} (Latitude)</label>
@@ -1541,10 +2264,32 @@ function ReportForm({ user, onLogout }) {
                         const value = e.target.value;
                         const coordsMatch = value.match(/-?\d{1,3}\.\d{4,}/g);
                         if (coordsMatch && coordsMatch.length >= 2) {
-                          setFormData({...formData, latitude: coordsMatch[0], longitude: coordsMatch[1]});
+                          const lat = coordsMatch[0];
+                          const lon = coordsMatch[1];
+                          setFormData({...formData, latitude: lat, longitude: lon});
                           toast.success(t('reportForm.locationExtractedSuccess', {defaultValue: 'تم استخراج الإحداثيات بنجاح!'}));
+                          
+                          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar&zoom=18&addressdetails=1`)
+                            .then(res => res.json())
+                            .then(data => {
+                              const road = data.address?.road || data.address?.pedestrian || data.address?.path || '';
+                              const neighbourhood = data.address?.quarter || data.address?.neighbourhood || data.address?.suburb || data.address?.residential || data.address?.village || data.address?.city_district || '';
+                              let finalLocation = '';
+                              if (neighbourhood && road) finalLocation = `${neighbourhood} - ${road}`;
+                              else if (neighbourhood) finalLocation = neighbourhood;
+                              else if (road) finalLocation = road;
+                              else if (data.display_name) {
+                                const fallback = data.display_name.split(',')[0].trim();
+                                if (fallback !== data.address?.city && fallback !== data.address?.state && fallback !== data.address?.province) {
+                                  finalLocation = fallback;
+                                }
+                              }
+                              
+                              if (finalLocation) setFormData(prev => ({...prev, latitude: lat, longitude: lon, neighborhood: finalLocation}));
+                            }).catch(() => {});
                           return;
                         }
+                        
                         if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
                           setFormData({...formData, latitude: value});
                         }
@@ -1554,6 +2299,33 @@ function ReportForm({ user, onLogout }) {
                     <button
                       type="button"
                       onClick={() => {
+                        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+                        if (!isMobile) {
+                          toast.error(
+                            isRtl 
+                              ? '⚠️ خاصية التحديد التلقائي للموقع متاحة فقط عبر أجهزة الهاتف الذكي. التحديد عبر اللابتوب يعطي إحداثيات خاطئة ومخزنة، يرجى إدخالها يدوياً.' 
+                              : '⚠️ Auto-detect location is only available on mobile devices. Desktop GPS is often inaccurate, please enter manually.', 
+                            { autoClose: false, closeOnClick: false }
+                          );
+                          return;
+                        }
+
+                        // ⚠️ رسالة تأكيد تحذيرية واضحة
+                        const confirmMsg = isRtl
+                          ? `⚠️ تنبيه هام!\n\nأنت على وشك إضافة إحداثيات موقعك الحالي (موقعك أنت الآن).\n\nهذا قد لا يكون موقع البلاغ الفعلي!\n\nمثال: إذا كنت في بيتك وترفع بلاغاً عن موقع آخر، ستُسجَّل إحداثيات بيتك وليس موقع البلاغ.\n\n✅ موافق = أضف موقعي الحالي\n❌ إلغاء = أدخل الإحداثيات يدوياً من صور البلاغ`
+                          : `⚠️ Important Warning!\n\nYou are about to add YOUR CURRENT location coordinates.\n\nThis may NOT be the location of the report!\n\nExample: If you are at home reporting an incident elsewhere, your home coordinates will be saved.\n\n✅ OK = Use my current location\n❌ Cancel = Enter coordinates manually from report photos`;
+
+                        const confirmed = window.confirm(confirmMsg);
+                        if (!confirmed) {
+                          toast.info(
+                            isRtl
+                              ? '📷 يمكنك إدخال الإحداثيات يدوياً أو استخدام زر "قراءة موقع من صورة" لاستخراجها من صور البلاغ'
+                              : '📷 You can enter coordinates manually or use "Read location from image" to extract from report photos',
+                            { autoClose: 6000 }
+                          );
+                          return;
+                        }
+
                         if (navigator.geolocation) {
                           const button = document.activeElement;
                           button.disabled = true;
@@ -1563,11 +2335,31 @@ function ReportForm({ user, onLogout }) {
                             (position) => {
                               const lat = position.coords.latitude.toFixed(6);
                               const lon = position.coords.longitude.toFixed(6);
-                              setFormData({
-                                ...formData,
-                                latitude: lat,
-                                longitude: lon
-                              });
+                              
+                              // جلب الحي تلقائياً بشكل غير متزامن بدون تعطيل المنصة
+                              fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar`)
+                                .then(res => res.json())
+                                .then(data => {
+                                  const road = data.address?.road || data.address?.pedestrian || data.address?.path || '';
+                                  const neighbourhood = data.address?.quarter || data.address?.neighbourhood || data.address?.suburb || data.address?.residential || data.address?.village || data.address?.city_district || '';
+                                  let finalLocation = '';
+                                  if (neighbourhood && road) finalLocation = `${neighbourhood} - ${road}`;
+                                  else if (neighbourhood) finalLocation = neighbourhood;
+                                  else if (road) finalLocation = road;
+                                  else if (data.display_name) finalLocation = data.display_name.split(',')[0].trim();
+
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    latitude: lat,
+                                    longitude: lon,
+                                    neighborhood: finalLocation || prev.neighborhood
+                                  }));
+                                })
+                                .catch(() => {
+                                  // في حال الفشل، فقط نعين الإحداثيات بدون الحي
+                                  setFormData(prev => ({...prev, latitude: lat, longitude: lon}));
+                                });
+                              
                               button.disabled = false;
                               button.innerHTML = '📍 ' + t('reportForm.getLocation');
                               
@@ -1577,9 +2369,9 @@ function ReportForm({ user, onLogout }) {
                             (error) => {
                               button.disabled = false;
                               button.innerHTML = '📍 ' + t('reportForm.getLocation');
-                              toast.error(t('reportForm.locationErrorTimeout'));
+                              toast.error(t('reportForm.locationErrorTimeout') + ' (الرجاء التأكد من تفعيل الـ GPS والتواجد في مكان مفتوح)');
                             },
-                            { enableHighAccuracy: false, timeout: 15000, maximumAge: 30000 }
+                            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
                           );
                         } else {
                           toast.warning(t('reportForm.locationBrowserNotSupported'));
@@ -1590,6 +2382,7 @@ function ReportForm({ user, onLogout }) {
                     >
                       📍 {t('reportForm.autoDetect', {defaultValue: 'تحديد تلقائي'})}
                     </button>
+
                   </div>
                 </div>
 
@@ -1603,16 +2396,95 @@ function ReportForm({ user, onLogout }) {
                       const value = e.target.value;
                       const coordsMatch = value.match(/-?\d{1,3}\.\d{4,}/g);
                       if (coordsMatch && coordsMatch.length >= 2) {
-                        setFormData({...formData, latitude: coordsMatch[0], longitude: coordsMatch[1]});
+                        const lat = coordsMatch[0];
+                        const lon = coordsMatch[1];
+                        setFormData({...formData, latitude: lat, longitude: lon});
                         toast.success(t('reportForm.locationExtractedSuccess', {defaultValue: 'تم استخراج الإحداثيات بنجاح!'}));
+                        
+                        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar&zoom=18&addressdetails=1`)
+                          .then(res => res.json())
+                          .then(data => {
+                            const road = data.address?.road || data.address?.pedestrian || data.address?.path || '';
+                            const neighbourhood = data.address?.quarter || data.address?.neighbourhood || data.address?.suburb || data.address?.residential || data.address?.village || data.address?.city_district || '';
+                            let finalLocation = '';
+                            if (neighbourhood && road) finalLocation = `${neighbourhood} - ${road}`;
+                            else if (neighbourhood) finalLocation = neighbourhood;
+                            else if (road) finalLocation = road;
+                            else if (data.display_name) {
+                              const fallback = data.display_name.split(',')[0].trim();
+                              if (fallback !== data.address?.city && fallback !== data.address?.state && fallback !== data.address?.province) {
+                                finalLocation = fallback;
+                              }
+                            }
+
+                            if (finalLocation) setFormData(prev => ({...prev, latitude: lat, longitude: lon, neighborhood: finalLocation}));
+                          }).catch(() => {});
                         return;
                       }
+                      
                       if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
                         setFormData({...formData, longitude: value});
                       }
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
                   />
+                </div>
+
+                <div className="sm:col-span-2 mt-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{isRtl ? 'الحي (Neighborhood)' : 'Neighborhood'}</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder={isRtl ? 'سيتم استخراجه تلقائياً أو يمكنك كتابته يدوياً' : 'It will be extracted automatically or you can type it manually'} 
+                      value={formData.neighborhood || ''} 
+                      onChange={(e) => setFormData({...formData, neighborhood: e.target.value})}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!formData.latitude || !formData.longitude) {
+                          toast.warning(isRtl ? 'يرجى إدخال خط الطول وخط العرض أولاً' : 'Please enter latitude and longitude first');
+                          return;
+                        }
+                        const btn = document.activeElement;
+                        btn.disabled = true;
+                        btn.innerHTML = isRtl ? '⏳ جاري...' : '⏳ Loading...';
+                        try {
+                          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${formData.latitude}&lon=${formData.longitude}&format=json&accept-language=ar&zoom=18&addressdetails=1`);
+                          const data = await res.json();
+                          const road = data.address?.road || data.address?.pedestrian || data.address?.path || '';
+                          const neighbourhood = data.address?.quarter || data.address?.neighbourhood || data.address?.suburb || data.address?.residential || data.address?.village || data.address?.city_district || '';
+                          let finalLocation = '';
+                          if (neighbourhood && road) finalLocation = `${neighbourhood} - ${road}`;
+                          else if (neighbourhood) finalLocation = neighbourhood;
+                          else if (road) finalLocation = road;
+                          else if (data.display_name) {
+                            const fallback = data.display_name.split(',')[0].trim();
+                            if (fallback !== data.address?.city && fallback !== data.address?.state && fallback !== data.address?.province) {
+                              finalLocation = fallback;
+                            }
+                          }
+
+                          if (finalLocation) {
+                            setFormData(prev => ({...prev, neighborhood: finalLocation}));
+                            toast.success(isRtl ? `تم العثور على الموقع: ${finalLocation}` : `Location found: ${finalLocation}`);
+                          } else {
+                            toast.warning(isRtl ? 'لم يتم العثور على تفاصيل دقيقة لهذا الموقع' : 'No exact details found for this location');
+                          }
+                        } catch (err) {
+                          toast.error(isRtl ? 'حدث خطأ أثناء الاتصال بالخادم، حاول كتابته يدوياً' : 'Error connecting to server, try typing it manually');
+                        } finally {
+                          btn.disabled = false;
+                          btn.innerHTML = isRtl ? '🔍 استخراج' : '🔍 Extract';
+                        }
+                      }}
+                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition-colors whitespace-nowrap shadow-sm"
+                      title={isRtl ? 'استخراج الحي من الإحداثيات' : 'Extract neighborhood from coordinates'}
+                    >
+                      🔍 {isRtl ? 'استخراج' : 'Extract'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1664,9 +2536,22 @@ function ReportForm({ user, onLogout }) {
               {/* Existing Images */}
               {id && (
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('reportForm.currentImages')} {existingImages.length > 0 && `(${existingImages.length})`}
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {t('reportForm.currentImages')} {existingImages.length > 0 && `(${existingImages.length})`}
+                    </label>
+                    {existingImages.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleScanAllExistingImages}
+                        disabled={scanningImages}
+                        className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-bold text-xs transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
+                        title={isRtl ? 'قراءة الإحداثيات والحي تلقائياً من الصور المضافة' : 'Scan and read coordinates/neighborhood from added images'}
+                      >
+                        {scanningImages ? '⚡ ...' : '🔍'} {isRtl ? 'قراءة الإحداثيات من الصور المضافة' : 'Scan Added Images'}
+                      </button>
+                    )}
+                  </div>
                   {existingImages.length === 0 ? (
                     <div className="text-gray-400 text-sm py-4 text-center border border-dashed border-gray-300 rounded-lg">
                       {t('reportForm.loadingImages')}
@@ -1704,21 +2589,57 @@ function ReportForm({ user, onLogout }) {
                           <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20">
                             <button
                               type="button"
-                              onClick={() => {
-                                const link = document.createElement('a');
-                                link.href = resolveImageUrl(img);
-                                const extension = isVideo(img) ? 'webm' : 'jpg';
-                                link.download = `media_${index + 1}.${extension}`;
-                                link.click();
+                              onClick={() => window.open(resolveImageUrl(img), '_blank')}
+                              className="bg-green-600 hover:bg-green-700 text-white p-2 rounded"
+                              title="تكبير الصورة"
+                            >
+                              👁️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const url = resolveImageUrl(img);
+                                  // محاولة جلب الصورة كـ Blob لإجبار المتصفح على تحميلها
+                                  const response = await fetch(url);
+                                  const blob = await response.blob();
+                                  const blobUrl = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = blobUrl;
+                                  const extension = isVideo(img) ? 'webm' : 'jpg';
+                                  link.download = `media_${index + 1}.${extension}`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(blobUrl);
+                                } catch (error) {
+                                  // في حال فشل الجلب (مثلاً بسبب CORS)، افتحها في نافذة جديدة كحل بديل
+                                  window.open(resolveImageUrl(img), '_blank');
+                                }
                               }}
                               className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded"
                               title={t('common.download')}
                             >
                               ⬇️
                             </button>
+                            {!isVideo(img) && (
+                              <button
+                                type="button"
+                                onClick={() => handleScanSingleExistingImage(img, index)}
+                                disabled={scanningImages}
+                                className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded disabled:opacity-50"
+                                title={isRtl ? 'قراءة الإحداثيات من هذه الصورة' : 'Read coordinates from this image'}
+                              >
+                                🔍
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => deleteExistingImage(index)}
+                              onClick={() => {
+                                if (window.confirm('هل أنت متأكد من حذف هذه الصورة؟ لا يمكن التراجع عن هذا الإجراء إلا بإلغاء التعديل.')) {
+                                  deleteExistingImage(index);
+                                }
+                              }}
                               className="bg-red-600 hover:bg-red-700 text-white p-2 rounded"
                               title={t('common.delete')}
                             >

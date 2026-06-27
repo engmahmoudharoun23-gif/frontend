@@ -12,6 +12,7 @@ export const PROJECT_SCOPED_PERMISSIONS = new Set([
   'contractors', 'projects', 'users_manage', 'team', 'project_settings',
   'cars', 'cars_manage', 'fleet_maintenance', 'hr_management',
   'dashboard', 'safety_reports', 'quality_reports', 'business_reports',
+  'performance_indicators',
   'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit',
   'quality_reports_delete', 'business_reports_edit', 'business_reports_delete',
   'business_reports_review',
