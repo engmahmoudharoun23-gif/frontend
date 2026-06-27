@@ -2253,9 +2253,9 @@ function ReportForm({ user, onLogout }) {
 
 
                 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('reportForm.latitude', {defaultValue: 'خط العرض'})} (Latitude)</label>
-                  <div className="flex gap-2">
+                <div className="sm:col-span-2 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
+                  <div className="w-full">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">{t('reportForm.latitude', {defaultValue: 'خط العرض'})} (Latitude)</label>
                     <input 
                       type="text" 
                       placeholder="24.7136" 
@@ -2294,8 +2294,11 @@ function ReportForm({ user, onLogout }) {
                           setFormData({...formData, latitude: value});
                         }
                       }}
-                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
                     />
+                  </div>
+
+                  <div className="flex justify-center md:pb-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -2377,57 +2380,56 @@ function ReportForm({ user, onLogout }) {
                           toast.warning(t('reportForm.locationBrowserNotSupported'));
                         }
                       }}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors whitespace-nowrap shadow-sm"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors whitespace-nowrap shadow-sm w-full flex justify-center items-center gap-2"
                       title={t('reportForm.getLocation')}
                     >
                       📍 {t('reportForm.autoDetect', {defaultValue: 'تحديد تلقائي'})}
                     </button>
-
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('reportForm.longitude', {defaultValue: 'خط الطول'})} (Longitude)</label>
-                  <input 
-                    type="text" 
-                    placeholder="46.6753" 
-                    value={formData.longitude} 
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const coordsMatch = value.match(/-?\d{1,3}\.\d{4,}/g);
-                      if (coordsMatch && coordsMatch.length >= 2) {
-                        const lat = coordsMatch[0];
-                        const lon = coordsMatch[1];
-                        setFormData({...formData, latitude: lat, longitude: lon});
-                        toast.success(t('reportForm.locationExtractedSuccess', {defaultValue: 'تم استخراج الإحداثيات بنجاح!'}));
-                        
-                        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar&zoom=18&addressdetails=1`)
-                          .then(res => res.json())
-                          .then(data => {
-                            const road = data.address?.road || data.address?.pedestrian || data.address?.path || '';
-                            const neighbourhood = data.address?.quarter || data.address?.neighbourhood || data.address?.suburb || data.address?.residential || data.address?.village || data.address?.city_district || '';
-                            let finalLocation = '';
-                            if (neighbourhood && road) finalLocation = `${neighbourhood} - ${road}`;
-                            else if (neighbourhood) finalLocation = neighbourhood;
-                            else if (road) finalLocation = road;
-                            else if (data.display_name) {
-                              const fallback = data.display_name.split(',')[0].trim();
-                              if (fallback !== data.address?.city && fallback !== data.address?.state && fallback !== data.address?.province) {
-                                finalLocation = fallback;
+                  <div className="w-full">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">{t('reportForm.longitude', {defaultValue: 'خط الطول'})} (Longitude)</label>
+                    <input 
+                      type="text" 
+                      placeholder="46.6753" 
+                      value={formData.longitude} 
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const coordsMatch = value.match(/-?\d{1,3}\.\d{4,}/g);
+                        if (coordsMatch && coordsMatch.length >= 2) {
+                          const lat = coordsMatch[0];
+                          const lon = coordsMatch[1];
+                          setFormData({...formData, latitude: lat, longitude: lon});
+                          toast.success(t('reportForm.locationExtractedSuccess', {defaultValue: 'تم استخراج الإحداثيات بنجاح!'}));
+                          
+                          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar&zoom=18&addressdetails=1`)
+                            .then(res => res.json())
+                            .then(data => {
+                              const road = data.address?.road || data.address?.pedestrian || data.address?.path || '';
+                              const neighbourhood = data.address?.quarter || data.address?.neighbourhood || data.address?.suburb || data.address?.residential || data.address?.village || data.address?.city_district || '';
+                              let finalLocation = '';
+                              if (neighbourhood && road) finalLocation = `${neighbourhood} - ${road}`;
+                              else if (neighbourhood) finalLocation = neighbourhood;
+                              else if (road) finalLocation = road;
+                              else if (data.display_name) {
+                                const fallback = data.display_name.split(',')[0].trim();
+                                if (fallback !== data.address?.city && fallback !== data.address?.state && fallback !== data.address?.province) {
+                                  finalLocation = fallback;
+                                }
                               }
-                            }
 
-                            if (finalLocation) setFormData(prev => ({...prev, latitude: lat, longitude: lon, neighborhood: finalLocation}));
-                          }).catch(() => {});
-                        return;
-                      }
-                      
-                      if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
-                        setFormData({...formData, longitude: value});
-                      }
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
-                  />
+                              if (finalLocation) setFormData(prev => ({...prev, latitude: lat, longitude: lon, neighborhood: finalLocation}));
+                            }).catch(() => {});
+                          return;
+                        }
+                        
+                        if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                          setFormData({...formData, longitude: value});
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
+                    />
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2 mt-2">
