@@ -1087,53 +1087,7 @@ function ReportForm({ user, onLogout }) {
     }
   }, [id]);
 
-  // الحصول على الموقع تلقائياً عند فتح صفحة إضافة بلاغ جديد
-  useEffect(() => {
-    // فقط للبلاغات الجديدة (ليس للتعديل) والأجهزة الذكية فقط (الجوال/التابلت)
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (!id && navigator.geolocation && isMobile) {
-      console.log('🔄 محاولة الحصول على الموقع تلقائياً من الهاتف الذكي...');
-      
-      // استخدام إعدادات أقل صرامة لتحسين التوافق
-      const options = {
-        enableHighAccuracy: true, // استخدام دقة عالية (GPS) لضمان عدم الاعتماد على شبكة الـ 5G أو الآي بي
-        timeout: 15000,
-        maximumAge: 0 // عدم استخدام موقع محفوظ مسبقاً
-      };
-      
-      // محاولة الحصول على الموقع
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude.toFixed(6);
-          const lon = position.coords.longitude.toFixed(6);
-          
-          console.log('✅ تم الحصول على الموقع:', lat, lon);
-          
-          setFormData(prev => {
-            // تحديث فقط إذا كانت الحقول فارغة
-            if (!prev.latitude && !prev.longitude) {
-              // عرض رسالة نجاح
-              setLocationSuccess(true);
-              setTimeout(() => setLocationSuccess(false), 5000);
-              
-              return {
-                ...prev,
-                latitude: lat,
-                longitude: lon
-              };
-            }
-            return prev;
-          });
-        },
-        (error) => {
-          console.log('⚠️ لم يتم الحصول على الموقع:', error.code, error.message);
-          // لا نعرض تنبيه - فقط نترك الحقول فارغة للإدخال اليدوي
-          // المستخدم يمكنه الضغط على زر "الموقع الحالي" لاحقاً
-        },
-        options
-      );
-    }
-  }, [id]);
+
 
   // إضافة مقاول جديد
   const handleAddContractor = async () => {
