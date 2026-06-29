@@ -246,6 +246,7 @@ function ReportForm({ user, onLogout }) {
   const [loading, setLoading] = useState(false);
   
   const [, forceUpdate] = useState(0);
+
   useEffect(() => {
     const handleTranslationUpdated = () => {
       forceUpdate(prev => prev + 1);
@@ -295,8 +296,22 @@ function ReportForm({ user, onLogout }) {
   const [addingContractor, setAddingContractor] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState(0);
+
+  // منع إغلاق المتصفح أثناء الرفع
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (uploadingImages) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [uploadingImages]);
   
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [scanningImages, setScanningImages] = useState(false);
   const [imageViewerModal, setImageViewerModal] = useState({
     open: false,
@@ -564,37 +579,39 @@ function ReportForm({ user, onLogout }) {
     return { lat, lon, ocrNeighborhood, ocrCity, rawOcrLines };
   };
 
-  const performOcrScan = async (fileOrBlob, Tesseract) => {
-    // Pass 1: Original resized image
-    const preprocessed = await preprocessImageForOcr(fileOrBlob);
-    let { data: { text } } = await Tesseract.recognize(preprocessed, 'ara+eng', {
-      langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0/'
-    });
-    let result = await parseImageOcrText(text);
-    
-    if (result && result.lat && result.lon) {
+  const performOcrScan = async (fileOrBlob) => {
+    try {
+      const processedBlob = await preprocessImageForOcr(fileOrBlob);
+      const compressedFile = new File([processedBlob], "image.jpg", { type: "image/jpeg" });
+
+      const fd = new FormData();
+      fd.append('file', compressedFile);
+      fd.append('apikey', 'helloworld');
+      fd.append('language', 'ara');
+      fd.append('OCREngine', '2');
+      fd.append('scale', 'true');
+      fd.append('detectOrientation', 'true');
+
+      let res = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
+      let data = await res.json();
+      let text = data?.ParsedResults?.[0]?.ParsedText || '';
+      
+      let result = await parseImageOcrText(text);
+      if (result && result.lat && result.lon) return result;
+
+      console.log('Pass 1 failed. Trying Pass 2 (English/Engine 1)...');
+      fd.set('language', 'eng');
+      fd.set('OCREngine', '1');
+      res = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
+      data = await res.json();
+      text = data?.ParsedResults?.[0]?.ParsedText || '';
+      
+      result = await parseImageOcrText(text);
       return result;
+    } catch (err) {
+      console.error('OCR.space Error:', err);
+      throw err;
     }
-    
-    // Pass 2: Rotate 90 degrees CW (in case image is sideways)
-    console.log('Pass 1 failed to find coordinates. Trying Pass 2 (90 deg CW)...');
-    const rotated90 = await rotateImageCanvas(preprocessed, 90);
-    const ocr90 = await Tesseract.recognize(rotated90, 'ara+eng', {
-      langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0/'
-    });
-    result = await parseImageOcrText(ocr90.data.text);
-    if (result && result.lat && result.lon) {
-      return result;
-    }
-    
-    // Pass 3: Rotate 270 degrees CW (90 degrees CCW)
-    console.log('Pass 2 failed. Trying Pass 3 (90 deg CCW)...');
-    const rotated270 = await rotateImageCanvas(preprocessed, 270);
-    const ocr270 = await Tesseract.recognize(rotated270, 'ara+eng', {
-      langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0/'
-    });
-    result = await parseImageOcrText(ocr270.data.text);
-    return result;
   };
 
   /**
@@ -662,21 +679,25 @@ function ReportForm({ user, onLogout }) {
     toast.info(isRtl ? 'جاري قراءة الصورة واستخراج الإحداثيات والحي...' : 'Reading image and extracting coordinates & neighborhood...');
 
     try {
-      const Tesseract = await loadTesseract();
-      const result = await performOcrScan(file, Tesseract);
+      const result = await performOcrScan(file);
 
       if (result && (result.lat || result.lon)) {
         let neighborhoodText = '';
-        if (result.ocrNeighborhood) {
-          neighborhoodText = result.ocrNeighborhood;
-          if (result.ocrCity && !neighborhoodText.includes(result.ocrCity)) {
-            neighborhoodText = `${result.ocrCity} - ${neighborhoodText}`;
-          }
-        } else if (result.ocrCity) {
-          neighborhoodText = result.ocrCity;
-        }
-        if (!neighborhoodText && result.lat && result.lon) {
+        if (result.lat && result.lon) {
+          // جلب الحي بدقة عبر الإحداثيات دائماً لأنها أدق من النص
           neighborhoodText = await resolveNeighborhoodFromOcrResult(result);
+        }
+        
+        // إذا فشل جلب الحي عبر الإحداثيات، استخدم ما تم قراءته من الصورة
+        if (!neighborhoodText) {
+          if (result.ocrNeighborhood) {
+            neighborhoodText = result.ocrNeighborhood;
+            if (result.ocrCity && !neighborhoodText.includes(result.ocrCity)) {
+              neighborhoodText = `${result.ocrCity} - ${neighborhoodText}`;
+            }
+          } else if (result.ocrCity) {
+            neighborhoodText = result.ocrCity;
+          }
         }
         setFormData(prev => ({
           ...prev,
@@ -715,14 +736,13 @@ function ReportForm({ user, onLogout }) {
     toast.info(isRtl ? 'جاري فحص جميع الصور المرفقة بحثاً عن إحداثيات...' : 'Scanning all attached images for coordinates...');
 
     try {
-      const Tesseract = await loadTesseract();
       let found = false;
 
       for (let i = 0; i < imageUrls.length; i++) {
         toast.info(isRtl ? `جاري فحص الصورة ${i + 1} من ${imageUrls.length}...` : `Scanning image ${i + 1} of ${imageUrls.length}...`);
         try {
           const blob = await fetchImageAsBlob(imageUrls[i]);
-          const result = await performOcrScan(blob, Tesseract);
+          const result = await performOcrScan(blob);
 
           if (result && (result.lat || result.lon)) {
             let neighborhoodText = '';
@@ -773,9 +793,8 @@ function ReportForm({ user, onLogout }) {
     toast.info(isRtl ? `جاري قراءة الصورة ${index + 1}...` : `Scanning image ${index + 1}...`);
 
     try {
-      const Tesseract = await loadTesseract();
       const blob = await fetchImageAsBlob(resolveImageUrl(imgUrl));
-      const result = await performOcrScan(blob, Tesseract);
+      const result = await performOcrScan(blob);
 
       if (result && (result.lat || result.lon)) {
         let neighborhoodText = '';
@@ -1548,6 +1567,13 @@ function ReportForm({ user, onLogout }) {
     setLoading(true);
     setErrorMessage('');
 
+    // إظهار شاشة الرفع الإجبارية مبكراً إذا كان هناك صور
+    if (images.length > 0) {
+      setUploadingImages(true);
+      // تأخير بسيط جداً لإجبار React على رسم الشاشة قبل تجميد المتصفح في عمليات الإرسال
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     try {
       const form = new FormData();
       
@@ -1612,13 +1638,10 @@ function ReportForm({ user, onLogout }) {
         toast.info(`📋 ` + t('reportForm.reviewerInfo', {name: reviewerName, defaultValue: `يتم مراجعة البلاغ من قبل الفريق الفني المختص والمفوض بالمراجعة م/ ${reviewerName}`}));
       }
 
-      // ⚡ رفع الصور في الخلفية
+      // ⚡ رفع الصور
       if (images.length > 0 && reportId) {
-        setUploadingImages(true);
-        toast.info(`📤 ` + t('reportForm.uploadingBg', {count: images.length, defaultValue: `جاري رفع ${images.length} صورة في الخلفية...`}), { autoClose: 2000 });
-        
-        // رفع الصور بشكل غير متزامن
-        uploadImagesInBackground(reportId, images);
+        // ننتظر حتى يكتمل رفع جميع الصور قبل الانتقال
+        await uploadImagesInBackground(reportId, images);
       }
 
       // العودة للصفحة السابقة للحفاظ على فلاتر المشروع والصفحة الحالية
@@ -1675,6 +1698,7 @@ function ReportForm({ user, onLogout }) {
       toast.error(`❌ ${t('reportForm.saveFailed', 'فشل في حفظ البلاغ!')} ${finalMsg}`, { autoClose: 5000 });
     } finally {
       setLoading(false);
+      setUploadingImages(false);
     }
   };
 
@@ -1711,10 +1735,8 @@ function ReportForm({ user, onLogout }) {
     } catch (error) {
       console.error('Background upload error:', error);
       toast.error('❌ خطأ في رفع الصور', { autoClose: 5000 });
-    } finally {
-      setUploadingImages(false);
-      setImageUploadProgress(0);
     }
+    // لا نقوم بإخفاء الشاشة هنا، سيتم إخفاؤها في finally الخاصة بـ handleSubmit بعد الانتقال
   };
 
   return (
@@ -2028,183 +2050,22 @@ function ReportForm({ user, onLogout }) {
                       id="location-image-viewer-input"
                       accept="image/*"
                       style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const f = e.target.files[0];
-                        if (!f) return;
-                        const url = URL.createObjectURL(f);
-                        setImageViewerModal(prev => ({
-                          ...prev,
-                          open: true,
-                          imageUrl: url,
-                          imageFile: f,
-                          manualLat: formData.latitude || '',
-                          manualLon: formData.longitude || '',
-                          manualNeighborhood: formData.neighborhood || '',
-                          ocrText: '',
-                          ocrLoading: false,
-                          ocrDone: false
-                        }));
-                        e.target.value = '';
-                        // تشغيل القراءة تلقائياً
-                        setTimeout(() => runOcrOnImage(f), 300);
-                      }}
+                      onChange={handleImageOcrChange}
                     />
                     <button
                       type="button"
+                      disabled={ocrLoading}
                       onClick={() => document.getElementById('location-image-viewer-input').click()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition-all bg-indigo-600 hover:bg-indigo-700 active:scale-95"
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition-all ${ocrLoading ? 'bg-indigo-400 opacity-60 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}
                     >
-                      🔍 {isRtl ? 'عرض صورة الموقع' : 'View Location Image'}
+                      {ocrLoading ? (
+                        <>⏳ {isRtl ? 'جاري القراءة...' : 'Reading...'}</>
+                      ) : (
+                        <>🔍 {isRtl ? 'اختيار صورة لقراءة الاحداثيات من عليها' : 'Choose image to extract coordinates'}</>
+                      )}
                     </button>
                   </div>
                 </div>
-
-                {/* ══ Modal عرض صورة الموقع ══ */}
-                {imageViewerModal.open && (
-                  <div
-                    style={{
-                      position: 'fixed', inset: 0, zIndex: 9999,
-                      backgroundColor: 'rgba(0,0,0,0.85)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '16px'
-                    }}
-                  >
-                    <div style={{
-                      background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '900px',
-                      maxHeight: '95vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0'
-                    }}>
-                      {/* Header */}
-                      <div style={{ background: '#4338ca', borderRadius: '16px 16px 0 0', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '15px' }}>🔍 {isRtl ? 'عرض صورة الموقع - اقرأ الإحداثيات وأدخلها' : 'Location Image Viewer - Read & Enter Coordinates'}</span>
-                        <button onClick={() => setImageViewerModal(prev => ({...prev, open: false}))} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', fontSize: '18px' }}>✕</button>
-                      </div>
-
-                      {/* Image */}
-                      <div style={{ padding: '12px', background: '#f1f5f9', display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
-                        <img
-                          src={imageViewerModal.imageUrl}
-                          alt="location"
-                          style={{ 
-                            maxWidth: '100%', maxHeight: 'none', objectFit: 'contain', 
-                            borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
-                            userSelect: 'auto', WebkitUserSelect: 'auto', WebkitTouchCallout: 'default'
-                          }}
-                        />
-                      </div>
-                      <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginTop: '-8px', marginBottom: '4px' }}>{isRtl ? '💡 اضغط على الصورة لتكبيرها' : '💡 Click image to zoom'}</p>
-
-                      {/* حقول الإدخال */}
-                      <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        
-                        {/* مربع نص الإحداثيات المستخرجة للتحديد والنسخ */}
-                        {(imageViewerModal.ocrLoading || imageViewerModal.ocrText) && (
-                          <div style={{ marginBottom: '10px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#0369a1', display: 'block', marginBottom: '8px' }}>
-                              📋 {isRtl ? 'كل النص الموجود في الصورة (حدد ما تريد ثم انسخه):' : 'All text found in the image (select and copy):'}
-                            </label>
-                            {imageViewerModal.ocrLoading ? (
-                              <div style={{ padding: '20px', textAlign: 'center', color: '#0369a1', fontSize: '15px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-                                ⏳ {isRtl ? 'جاري قراءة جميع النصوص والأرقام من الصورة...' : 'Reading all text and numbers from image...'}
-                              </div>
-                            ) : (
-                              <textarea
-                                readOnly
-                                value={imageViewerModal.ocrText}
-                                style={{
-                                  width: '100%', minHeight: '150px', maxHeight: '300px', // كبرنا المربع هنا
-                                  padding: '12px 15px',
-                                  border: '2px solid #0284c7', borderRadius: '8px',
-                                  fontSize: '16px', lineHeight: '1.8', // كبرنا الخط
-                                  background: '#f8fafc', color: '#0f172a',
-                                  resize: 'vertical', fontFamily: 'monospace',
-                                  boxSizing: 'border-box', direction: 'rtl', // جعلنا الاتجاه من اليمين لتسهيل قراءة العربي
-                                  userSelect: 'text', cursor: 'text'
-                                }}
-                                onClick={(e) => { e.stopPropagation(); }}
-                              />
-                            )}
-                          </div>
-                        )}
-
-                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, borderTop: '1px solid #e5e7eb', paddingTop: '10px' }}>
-                          {isRtl ? '✏️ ألصق ما نسخته أو اكتب الإحداثيات والحي هنا:' : '✏️ Paste copied text or type coordinates here:'}
-                        </p>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                          <div>
-                            <label style={{ fontSize: '12px', fontWeight: '700', color: '#4338ca', display: 'block', marginBottom: '4px' }}>📍 {isRtl ? 'خط العرض (Latitude)' : 'Latitude'}</label>
-                            <input
-                              type="text"
-                              placeholder={isRtl ? 'مثال: 24.7136' : 'e.g. 24.7136'}
-                              value={imageViewerModal.manualLat}
-                              onChange={(e) => setImageViewerModal(prev => ({...prev, manualLat: e.target.value}))}
-                              style={{ width: '100%', padding: '8px 12px', border: '2px solid #c7d2fe', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box' }}
-                              autoComplete="off"
-                            />
-                          </div>
-                          <div>
-                            <label style={{ fontSize: '12px', fontWeight: '700', color: '#4338ca', display: 'block', marginBottom: '4px' }}>📍 {isRtl ? 'خط الطول (Longitude)' : 'Longitude'}</label>
-                            <input
-                              type="text"
-                              placeholder={isRtl ? 'مثال: 46.6753' : 'e.g. 46.6753'}
-                              value={imageViewerModal.manualLon}
-                              onChange={(e) => setImageViewerModal(prev => ({...prev, manualLon: e.target.value}))}
-                              style={{ width: '100%', padding: '8px 12px', border: '2px solid #c7d2fe', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box' }}
-                              autoComplete="off"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label style={{ fontSize: '12px', fontWeight: '700', color: '#4338ca', display: 'block', marginBottom: '4px' }}>🏘️ {isRtl ? 'الحي / المنطقة' : 'Neighborhood / Area'}</label>
-                          <input
-                            type="text"
-                            placeholder={isRtl ? 'مثال: المحافظة - الحي' : 'e.g. Governorate - Neighborhood'}
-                            value={imageViewerModal.manualNeighborhood}
-                            onChange={(e) => setImageViewerModal(prev => ({...prev, manualNeighborhood: e.target.value}))}
-                            style={{ width: '100%', padding: '8px 12px', border: '2px solid #c7d2fe', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
-                            autoComplete="off"
-                          />
-                        </div>
-                        {/* Buttons */}
-                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                          <button
-                            type="button"
-                            onClick={() => setImageViewerModal(prev => ({...prev, open: false}))}
-                            style={{ padding: '9px 20px', background: '#e5e7eb', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', color: '#374151' }}
-                          >
-                            {isRtl ? 'إلغاء' : 'Cancel'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const lat = imageViewerModal.manualLat.trim();
-                              const lon = imageViewerModal.manualLon.trim();
-                              const neigh = imageViewerModal.manualNeighborhood.trim();
-                              if (!lat && !lon && !neigh) {
-                                toast.warning(isRtl ? 'يرجى إدخال إحداثية أو حي واحد على الأقل' : 'Please enter at least one coordinate or neighborhood');
-                                return;
-                              }
-                              setFormData(prev => ({
-                                ...prev,
-                                latitude: lat || prev.latitude,
-                                longitude: lon || prev.longitude,
-                                neighborhood: neigh || prev.neighborhood
-                              }));
-                              setImageViewerModal(prev => ({...prev, open: false}));
-                              if (imageViewerModal.imageUrl) URL.revokeObjectURL(imageViewerModal.imageUrl);
-                              toast.success(isRtl ? '✅ تم تطبيق البيانات بنجاح!' : '✅ Data applied successfully!');
-                            }}
-                            style={{ padding: '9px 24px', background: '#4338ca', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: '#fff' }}
-                          >
-                            ✅ {isRtl ? 'تطبيق في النموذج' : 'Apply to Form'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
 
                 
                 <div className="sm:col-span-2 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
@@ -2284,9 +2145,7 @@ function ReportForm({ user, onLogout }) {
                         }
 
                         if (navigator.geolocation) {
-                          const button = document.activeElement;
-                          button.disabled = true;
-                          button.innerHTML = '⏳ ' + t('reportForm.gettingLocation');
+                          setIsLocating(true);
                           
                           navigator.geolocation.getCurrentPosition(
                             (position) => {
@@ -2315,17 +2174,15 @@ function ReportForm({ user, onLogout }) {
                                 .catch(() => {
                                   // في حال الفشل، فقط نعين الإحداثيات بدون الحي
                                   setFormData(prev => ({...prev, latitude: lat, longitude: lon}));
+                                })
+                                .finally(() => {
+                                  setIsLocating(false);
+                                  setLocationSuccess(true);
+                                  setTimeout(() => setLocationSuccess(false), 4000);
                                 });
-                              
-                              button.disabled = false;
-                              button.innerHTML = '📍 ' + t('reportForm.getLocation');
-                              
-                              setLocationSuccess(true);
-                              setTimeout(() => setLocationSuccess(false), 4000);
                             },
                             (error) => {
-                              button.disabled = false;
-                              button.innerHTML = '📍 ' + t('reportForm.getLocation');
+                              setIsLocating(false);
                               toast.error(t('reportForm.locationErrorTimeout') + ' (الرجاء التأكد من تفعيل الـ GPS والتواجد في مكان مفتوح)');
                             },
                             { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
@@ -2334,10 +2191,15 @@ function ReportForm({ user, onLogout }) {
                           toast.warning(t('reportForm.locationBrowserNotSupported'));
                         }
                       }}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors whitespace-nowrap shadow-sm w-full flex justify-center items-center gap-2"
+                      disabled={isLocating}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors whitespace-nowrap shadow-sm w-full flex justify-center items-center gap-2 disabled:opacity-50"
                       title={t('reportForm.getLocation')}
                     >
-                      📍 {t('reportForm.autoDetect', {defaultValue: 'تحديد تلقائي'})}
+                      {isLocating ? (
+                        <>⏳ {t('reportForm.gettingLocation', {defaultValue: 'جاري التحديد...'})}</>
+                      ) : (
+                        <>📍 {t('reportForm.autoDetect', {defaultValue: 'تحديد تلقائي'})}</>
+                      )}
                     </button>
                   </div>
 
@@ -2958,6 +2820,54 @@ function ReportForm({ user, onLogout }) {
               >
                 {addingStatus ? t('common.adding') : t('common.add')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* شاشة التحميل الإجبارية لرفع الصور */}
+      {uploadingImages && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          backdropFilter: 'blur(5px)'
+        }}>
+          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 border-2 border-indigo-100">
+            {/* أيقونة السحابة المتحركة */}
+            <div className="relative mb-6">
+              <svg className="w-20 h-20 text-indigo-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <div className="absolute inset-0 bg-indigo-400 rounded-full blur-xl opacity-20 animate-pulse"></div>
+            </div>
+            
+            <h3 className="text-xl font-black text-gray-800 mb-2 text-center">
+              {isRtl ? 'جاري رفع الصور وحفظ البلاغ' : 'Uploading Images & Saving Report'}
+            </h3>
+            
+            <p className="text-sm font-bold text-red-600 mb-6 text-center animate-pulse">
+              {isRtl ? '⚠️ الرجاء عدم الخروج من الصفحة حتى تكتمل العملية!' : '⚠️ Please do not close this page until completed!'}
+            </p>
+            
+            <div className="w-full bg-gray-100 rounded-full h-4 mb-2 overflow-hidden shadow-inner border border-gray-200">
+              <div 
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all duration-300 ease-out flex items-center justify-end pr-2" 
+                style={{ width: `${imageUploadProgress}%` }}
+              >
+              </div>
+            </div>
+            
+            <div className="flex justify-between w-full text-sm font-bold text-indigo-700">
+              <span>{imageUploadProgress}%</span>
+              <span>{images.length} {isRtl ? 'صور' : 'Images'}</span>
             </div>
           </div>
         </div>

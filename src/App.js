@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import Login from './pages/Login';
 import Dashboard from './pages/NewDashboard';
 import Reports from './pages/Reports';
+import AIImageAudit from './pages/AIImageAudit';
 import ReportForm from './pages/ReportForm';
 import Trash from './pages/Trash';
 import ConsultantNotes from './pages/ConsultantNotes';
@@ -40,6 +41,7 @@ import Meetings from './pages/Meetings';
 import WfmMatching from './pages/WfmMatching';
 import UpdateReports from './pages/UpdateReports';
 import PerformanceIndicators from './pages/PerformanceIndicators';
+import AuditLogs from './pages/AuditLogs';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -371,6 +373,10 @@ function App() {
           element={user ? <ReportForm user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
         />
         <Route
+          path="/ai-image-audit"
+          element={user && hasAnyProjectPermission(user, 'ai_image_audit') ? <AIImageAudit user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
           path="/trash"
           element={user ? <DeletedItems user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
         />
@@ -489,6 +495,10 @@ function App() {
         <Route
           path="/archive"
           element={user && user.role === 'admin' ? <Archive user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
+          path="/audit-logs"
+          element={user && (user.role === 'admin' || user.permissions?.includes('audit_logs')) ? <AuditLogs user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         {/* تم تعطيل نظام الدردشة */}
                 <Route

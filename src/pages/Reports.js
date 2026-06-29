@@ -439,6 +439,7 @@ function Reports({ user, onLogout }) {
     // إذا كان الفلتر للبلاغات الجديدة
     if (filterNew === 'new') {
       setIsNewReportsFilter(true);
+      setFilters(prev => ({ ...prev, search: '', license_number: '' }));
       setUrlFiltersApplied(true);
       return;
     } else {
@@ -458,7 +459,7 @@ function Reports({ user, onLogout }) {
         try {
           setLoading(true);
           const params = new URLSearchParams();
-          params.append('search', searchQuery);
+          params.append('search', searchQuery.trim());
           params.append('page', pageFromUrl);
           params.append('limit', reportsPerPage);
           if (isExactSearch) {
@@ -536,6 +537,8 @@ function Reports({ user, onLogout }) {
         start_date_to: searchParams.get('start_date_to') || ''
       } : {
         ...filters,
+        search: searchQuery || '',
+        license_number: searchParams.get('license_number') || '',
         governorate: governorateFromUrl || filters.governorate,
         license_status: newLicenseStatus || filters.license_status,
         project: projectFromUrl || filters.project,
@@ -1113,7 +1116,7 @@ const fetchReports = async () => {
               if (key === 'date' || key === 'start_date') {
                 // Deprecated
               } else {
-                params.append(key, value);
+                params.append(key, typeof value === 'string' ? value.trim() : value);
               }
             } 
           });
@@ -1164,7 +1167,7 @@ const fetchReports = async () => {
     const newParams = new URLSearchParams(searchParams);
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
-        newParams.set(key, value);
+        newParams.set(key, typeof value === 'string' ? value.trim() : value);
       } else {
         newParams.delete(key);
       }
@@ -1271,7 +1274,7 @@ const fetchReports = async () => {
     if (newExportFilters.start_date_from) params.append('start_date_from', newExportFilters.start_date_from);
     if (newExportFilters.start_date_to) params.append('start_date_to', newExportFilters.start_date_to);
     if (newExportFilters.created_by) params.append('created_by', newExportFilters.created_by);
-    if (newFilters.search) params.append('search', newFilters.search);
+    if (newFilters.search) params.append('search', newFilters.search.trim());
 
     params.append('page', 1);
     params.append('limit', reportsPerPage);
@@ -1314,7 +1317,7 @@ const fetchReports = async () => {
           params.append('start_date_from', val);
           params.append('start_date_to', val);
         } else {
-          params.append(key, val);
+          params.append(key, typeof val === 'string' ? val.trim() : val);
         }
       }
     });
@@ -1324,6 +1327,16 @@ const fetchReports = async () => {
     }
     params.append('page', 1);
     params.append('limit', reportsPerPage);
+    
+    // Update the URL so it doesn't revert
+    const newUrlParams = new URLSearchParams(searchParams);
+    if (value && typeof value === 'string' && value.trim()) {
+      newUrlParams.set(field, value); // DO NOT TRIM HERE! preserves space while typing
+    } else {
+      newUrlParams.delete(field);
+    }
+    newUrlParams.set('page', 1);
+    setSearchParams(newUrlParams);
     
     axios.get(`${API}/reports?${params}`)
       .then(response => {
@@ -2109,7 +2122,7 @@ const fetchReports = async () => {
                   placeholder={`🔍 ${t('common.search')}`} 
                   value={filters.search} 
                   onChange={(e) => {
-                  const val = e.target.value;
+                  const val = e.target.value.replace(/\s+/g, '');
                   handleQuickSearch('search', val);
                   if (val === '') {
                     const newParams = new URLSearchParams(searchParams);
@@ -2268,7 +2281,7 @@ const fetchReports = async () => {
                 placeholder={`🔍 ${t('common.search')}`} 
                 value={filters.search} 
                 onChange={(e) => {
-                  const val = e.target.value;
+                  const val = e.target.value.replace(/\s+/g, '');
                   handleQuickSearch('search', val);
                   if (val === '') {
                     const newParams = new URLSearchParams(searchParams);

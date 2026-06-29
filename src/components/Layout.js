@@ -69,6 +69,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(() => getCachedCount('cache_pendingRequestsCount')); // طلبات الموظفين المعلقة
   const [signedRequestsCount, setSignedRequestsCount] = useState(() => getCachedCount('cache_signedRequestsCount')); // طلبات تم توقيعها وبانتظار التأكيد
   const [supportMessagesCount, setSupportMessagesCount] = useState(() => getCachedCount('cache_supportMessagesCount')); // رسائل الدعم الجديدة
+  const [newAuditLogsCount, setNewAuditLogsCount] = useState(0);
   const [pendingExtractsCount, setPendingExtractsCount] = useState(() => getCachedCount('cache_pendingExtractsCount')); // المستخلصات المعلقة
   const [allProjects, setAllProjects] = useState([]); // جميع المشاريع من قاعدة البيانات
   const [projectTypes, setProjectTypes] = useState({}); // نوع كل مشروع (connections أو reports)
@@ -101,6 +102,10 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const previousUnreadChatCount = useRef(getCachedCount('cache_unreadChatCount'));
   
   const handleLinkClick = (e, path) => {
+    if (path === '/audit-logs') {
+      localStorage.setItem('lastViewedAuditLogTimestamp', new Date().toISOString());
+      setNewAuditLogsCount(0);
+    }
     if (location.pathname === path || (path === '/' && location.pathname === '/dashboard')) {
       e.preventDefault();
       window.location.reload();
@@ -465,6 +470,16 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
       axios.get(`${API}/reports/pending-review-by-governorate?t=${timeParam}`, { headers })
         .then(govResponse => setGovernorateCounts(govResponse.data.data || []))
         .catch(e => console.error(e));
+        
+      // 2.5 Audit Logs Notification
+      if (user?.role === 'admin' || (user?.permissions || []).includes('audit_logs')) {
+        const lastViewed = localStorage.getItem('lastViewedAuditLogTimestamp') || '';
+        axios.get(`${API}/audit-logs/unread-count?t=${timeParam}${lastViewed ? `&last_viewed=${encodeURIComponent(lastViewed)}` : ''}`, { headers })
+          .then(res => {
+            setNewAuditLogsCount(res.data.count || 0);
+          })
+          .catch(e => console.error(e));
+      }
 
       // 3. Notifications Pending Count
       axios.get(`${API}/notifications/pending-count?t=${timeParam}`, { headers })
@@ -1453,15 +1468,15 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                           ) : (
                             <>
                               {unseenReportsByGov.map((govGroup, idx) => (
-                                <div key={idx} className="border-b border-gray-100 last:border-0">
-                                  <div className="bg-blue-50 px-4 py-2 font-semibold text-blue-800 flex justify-between items-center sticky top-0">
+                                <div key={idx} className="border-b-4 border-indigo-500 last:border-0 mb-1">
+                                  <div className="bg-indigo-100 px-4 py-2.5 font-bold text-indigo-900 flex justify-between items-center sticky top-0 shadow-sm border-b border-indigo-200">
                                     <div className="flex flex-col">
                                       <span className="text-sm">🏛️ {translateBrandingText(govGroup.governorate, isRtl)}</span>
                                       <span className="text-[10px] text-blue-600/70 font-bold leading-none">
                                         {translateBrandingText(govGroup.project, isRtl)?.replace('مشروع إصلاح أعمال ', '').replace(' - القطاع الأوسط', '')}
                                       </span>
                                     </div>
-                                    <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                    <span className="bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-inner">
                                       {govGroup.count}
                                     </span>
                                   </div>
@@ -1485,10 +1500,10 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse flex-shrink-0"></span>
                                             <span className="truncate">{isRtl ? 'بلاغ رقم:' : 'Report No:'} {report.report_number}</span>
                                           </p>
-                                          <p className="text-xs text-gray-500 mt-1 truncate">
+                                          <p className="text-sm font-medium text-gray-600 mt-1 truncate">
                                             {translateBrandingText(report.report_type, isRtl)} • {translateBrandingText(report.contractor, isRtl)}
                                           </p>
-                                          <p className="text-xs text-gray-400 mt-0.5">
+                                          <p className="text-sm font-medium text-gray-500 mt-0.5">
                                             {translateBrandingText(report.project, isRtl)?.replace('مشروع إصلاح أعمال ', '').replace(' - القطاع الأوسط', '')}
                                             <span className="block mt-1 text-blue-500 font-medium whitespace-nowrap">{formatNotificationDate(report.added_at || report.created_at)}</span>
                                           </p>
@@ -1660,7 +1675,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                         <span className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0"></span>
                                         <span className="truncate">{isRtl ? 'بلاغ رقم:' : 'Report No:'} {report.report_number}</span>
                                       </p>
-                                      <p className="text-xs text-gray-500 mt-1 truncate">
+                                      <p className="text-sm font-medium text-gray-600 mt-1 truncate">
                                         {translateBrandingText(report.report_type, isRtl)} • {translateBrandingText(report.contractor, isRtl)}
                                       </p>
                                       <p className="text-xs text-gray-400 mt-0.5 truncate">
@@ -1965,6 +1980,16 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
               
+              {/* تدقيق الصورة بالذكاء الاصطناعي */}
+              {hasPermission('ai_image_audit') && (
+                <Link to="/ai-image-audit" onClick={(e) => handleLinkClick(e, "/ai-image-audit")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/ai-image-audit') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <div className="flex items-center">
+                    <svg className="inline-block w-4 h-4 ml-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                    {t('sidebar.ai_image_audit', { defaultValue: 'تدقيق الصورة بالذكاء الاصطناعي' })}
+                  </div>
+                </Link>
+              )}
+              
               {/* المقاولون */}
               {hasPermission('contractors') && (
                 <Link to="/contractors" onClick={(e) => handleLinkClick(e, "/contractors")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/contractors') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -2128,6 +2153,23 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
 
+              {/* سجل التعديلات */}
+              {(user && (user.role === 'admin' || (user.permissions && user.permissions.includes('audit_logs')))) && (
+                <Link to="/audit-logs" onClick={(e) => handleLinkClick(e, "/audit-logs")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/audit-logs') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <svg className="inline-block w-4 h-4 ml-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                      {i18n.language === 'ar' ? 'سجل التعديلات' : 'Audit Logs'}
+                    </div>
+                    {newAuditLogsCount > 0 && (
+                      <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200 ml-2 block">
+                        {newAuditLogsCount > 9 ? '9+' : newAuditLogsCount}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              )}
+
               {/* إدارة المستخدمين */}
               {hasPermission('users_manage') && (
                 <Link to="/users" onClick={(e) => handleLinkClick(e, "/users")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/users') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -2153,7 +2195,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </Link>
               )}
               
-
               {/* الأرشيف */}
               {user && user.role === 'admin' && (
                 <Link to="/archive" onClick={(e) => handleLinkClick(e, "/archive")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/archive') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -2343,6 +2384,23 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                       {pendingReportNotesCount > 9 ? '9+' : pendingReportNotesCount}
                     </span>
                   )}
+                </div>
+              </Link>
+            )}
+            
+            {/* تدقيق الصورة بالذكاء الاصطناعي */}
+            {hasPermission('ai_image_audit') && (
+              <Link
+                to="/ai-image-audit" onClick={(e) => handleLinkClick(e, "/ai-image-audit")}
+                className={`sidebar-item ${isActive('/ai-image-audit') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <div className="sidebar-icon-box">
+                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                    </div>
+                    <span className="sidebar-text">{t('sidebar.ai_image_audit', { defaultValue: 'تدقيق الصورة بالذكاء الاصطناعي' })}</span>
+                  </div>
                 </div>
               </Link>
             )}
@@ -2596,6 +2654,28 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               </Link>
             )}
 
+            {/* سجل التعديلات */}
+            {(user && (user.role === 'admin' || (user.permissions && user.permissions.includes('audit_logs')))) && (
+              <Link
+                to="/audit-logs" onClick={(e) => handleLinkClick(e, "/audit-logs")}
+                className={`sidebar-item ${isActive('/audit-logs') ? 'sidebar-item-active' : 'text-gray-700'} relative`}
+              >
+                <div className="sidebar-icon-box relative">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <span className="sidebar-text flex-1 flex items-center justify-between w-full">
+                  <span>{i18n.language === 'ar' ? 'سجل التعديلات' : 'Audit Logs'}</span>
+                  {newAuditLogsCount > 0 && (
+                    <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
+                      {newAuditLogsCount > 9 ? '9+' : newAuditLogsCount}
+                    </span>
+                  )}
+                </span>
+              </Link>
+            )}
+
             
             {/* إدارة المستخدمين */}
             {hasPermission('users_manage') && (
@@ -2612,7 +2692,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               </Link>
             )}
             
-
             {/* الأرشيف */}
             {user && user.role === 'admin' && (
               <Link
