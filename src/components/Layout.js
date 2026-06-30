@@ -472,7 +472,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
         .catch(e => console.error(e));
         
       // 2.5 Audit Logs Notification
-      if (user?.role === 'admin' || (user?.permissions || []).includes('audit_logs')) {
+      if (hasPermission('audit_logs')) {
         const lastViewed = localStorage.getItem('lastViewedAuditLogTimestamp') || '';
         axios.get(`${API}/audit-logs/unread-count?t=${timeParam}${lastViewed ? `&last_viewed=${encodeURIComponent(lastViewed)}` : ''}`, { headers })
           .then(res => {
@@ -2154,7 +2154,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
               )}
 
               {/* سجل التعديلات */}
-              {(user && (user.role === 'admin' || (user.permissions && user.permissions.includes('audit_logs')))) && (
+              {hasPermission('audit_logs') && (
                 <Link to="/audit-logs" onClick={(e) => handleLinkClick(e, "/audit-logs")} className={`block px-3 py-2.5 rounded-lg text-sm ${isActive('/audit-logs') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center">
@@ -2655,7 +2655,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
             )}
 
             {/* سجل التعديلات */}
-            {(user && (user.role === 'admin' || (user.permissions && user.permissions.includes('audit_logs')))) && (
+            {hasPermission('audit_logs') && (
               <Link
                 to="/audit-logs" onClick={(e) => handleLinkClick(e, "/audit-logs")}
                 className={`sidebar-item ${isActive('/audit-logs') ? 'sidebar-item-active' : 'text-gray-700'} relative`}
