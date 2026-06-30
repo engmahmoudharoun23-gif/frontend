@@ -30,6 +30,7 @@ const AuditLogs = ({ user, onLogout }) => {
   const [projectFilter, setProjectFilter] = useState('الكل');
   const [govFilter, setGovFilter] = useState('الكل');
   const [dateFilter, setDateFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Pagination & Selection
   const [currentPage, setCurrentPage] = useState(1);
@@ -156,17 +157,24 @@ const AuditLogs = ({ user, onLogout }) => {
   };
 
   const filteredLogs = logs.filter(log => {
+    let match = true;
     if (dateFilter) {
       const logDate = log.timestamp.split('T')[0];
-      return logDate === dateFilter;
+      match = match && (logDate === dateFilter);
     }
-    return true;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const reportNum = log.report_number ? log.report_number.toLowerCase() : '';
+      const licenseNum = log.license_number ? log.license_number.toLowerCase() : '';
+      match = match && (reportNum.includes(q) || licenseNum.includes(q));
+    }
+    return match;
   });
 
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [projectFilter, govFilter, dateFilter, logs.length]);
+  }, [projectFilter, govFilter, dateFilter, searchQuery, logs.length]);
 
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const currentLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -215,7 +223,20 @@ const AuditLogs = ({ user, onLogout }) => {
             {isRtl ? 'تصفية السجلات:' : 'Filter Logs:'}
           </div>
           
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-4 w-full">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder={isRtl ? "رقم البلاغ أو الرخصة" : "Report or License No."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`w-full ${isRtl ? 'pr-3 pl-10' : 'pl-10 pr-3'} py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all`}
+              />
+            </div>
+            
             <div className="relative">
               <select 
                 value={projectFilter}
@@ -291,6 +312,7 @@ const AuditLogs = ({ user, onLogout }) => {
                       />
                     </th>
                     <th className="px-6 py-4 whitespace-nowrap">{isRtl ? 'رقم البلاغ' : 'Report Number'}</th>
+                    <th className="px-6 py-4 whitespace-nowrap">{isRtl ? 'رقم الرخصة' : 'License Number'}</th>
                     <th className="px-6 py-4 whitespace-nowrap">{isRtl ? 'المشروع / المحافظة' : 'Project / Gov'}</th>
                     <th className="px-6 py-4 whitespace-nowrap">{isRtl ? 'الإجراء' : 'Action'}</th>
                     <th className="px-6 py-4 whitespace-nowrap">{isRtl ? 'الحالة السابقة' : 'Old State'}</th>
@@ -324,6 +346,11 @@ const AuditLogs = ({ user, onLogout }) => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100 font-bold tracking-wider inline-flex items-center gap-2 shadow-sm" style={{ direction: 'ltr' }}>
                             {log.report_number}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-100 font-bold tracking-wider inline-flex items-center gap-2 shadow-sm" style={{ direction: 'ltr' }}>
+                            {log.license_number || <span className="text-amber-400 font-normal">{isRtl ? 'بدون رخصة' : 'No License'}</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
