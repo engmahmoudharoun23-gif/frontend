@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import axios from 'axios';
 import { UploadCloud, FileImage, CheckCircle, AlertTriangle, Info, Camera, Search, Cpu } from 'lucide-react';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
+const API = process.env.REACT_APP_BACKEND_URL ? `${process.env.REACT_APP_BACKEND_URL}/api` : 'http://localhost:8001/api';
 
 function AIImageAudit({ user, onLogout }) {
   const { t, i18n } = useTranslation();
