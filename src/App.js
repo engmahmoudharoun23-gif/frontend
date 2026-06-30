@@ -498,7 +498,7 @@ function App() {
         />
         <Route
           path="/audit-logs"
-          element={user && (user.role === 'admin' || user.permissions?.includes('audit_logs')) ? <AuditLogs user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+          element={user && (user.role === 'admin' || hasPermission(user, 'audit_logs') || hasAnyProjectPermission(user, 'audit_logs')) ? <AuditLogs user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         {/* تم تعطيل نظام الدردشة */}
                 <Route
