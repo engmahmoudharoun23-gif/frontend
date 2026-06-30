@@ -2260,14 +2260,17 @@ function ReportForm({ user, onLogout }) {
                     />
                     <button
                       type="button"
-                      onClick={async () => {
+                      onClick={async (e) => {
                         if (!formData.latitude || !formData.longitude) {
                           toast.warning(isRtl ? 'يرجى إدخال خط الطول وخط العرض أولاً' : 'Please enter latitude and longitude first');
                           return;
                         }
-                        const btn = document.activeElement;
+                        const btn = e.currentTarget;
                         btn.disabled = true;
-                        btn.innerHTML = isRtl ? '⏳ جاري...' : '⏳ Loading...';
+                        btn.style.opacity = '0.6';
+                        
+                        const toastId = toast.loading(isRtl ? '⏳ جاري استخراج الحي...' : '⏳ Extracting neighborhood...');
+                        
                         try {
                           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${formData.latitude}&lon=${formData.longitude}&format=json&accept-language=ar&zoom=18&addressdetails=1`);
                           const data = await res.json();
@@ -2286,15 +2289,15 @@ function ReportForm({ user, onLogout }) {
 
                           if (finalLocation) {
                             setFormData(prev => ({...prev, neighborhood: finalLocation}));
-                            toast.success(isRtl ? `تم العثور على الموقع: ${finalLocation}` : `Location found: ${finalLocation}`);
+                            toast.update(toastId, { render: isRtl ? `تم العثور على الموقع: ${finalLocation}` : `Location found: ${finalLocation}`, type: "success", isLoading: false, autoClose: 3000 });
                           } else {
-                            toast.warning(isRtl ? 'لم يتم العثور على تفاصيل دقيقة لهذا الموقع' : 'No exact details found for this location');
+                            toast.update(toastId, { render: isRtl ? 'لم يتم العثور على تفاصيل دقيقة لهذا الموقع' : 'No exact details found for this location', type: "warning", isLoading: false, autoClose: 3000 });
                           }
                         } catch (err) {
-                          toast.error(isRtl ? 'حدث خطأ أثناء الاتصال بالخادم، حاول كتابته يدوياً' : 'Error connecting to server, try typing it manually');
+                          toast.update(toastId, { render: isRtl ? 'حدث خطأ أثناء الاتصال بالخادم، حاول كتابته يدوياً' : 'Error connecting to server, try typing it manually', type: "error", isLoading: false, autoClose: 3000 });
                         } finally {
                           btn.disabled = false;
-                          btn.innerHTML = isRtl ? '🔍 استخراج' : '🔍 Extract';
+                          btn.style.opacity = '1';
                         }
                       }}
                       className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition-colors whitespace-nowrap shadow-sm"
