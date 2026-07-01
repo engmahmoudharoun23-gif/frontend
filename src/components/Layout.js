@@ -2163,7 +2163,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     </div>
                     {newAuditLogsCount > 0 && (
                       <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200 ml-2 block">
-                        {newAuditLogsCount > 9 ? '9+' : newAuditLogsCount}
+                        {newAuditLogsCount}
                       </span>
                     )}
                   </div>
@@ -2669,7 +2669,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   <span>{i18n.language === 'ar' ? 'سجل التعديلات' : 'Audit Logs'}</span>
                   {newAuditLogsCount > 0 && (
                     <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
-                      {newAuditLogsCount > 9 ? '9+' : newAuditLogsCount}
+                      {newAuditLogsCount}
                     </span>
                   )}
                 </span>
