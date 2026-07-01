@@ -1635,7 +1635,7 @@ function ReportForm({ user, onLogout }) {
         reportId = response.data?.id || response.data?._id;
         toast.success('✅ ' + t('reportForm.addSuccess', {defaultValue: 'تم إضافة البلاغ بنجاح!'}));
         const reviewerName = response.data?.reviewer_name || t('reportForm.designatedReviewer', {defaultValue: 'المسؤول المختص'});
-        toast.info(`📋 ` + t('reportForm.reviewerInfo', {name: reviewerName, defaultValue: `يتم مراجعة البلاغ من قبل الفريق الفني المختص والمفوض بالمراجعة م/ ${reviewerName}`}));
+        toast.info(`📋 ` + t('reportForm.reviewerInfo', {name: reviewerName, defaultValue: `يتم مراجعة البلاغ من قبل مهندس نظم المعلومات وتحليل البيانات م/ ${reviewerName}`}));
       }
 
       // ⚡ رفع الصور
