@@ -3446,7 +3446,13 @@ const fetchReports = async () => {
                     toast.info(`📥 ${t('reports.imagesModal.downloading', {defaultValue: 'جارِ تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.files', {defaultValue: 'ملف...'})}`);
                     if ('showDirectoryPicker' in window) {
                       try {
-                        const dirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
+                        // Ask user to pick the root directory
+                        const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
+                        // Determine the folder name (Report Number)
+                        const folderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                        // Create or get the folder with the report number
+                        const dirHandle = await rootDirHandle.getDirectoryHandle(folderName, { create: true });
+                        
                         for (let i = 0; i < selectedImages.length; i++) {
                           const imgData = selectedImages[i];
                           const url = resolveImageUrl(imgData);
@@ -3459,12 +3465,14 @@ const fetchReports = async () => {
                           await writable.write(blob);
                           await writable.close();
                         }
-                        toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح'})}`);
+                        toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح في مجلد'})} ${folderName}`);
                         return;
                       } catch (e) {
                         if (e.name === 'AbortError') return;
+                        toast.error(t('common.error', {defaultValue: 'حدث خطأ أثناء حفظ الملفات'}));
                       }
                     }
+                    // Fallback for browsers that don't support showDirectoryPicker (like Safari/Firefox)
                     for (let i = 0; i < selectedImages.length; i++) {
                       await downloadImage(selectedImages[i], i);
                       await new Promise(resolve => setTimeout(resolve, 300));
