@@ -308,8 +308,9 @@ function UpdateReports({ user, onLogout }) {
                   <thead className="bg-gray-50 sticky top-0 border-b border-gray-100">
                     <tr>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.reportNum', 'رقم البلاغ')}</th>
-                      <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.gov', 'المحافظة')}</th>
+                      <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">رقم الرخصة</th>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.date', 'تاريخ البلاغ')}</th>
+                      <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.gov', 'المحافظة')}</th>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.observer', 'المراقب')}</th>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.oldStatus', 'الحالة السابقة')}</th>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.newStatus', 'الحالة الجديدة')}</th>
@@ -317,7 +318,7 @@ function UpdateReports({ user, onLogout }) {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {stats.updatedReportList.length > 0 ? stats.updatedReportList.map((r, i) => {
-                      const formattedDate = r.date ? new Date(r.date).toLocaleDateString('en-GB') : '-';
+                      const formattedDate = r.date || '-';
                       return (
                       <tr key={i} className="hover:bg-yellow-50/50 transition-colors">
                         <td className="px-4 py-3">
@@ -326,13 +327,20 @@ function UpdateReports({ user, onLogout }) {
                             <svg className="w-3.5 h-3.5 text-indigo-400 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                           </a>
                         </td>
+                        <td className="px-4 py-3">
+                          {r.license ? (
+                            <span className="text-[11px] text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded border border-gray-200" dir="ltr">
+                              {r.license}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{formattedDate}</td>
                         <td className="px-4 py-3 text-gray-600">{translateBrandingText(r.gov, isRtl) || '-'}</td>
-                        <td className="px-4 py-3 text-gray-500 font-mono text-xs" dir="ltr">{formattedDate}</td>
                         <td className="px-4 py-3 text-gray-600">{r.observer || '-'}</td>
                         <td className="px-4 py-3 text-gray-500">{r.old_status || '-'}</td>
                         <td className="px-4 py-3 font-black text-yellow-600 bg-yellow-50/30">{r.new_status || '-'}</td>
                       </tr>
-                    )}) : <tr><td colSpan="6" className="text-center py-8 text-gray-400">{t('updateReports.noUpdates', 'لا توجد بلاغات محدثة')}</td></tr>}
+                    )}) : <tr><td colSpan="7" className="text-center py-8 text-gray-400">{t('updateReports.noUpdates', 'لا توجد بلاغات محدثة')}</td></tr>}
                   </tbody>
                 </table>
               )}
@@ -342,15 +350,16 @@ function UpdateReports({ user, onLogout }) {
                   <thead className="bg-gray-50 sticky top-0 border-b border-gray-100">
                     <tr>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.reportNum', 'رقم البلاغ')}</th>
-                      <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.gov', 'المحافظة')}</th>
+                      <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">رقم الرخصة</th>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.date', 'تاريخ البلاغ')}</th>
+                      <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.gov', 'المحافظة')}</th>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.observer', 'المراقب')}</th>
                       <th className="px-4 py-3 font-bold text-gray-600 bg-gray-100">{t('updateReports.status', 'الحالة')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {stats.newReportList.length > 0 ? stats.newReportList.map((r, i) => {
-                      const formattedDate = r.date ? new Date(r.date).toLocaleDateString('en-GB') : '-';
+                      const formattedDate = r.date || '-';
                       return (
                       <tr key={i} className="hover:bg-green-50/50 transition-colors">
                         <td className="px-4 py-3">
@@ -359,12 +368,19 @@ function UpdateReports({ user, onLogout }) {
                             <svg className="w-3.5 h-3.5 text-indigo-400 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                           </a>
                         </td>
+                        <td className="px-4 py-3">
+                          {r.license ? (
+                            <span className="text-[11px] text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded border border-gray-200" dir="ltr">
+                              {r.license}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{formattedDate}</td>
                         <td className="px-4 py-3 text-gray-600">{translateBrandingText(r.gov, isRtl) || '-'}</td>
-                        <td className="px-4 py-3 text-gray-500 font-mono text-xs" dir="ltr">{formattedDate}</td>
                         <td className="px-4 py-3 text-gray-600">{r.observer || '-'}</td>
                         <td className="px-4 py-3 font-black text-green-600 bg-green-50/30">{r.status || '-'}</td>
                       </tr>
-                    )}) : <tr><td colSpan="5" className="text-center py-8 text-gray-400">{t('updateReports.noNew', 'لا توجد بلاغات جديدة')}</td></tr>}
+                    )}) : <tr><td colSpan="6" className="text-center py-8 text-gray-400">{t('updateReports.noNew', 'لا توجد بلاغات جديدة')}</td></tr>}
                   </tbody>
                 </table>
               )}
