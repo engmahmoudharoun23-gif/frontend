@@ -1138,8 +1138,9 @@ const fetchReports = async () => {
       const isPendingReviewView = isNewReportsFilter || searchParams.get('review_status') === 'review_pending' || searchParams.get('review_status') === 'قيد المراجعة' || filters.review_status === 'review_pending' || searchParams.get('license_status') === 'review_pending' || filters.license_status === 'review_pending';
       if (isPendingReviewView) {
         fetchedReports.sort((a, b) => {
-          const aIsFixed = a.status === 'تم الاصلاح';
-          const bIsFixed = b.status === 'تم الاصلاح';
+          const checkFixed = (s) => typeof s === 'string' && (s.trim() === 'تم الإصلاح' || s.trim() === 'تم الاصلاح');
+          const aIsFixed = checkFixed(a.status);
+          const bIsFixed = checkFixed(b.status);
           
           if (aIsFixed && !bIsFixed) return -1;
           if (!aIsFixed && bIsFixed) return 1;
