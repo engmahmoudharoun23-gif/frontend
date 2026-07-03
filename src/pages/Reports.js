@@ -3453,27 +3453,59 @@ const fetchReports = async () => {
                         try {
                           const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
                           const rawFolderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
-                          const folderName = String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
-                          const dirHandle = await rootDirHandle.getDirectoryHandle(folderName, { create: true });
+                          const digitsMatch = String(rawFolderName).match(/\d+/g);
+                          const targetNumber = digitsMatch ? digitsMatch.join('') : null;
                           
+                          let dirHandle = null;
+                          
+                          if (targetNumber && rootDirHandle.name.includes(targetNumber)) {
+                            // User selected the exact report folder directly
+                            dirHandle = rootDirHandle;
+                          } else if (targetNumber) {
+                            // User selected a parent folder, search inside it for a matching subfolder
+                            for await (const entry of rootDirHandle.values()) {
+                              if (entry.kind === 'directory' && entry.name.includes(targetNumber)) {
+                                dirHandle = await rootDirHandle.getDirectoryHandle(entry.name);
+                                break;
+                              }
+                            }
+                          }
+                          
+                          if (!dirHandle) {
+                            // Not found, create it
+                            const newName = targetNumber || String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
+                            dirHandle = await rootDirHandle.getDirectoryHandle(newName, { create: true });
+                          }
+                          
+                          let maxIndex = 0;
+                          for await (const entry of dirHandle.values()) {
+                            if (entry.kind === 'file') {
+                              const match = entry.name.match(/media(?:_selected)?(?:_\d+)?_(\d+)/) || entry.name.match(/media_(\d+)/);
+                              if (match) {
+                                maxIndex = Math.max(maxIndex, parseInt(match[1]));
+                              }
+                            }
+                          }
+
                           for (let i = 0; i < filesToDownload.length; i++) {
                             const imgData = filesToDownload[i];
                             const url = resolveImageUrl(imgData);
                             const response = await fetch(url);
                             const blob = await response.blob();
                             const extension = isVideo(imgData) ? 'webm' : 'jpg';
-                            const name = `media_selected_${Date.now()}_${i + 1}.${extension}`;
+                            const name = `media_${maxIndex + i + 1}.${extension}`;
                             const fileHandle = await dirHandle.getFileHandle(name, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(blob);
                             await writable.close();
                           }
-                          toast.success(`✅ تم تحميل ${filesToDownload.length} ملف محدد بنجاح في مجلد ${folderName}`);
+                          toast.success(`✅ تم تحميل ${filesToDownload.length} ملف محدد بنجاح في مجلد ${dirHandle.name}`);
                           setSelectedForDownload([]); // Clear selection after download
                           return;
                         } catch (e) {
                           if (e.name === 'AbortError') return;
-                          toast.error(t('common.error', {defaultValue: 'حدث خطأ أثناء حفظ الملفات'}));
+                          toast.error(`حدث خطأ أثناء حفظ الملفات: ${e.message || ''}`);
+                          return; // منع النزول للطريقة البديلة إذا حدث خطأ هنا
                         }
                       }
                       for (let i = 0; i < filesToDownload.length; i++) {
@@ -3483,7 +3515,7 @@ const fetchReports = async () => {
                       toast.success(`✅ تم تحميل ${filesToDownload.length} ملف محدد بنجاح`);
                       setSelectedForDownload([]);
                     }}
-                    className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg text-xs sm:text-sm transition-colors shadow-sm"
+                    className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs sm:text-sm transition-colors"
                   >
                     <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -3498,29 +3530,59 @@ const fetchReports = async () => {
                       try {
                         // Ask user to pick the root directory
                         const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
-                        // Determine the folder name (Report Number)
                         const rawFolderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
-                        const folderName = String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
-                        // Create or get the folder with the report number
-                        const dirHandle = await rootDirHandle.getDirectoryHandle(folderName, { create: true });
+                        const digitsMatch = String(rawFolderName).match(/\d+/g);
+                        const targetNumber = digitsMatch ? digitsMatch.join('') : null;
                         
+                        let dirHandle = null;
+                        
+                        if (targetNumber && rootDirHandle.name.includes(targetNumber)) {
+                          // User selected the exact report folder directly
+                          dirHandle = rootDirHandle;
+                        } else if (targetNumber) {
+                          // User selected a parent folder, search inside it for a matching subfolder
+                          for await (const entry of rootDirHandle.values()) {
+                            if (entry.kind === 'directory' && entry.name.includes(targetNumber)) {
+                              dirHandle = await rootDirHandle.getDirectoryHandle(entry.name);
+                              break;
+                            }
+                          }
+                        }
+                        
+                        if (!dirHandle) {
+                          // Not found, create it
+                          const newName = targetNumber || String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
+                          dirHandle = await rootDirHandle.getDirectoryHandle(newName, { create: true });
+                        }
+                        
+                        let maxIndex = 0;
+                        for await (const entry of dirHandle.values()) {
+                          if (entry.kind === 'file') {
+                            const match = entry.name.match(/media(?:_selected)?(?:_\d+)?_(\d+)/) || entry.name.match(/media_(\d+)/);
+                            if (match) {
+                              maxIndex = Math.max(maxIndex, parseInt(match[1]));
+                            }
+                          }
+                        }
+
                         for (let i = 0; i < selectedImages.length; i++) {
                           const imgData = selectedImages[i];
                           const url = resolveImageUrl(imgData);
                           const response = await fetch(url);
                           const blob = await response.blob();
                           const extension = isVideo(imgData) ? 'webm' : 'jpg';
-                          const name = `media_${i + 1}.${extension}`;
+                          const name = `media_${maxIndex + i + 1}.${extension}`;
                           const fileHandle = await dirHandle.getFileHandle(name, { create: true });
                           const writable = await fileHandle.createWritable();
                           await writable.write(blob);
                           await writable.close();
                         }
-                        toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح في مجلد'})} ${folderName}`);
+                        toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح في مجلد'})} ${dirHandle.name}`);
                         return;
                       } catch (e) {
                         if (e.name === 'AbortError') return;
-                        toast.error(t('common.error', {defaultValue: 'حدث خطأ أثناء حفظ الملفات'}));
+                        toast.error(`حدث خطأ أثناء حفظ الملفات: ${e.message || ''}`);
+                        return; // منع النزول للطريقة البديلة إذا حدث خطأ هنا
                       }
                     }
                     // Fallback for browsers that don't support showDirectoryPicker (like Safari/Firefox)
