@@ -3448,7 +3448,7 @@ const fetchReports = async () => {
                   <button 
                     onClick={async () => {
                       const filesToDownload = selectedImages.filter((_, idx) => selectedForDownload.includes(idx));
-                      toast.info(`📥 جاري تحميل ${filesToDownload.length} ملف محدد...`);
+                      toast.info(`📥 ${t('reports.imagesModal.downloading', {defaultValue: 'جاري تحميل'})} ${filesToDownload.length} ${t('reports.imagesModal.files', {defaultValue: 'ملف...'})}`);
                       if ('showDirectoryPicker' in window) {
                         try {
                           const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
@@ -3499,12 +3499,12 @@ const fetchReports = async () => {
                             await writable.write(blob);
                             await writable.close();
                           }
-                          toast.success(`✅ تم تحميل ${filesToDownload.length} ملف محدد بنجاح في مجلد ${dirHandle.name}`);
+                          toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${filesToDownload.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح في مجلد'})} ${dirHandle.name}`);
                           setSelectedForDownload([]); // Clear selection after download
                           return;
                         } catch (e) {
                           if (e.name === 'AbortError') return;
-                          toast.error(`حدث خطأ أثناء حفظ الملفات: ${e.message || ''}`);
+                          toast.error(t('common.error', {defaultValue: 'حدث خطأ أثناء حفظ الملفات'}) + (e.message ? `: ${e.message}` : ''));
                           return; // منع النزول للطريقة البديلة إذا حدث خطأ هنا
                         }
                       }
@@ -3512,7 +3512,7 @@ const fetchReports = async () => {
                         await downloadImage(filesToDownload[i], i);
                         await new Promise(resolve => setTimeout(resolve, 300));
                       }
-                      toast.success(`✅ تم تحميل ${filesToDownload.length} ملف محدد بنجاح`);
+                      toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${filesToDownload.length} ${isRtl ? 'ملف محدد بنجاح' : 'selected files successfully'}`);
                       setSelectedForDownload([]);
                     }}
                     className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs sm:text-sm transition-colors"
@@ -3520,7 +3520,7 @@ const fetchReports = async () => {
                     <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span className="hidden sm:inline">تحميل المحدد ({selectedForDownload.length})</span>
+                    <span className="hidden sm:inline">{isRtl ? 'تحميل المحدد' : 'Download Selected'} ({selectedForDownload.length})</span>
                   </button>
                 )}
                 <button 
