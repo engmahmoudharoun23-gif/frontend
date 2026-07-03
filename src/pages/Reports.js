@@ -3452,7 +3452,9 @@ const fetchReports = async () => {
                       if ('showDirectoryPicker' in window) {
                         try {
                           const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
-                          const rawFolderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                          const ln = selectedReportForMedia?.license_number ? String(selectedReportForMedia.license_number).trim() : '';
+                          const isValidLicense = ln && ln !== '-' && ln !== '0' && ln.toLowerCase() !== 'none' && ln.toLowerCase() !== 'null' && ln.toLowerCase() !== 'nan';
+                          const rawFolderName = (isValidLicense ? ln : selectedReportForMedia?.report_number) || selectedReportForMedia?.id || 'Report';
                           const digitsMatch = String(rawFolderName).match(/\d+/g);
                           const targetNumber = digitsMatch ? digitsMatch.join('') : null;
                           
@@ -3530,7 +3532,9 @@ const fetchReports = async () => {
                       try {
                         // Ask user to pick the root directory
                         const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
-                        const rawFolderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                        const ln = selectedReportForMedia?.license_number ? String(selectedReportForMedia.license_number).trim() : '';
+                        const isValidLicense = ln && ln !== '-' && ln !== '0' && ln.toLowerCase() !== 'none' && ln.toLowerCase() !== 'null' && ln.toLowerCase() !== 'nan';
+                        const rawFolderName = (isValidLicense ? ln : selectedReportForMedia?.report_number) || selectedReportForMedia?.id || 'Report';
                         const digitsMatch = String(rawFolderName).match(/\d+/g);
                         const targetNumber = digitsMatch ? digitsMatch.join('') : null;
                         
