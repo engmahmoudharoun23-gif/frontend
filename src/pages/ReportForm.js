@@ -1637,8 +1637,10 @@ function ReportForm({ user, onLogout }) {
         const reviewerName = response.data?.reviewer_name || t('reportForm.designatedReviewer', {defaultValue: 'المسؤول المختص'});
         toast.info(
           <div className="flex flex-col gap-2">
-            <h4 className="font-black text-blue-900 text-base border-b border-blue-100 pb-2">📋 {t('reportForm.reviewTitle', {defaultValue: 'جاري المراجعة'})}</h4>
-            <p className="text-sm text-blue-800 leading-loose font-medium break-words">
+            <h4 className="font-black text-blue-900 text-lg border-b-2 border-blue-200 pb-2 flex items-center gap-2">
+              <span className="text-2xl">📋</span> {t('reportForm.reviewTitle', {defaultValue: 'جاري المراجعة'})}
+            </h4>
+            <p className="text-base text-gray-900 leading-relaxed font-bold break-words bg-blue-50 p-3 rounded-lg border border-blue-100 shadow-inner">
               {t('reportForm.reviewerInfo', {name: reviewerName, defaultValue: `يتم مراجعة البلاغ من قبل مهندس نظم المعلومات وتحليل البيانات م/ ${reviewerName}`})}
             </p>
           </div>,
