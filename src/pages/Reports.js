@@ -1137,6 +1137,7 @@ const fetchReports = async () => {
       // تضع البلاغات المكتملة "تم الاصلاح" في صدارة القائمة دائماً لتسهيل مراجعتها
       const isPendingReviewView = isNewReportsFilter || searchParams.get('review_status') === 'review_pending' || searchParams.get('review_status') === 'قيد المراجعة' || filters.review_status === 'review_pending' || searchParams.get('license_status') === 'review_pending' || filters.license_status === 'review_pending';
       if (isPendingReviewView) {
+        // Vercel trigger rebuild - Sort by Fixed status
         fetchedReports.sort((a, b) => {
           const checkFixed = (s) => typeof s === 'string' && (s.trim() === 'تم الإصلاح' || s.trim() === 'تم الاصلاح');
           const aIsFixed = checkFixed(a.status);
