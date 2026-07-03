@@ -1635,7 +1635,19 @@ function ReportForm({ user, onLogout }) {
         reportId = response.data?.id || response.data?._id;
         toast.success('✅ ' + t('reportForm.addSuccess', {defaultValue: 'تم إضافة البلاغ بنجاح!'}));
         const reviewerName = response.data?.reviewer_name || t('reportForm.designatedReviewer', {defaultValue: 'المسؤول المختص'});
-        toast.info(`📋 ` + t('reportForm.reviewerInfo', {name: reviewerName, defaultValue: `يتم مراجعة البلاغ من قبل مهندس نظم المعلومات وتحليل البيانات م/ ${reviewerName}`}));
+        toast.info(
+          <div className="flex flex-col gap-2">
+            <h4 className="font-black text-blue-900 text-base border-b border-blue-100 pb-2">📋 {t('reportForm.reviewTitle', {defaultValue: 'جاري المراجعة'})}</h4>
+            <p className="text-sm text-blue-800 leading-loose font-medium break-words">
+              {t('reportForm.reviewerInfo', {name: reviewerName, defaultValue: `يتم مراجعة البلاغ من قبل مهندس نظم المعلومات وتحليل البيانات م/ ${reviewerName}`})}
+            </p>
+          </div>,
+          {
+            className: "rounded-2xl border border-blue-100 shadow-2xl p-2",
+            style: { minWidth: 'min(90vw, 350px)' },
+            autoClose: 8000,
+          }
+        );
       }
 
       // ⚡ رفع الصور
