@@ -3494,7 +3494,7 @@ const fetchReports = async () => {
                           
                           if (!dirHandle) {
                             // Not found, create it
-                            const newName = targetNumber || String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
+                            const newName = String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
                             dirHandle = await rootDirHandle.getDirectoryHandle(newName, { create: true });
                           }
                           
@@ -3576,7 +3576,7 @@ const fetchReports = async () => {
                         
                         if (!dirHandle) {
                           // Not found, create it
-                          const newName = targetNumber || String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
+                          const newName = String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
                           dirHandle = await rootDirHandle.getDirectoryHandle(newName, { create: true });
                         }
                         
