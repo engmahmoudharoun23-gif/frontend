@@ -3452,7 +3452,8 @@ const fetchReports = async () => {
                       if ('showDirectoryPicker' in window) {
                         try {
                           const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
-                          const folderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                          const rawFolderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                          const folderName = String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
                           const dirHandle = await rootDirHandle.getDirectoryHandle(folderName, { create: true });
                           
                           for (let i = 0; i < filesToDownload.length; i++) {
@@ -3498,7 +3499,8 @@ const fetchReports = async () => {
                         // Ask user to pick the root directory
                         const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
                         // Determine the folder name (Report Number)
-                        const folderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                        const rawFolderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                        const folderName = String(rawFolderName).replace(/[<>:"/\\|?*]/g, '-');
                         // Create or get the folder with the report number
                         const dirHandle = await rootDirHandle.getDirectoryHandle(folderName, { create: true });
                         
