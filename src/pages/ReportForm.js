@@ -1650,7 +1650,7 @@ function ReportForm({ user, onLogout }) {
         );
       }
 
-      // ⚡ رفع الصور
+      // ⚡ رفع الصور (Force Vercel Rebuild)
       if (images.length > 0 && reportId) {
         // ننتظر حتى يكتمل رفع جميع الصور قبل الانتقال
         await uploadImagesInBackground(reportId, images);
