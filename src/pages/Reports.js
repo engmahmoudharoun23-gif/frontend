@@ -802,6 +802,7 @@ function Reports({ user, onLogout }) {
   const [showImagesModal, setShowImagesModal] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [selectedReportForMedia, setSelectedReportForMedia] = useState(null);
+  const [selectedForDownload, setSelectedForDownload] = useState([]);
   const [fullscreenImage, setFullscreenImage] = useState(null); // الصورة المكبرة
   const [last24HoursCounts, setLast24HoursCounts] = useState({});
 
@@ -1812,6 +1813,7 @@ const fetchReports = async () => {
       if (images.length > 0) {
         setSelectedImages(images);
         setSelectedReportForMedia(report);
+        setSelectedForDownload([]);
         setShowImagesModal(true);
       } else {
         toast.info(t('reports.noImages'));
@@ -1827,6 +1829,7 @@ const fetchReports = async () => {
   const viewImages = (images, report) => {
     setSelectedImages(images);
     setSelectedReportForMedia(report);
+    setSelectedForDownload([]);
     setShowImagesModal(true);
   };
 
@@ -3441,6 +3444,52 @@ const fetchReports = async () => {
                   </svg>
                   <span className="hidden sm:inline">{t('reports.imagesModal.downloadPdf', {defaultValue: 'تحميل الصور PDF'})}</span>
                 </button>
+                {selectedForDownload.length > 0 && (
+                  <button 
+                    onClick={async () => {
+                      const filesToDownload = selectedImages.filter((_, idx) => selectedForDownload.includes(idx));
+                      toast.info(`📥 جاري تحميل ${filesToDownload.length} ملف محدد...`);
+                      if ('showDirectoryPicker' in window) {
+                        try {
+                          const rootDirHandle = await window.showDirectoryPicker({ id: 'reports_media', mode: 'readwrite', startIn: 'downloads' });
+                          const folderName = selectedReportForMedia?.report_number || selectedReportForMedia?.id || 'Report';
+                          const dirHandle = await rootDirHandle.getDirectoryHandle(folderName, { create: true });
+                          
+                          for (let i = 0; i < filesToDownload.length; i++) {
+                            const imgData = filesToDownload[i];
+                            const url = resolveImageUrl(imgData);
+                            const response = await fetch(url);
+                            const blob = await response.blob();
+                            const extension = isVideo(imgData) ? 'webm' : 'jpg';
+                            const name = `media_selected_${Date.now()}_${i + 1}.${extension}`;
+                            const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+                          }
+                          toast.success(`✅ تم تحميل ${filesToDownload.length} ملف محدد بنجاح في مجلد ${folderName}`);
+                          setSelectedForDownload([]); // Clear selection after download
+                          return;
+                        } catch (e) {
+                          if (e.name === 'AbortError') return;
+                          toast.error(t('common.error', {defaultValue: 'حدث خطأ أثناء حفظ الملفات'}));
+                        }
+                      }
+                      for (let i = 0; i < filesToDownload.length; i++) {
+                        await downloadImage(filesToDownload[i], i);
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                      }
+                      toast.success(`✅ تم تحميل ${filesToDownload.length} ملف محدد بنجاح`);
+                      setSelectedForDownload([]);
+                    }}
+                    className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg text-xs sm:text-sm transition-colors shadow-sm"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span className="hidden sm:inline">تحميل المحدد ({selectedForDownload.length})</span>
+                  </button>
+                )}
                 <button 
                   onClick={async () => {
                     toast.info(`📥 ${t('reports.imagesModal.downloading', {defaultValue: 'جارِ تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.files', {defaultValue: 'ملف...'})}`);
@@ -3498,7 +3547,24 @@ const fetchReports = async () => {
             <div className="p-3 sm:p-6 overflow-y-auto max-h-[calc(95vh-70px)]">
               <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
                 {selectedImages.map((img, index) => (
-                  <div key={index} className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                  <div key={index} className={`bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow relative border-2 ${selectedForDownload.includes(index) ? 'border-yellow-400 shadow-yellow-200' : 'border-transparent'}`}>
+                    {/* Checkbox للتحديد */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <label className="flex items-center cursor-pointer bg-white/80 p-1 rounded-lg backdrop-blur-sm shadow-sm hover:bg-white transition-colors" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox" 
+                          className="w-5 h-5 text-yellow-500 rounded border-gray-300 focus:ring-yellow-500 cursor-pointer"
+                          checked={selectedForDownload.includes(index)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedForDownload(prev => [...prev, index]);
+                            } else {
+                              setSelectedForDownload(prev => prev.filter(i => i !== index));
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
                     {/* الصورة مع أيقونة العين */}
                     <div 
                       className="relative aspect-square cursor-pointer group" 
