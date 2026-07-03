@@ -1132,6 +1132,21 @@ const fetchReports = async () => {
       });
       
       const fetchedReports = response.data.reports || [];
+      
+      // خوارزمية فرز ذكية لصفحة "قيد المراجعة" 
+      // تضع البلاغات المكتملة "تم الاصلاح" في صدارة القائمة دائماً لتسهيل مراجعتها
+      const isPendingReviewView = isNewReportsFilter || searchParams.get('review_status') === 'review_pending' || searchParams.get('review_status') === 'قيد المراجعة' || filters.review_status === 'review_pending';
+      if (isPendingReviewView) {
+        fetchedReports.sort((a, b) => {
+          const aIsFixed = a.status === 'تم الاصلاح';
+          const bIsFixed = b.status === 'تم الاصلاح';
+          
+          if (aIsFixed && !bIsFixed) return -1;
+          if (!aIsFixed && bIsFixed) return 1;
+          return 0; // الحفاظ على الترتيب الأصلي لباقي الحالات
+        });
+      }
+
       // تحديث البيانات من الاستجابة
       setReports(fetchedReports);
       
