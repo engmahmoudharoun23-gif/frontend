@@ -3702,22 +3702,70 @@ const fetchReports = async () => {
           className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4"
           onClick={() => setFullscreenImage(null)}
         >
-          {isVideo(fullscreenImage) ? (
-            <video 
-              src={resolveImageUrl(fullscreenImage)} 
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              controls
-              autoPlay
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <img 
-              src={resolveImageUrl(fullscreenImage)} 
-              alt={t('reports.imagesModal.enlargedImage', {defaultValue: 'صورة مكبرة'})} 
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
+          {(() => {
+            const currentIndex = selectedImages.findIndex(img => img === fullscreenImage);
+            const hasNext = currentIndex !== -1 && currentIndex < selectedImages.length - 1;
+            const hasPrev = currentIndex > 0;
+
+            const handleNext = (e) => {
+              e.stopPropagation();
+              if (hasNext) setFullscreenImage(selectedImages[currentIndex + 1]);
+            };
+
+            const handlePrev = (e) => {
+              e.stopPropagation();
+              if (hasPrev) setFullscreenImage(selectedImages[currentIndex - 1]);
+            };
+
+            return (
+              <>
+                {/* زر السابق (يمين في العربية، يسار في الإنجليزية) */}
+                {hasPrev && (
+                  <button 
+                    onClick={handlePrev}
+                    className={`absolute ${isRtl ? 'right-4 sm:right-8' : 'left-4 sm:left-8'} top-1/2 -translate-y-1/2 p-3 sm:p-4 bg-black/60 hover:bg-blue-600 rounded-full transition-all transform hover:scale-110 z-[70] text-white backdrop-blur-md border-2 border-white/30 shadow-2xl`}
+                    title={t('reports.imagesModal.prev', {defaultValue: 'السابق'})}
+                  >
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d={isRtl ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
+                    </svg>
+                  </button>
+                )}
+                
+                {/* زر التالي (يسار في العربية، يمين في الإنجليزية) */}
+                {hasNext && (
+                  <button 
+                    onClick={handleNext}
+                    className={`absolute ${isRtl ? 'left-4 sm:left-8' : 'right-4 sm:right-8'} top-1/2 -translate-y-1/2 p-3 sm:p-4 bg-black/60 hover:bg-blue-600 rounded-full transition-all transform hover:scale-110 z-[70] text-white backdrop-blur-md border-2 border-white/30 shadow-2xl`}
+                    title={t('reports.imagesModal.next', {defaultValue: 'التالي'})}
+                  >
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d={isRtl ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"} />
+                    </svg>
+                  </button>
+                )}
+
+                <div className="relative z-[60] w-full h-full flex items-center justify-center pointer-events-none px-16">
+                  {isVideo(fullscreenImage) ? (
+                    <video 
+                      src={resolveImageUrl(fullscreenImage)} 
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-2xl pointer-events-auto"
+                      controls
+                      autoPlay
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <img 
+                      src={resolveImageUrl(fullscreenImage)} 
+                      alt={t('reports.imagesModal.enlargedImage', {defaultValue: 'صورة مكبرة'})} 
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-2xl pointer-events-auto select-none"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                </div>
+              </>
+            );
+          })()}
           <button 
             className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
             onClick={() => setFullscreenImage(null)}
