@@ -1436,9 +1436,9 @@ function NewDashboard({ user, onLogout }) {
         {/* Header - Responsive */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="p-4 sm:p-6">
-            <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+            <div className="flex flex-col lg:flex-row justify-between items-center gap-6 relative">
               {/* Title Section */}
-              <div className="w-full lg:w-auto text-right">
+              <div className="w-full lg:flex-1 text-right">
                 <div className="flex justify-between items-center w-full mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-8 bg-blue-600 rounded-full"></div>
@@ -1473,7 +1473,7 @@ function NewDashboard({ user, onLogout }) {
               </div>
 
               {/* Branding Section - Premium Compact Design */}
-              <div className="w-full lg:w-auto flex lg:justify-end">
+              <div className="w-full lg:flex-1 flex lg:justify-end">
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
                     <div className="bg-blue-600 text-white p-2 rounded-lg">
