@@ -1432,7 +1432,7 @@ function NewDashboard({ user, onLogout }) {
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      <div className="w-full mx-auto space-y-6 px-1 sm:px-2">
+      <div className="w-[98%] xl:w-[96%] 2xl:w-[92%] mx-auto space-y-6 pt-2">
         {/* Header - Responsive */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="p-4 sm:p-6">
@@ -1765,26 +1765,24 @@ function NewDashboard({ user, onLogout }) {
             </p>
             
             {governorate72hBadges.filter(b => b.count > 0).length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              <div className="flex flex-wrap gap-3">
                 {governorate72hBadges.filter(b => b.count > 0).slice(0, 15).map((badge, index) => {
                   const translatedProj = smartTranslateProjectName(badge.project, isRtl);
                   return (
                     <div 
                       key={`${badge.governorate}-${index}`}
-                      className="flex items-center justify-between w-full bg-white px-4 py-2 rounded-full border-2 border-green-400 shadow-sm hover:shadow-md transition-all hover:scale-105"
+                      className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full border-2 border-green-400 shadow-sm hover:shadow-md transition-all hover:scale-105"
                     >
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                        </svg>
-                        <div className="flex flex-col overflow-hidden">
-                          <span className="text-[13px] font-black text-gray-900 leading-tight truncate">{translateGovernorate(badge.governorate, isRtl)}</span>
-                          <span className="text-[9px] font-bold text-blue-600/70 truncate max-w-[100px]">
-                            {translatedProj}
-                          </span>
-                        </div>
+                      <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-black text-gray-900 leading-tight truncate">{translateGovernorate(badge.governorate, isRtl)}</span>
+                        <span className="text-[9px] font-bold text-blue-600/70 truncate max-w-[100px]">
+                          {translatedProj}
+                        </span>
                       </div>
-                      <span className="flex-shrink-0 inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-gradient-to-r from-green-600 to-green-700 rounded-full shadow-sm ml-1">
+                      <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-gradient-to-r from-green-600 to-green-700 rounded-full shadow-sm">
                         {badge.count}
                       </span>
                     </div>
