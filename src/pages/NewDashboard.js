@@ -1432,7 +1432,7 @@ function NewDashboard({ user, onLogout }) {
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      <div className="w-[98%] xl:w-[96%] 2xl:w-[92%] mx-auto space-y-6 pt-2">
+      <div className="w-[94%] lg:w-[92%] xl:w-[88%] 2xl:w-[84%] mx-auto space-y-6 pt-2">
         {/* Header - Responsive */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="p-4 sm:p-6">
