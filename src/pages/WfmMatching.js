@@ -254,12 +254,8 @@ function WfmMatching({ user, onLogout }) {
           const wfmMissingList = [];
 
           for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
-            const rawRow = jsonData[i];
-            // Slice the row to only include columns up to the header length. 
-            // This prevents iterating over 16,000+ empty columns and freezing the browser!
-            const row = rawRow ? rawRow.slice(0, headers.length) : [];
-            
-            if (row.length === 0 || row.every(cell => cell === undefined || cell === null || String(cell).trim() === '')) continue;
+            const row = jsonData[i];
+            if (row.length === 0 || row.every(cell => String(cell).trim() === '')) continue;
             
             actualTotalRows++;
 
@@ -335,13 +331,7 @@ function WfmMatching({ user, onLogout }) {
 
           setProgress(90);
 
-          // Clean up row lengths to prevent "Invalid array length" or huge ranges in SheetJS
-          const maxCols = headers.length;
-          const cleanPrefixRows = prefixRows.map(r => r ? r.slice(0, maxCols) : []);
-          const cleanHeaders = headers.slice(0, maxCols);
-          const cleanMatchedRows = matchedRows.map(r => r ? r.slice(0, maxCols) : []);
-
-          const finalAOA = cleanPrefixRows.concat([cleanHeaders], cleanMatchedRows);
+          const finalAOA = [...prefixRows, headers, ...matchedRows];
           const newWorksheet = XLSX.utils.aoa_to_sheet(finalAOA);
           const newWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Matched Reports");
@@ -386,7 +376,7 @@ function WfmMatching({ user, onLogout }) {
           
         } catch (error) {
           console.error("Matching Error:", error);
-          toast.error(`حدث خطأ: ${error.message || error}`);
+          toast.error(t('wfmMatching.errorMatching', 'حدث خطأ أثناء عملية المطابقة.'));
         } finally {
           setIsProcessing(false);
         }
