@@ -6,7 +6,7 @@ import imageCompression from 'browser-image-compression';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
 import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -42,6 +42,19 @@ function WorkPermits({ user, onLogout }) {
 
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [badgesData, setBadgesData] = useState({});
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchBadges = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const bRes = await axios.get(`${API}/dashboard/badges?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
+        setBadgesData(bRes.data || {});
+      } catch (e) {}
+    };
+    fetchBadges();
+  }, []);
 
   const [activeNotesReportId, setActiveNotesReportId] = useState(null);
   const [consultantNote, setConsultantNote] = useState('');
@@ -575,16 +588,7 @@ function WorkPermits({ user, onLogout }) {
           </div>
         ) : (
           <>
-        {/* Back Arrow + Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link
-            to="/safety-reports"
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-bold"
-          >
-            {isRtl ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
-            <span>{isRtl ? 'الرجوع لتقارير السلامة' : 'Back to Safety Reports'}</span>
-          </Link>
-        </div>
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
@@ -593,7 +597,7 @@ function WorkPermits({ user, onLogout }) {
             </h1>
             <p className="text-gray-500 text-sm mt-1 mr-12">{t('workPermits.subTitle')}</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={openAdd}
               className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-medium shadow-md transition-all"
@@ -601,6 +605,43 @@ function WorkPermits({ user, onLogout }) {
               <Plus className="w-5 h-5" /> {t('workPermits.addNew')}
             </button>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap">
+          <button
+            onClick={() => navigate('/safety-reports')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300`}
+          >
+            {t('safetyReports.title', { defaultValue: 'تقارير السلامة الميدانية' })}
+            {((badgesData?.safety || 0) + (badgesData?.safety_notes || 0)) > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse shadow-sm">
+                {(badgesData?.safety || 0) + (badgesData?.safety_notes || 0)}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => navigate('/work-permits')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 border-orange-600 text-orange-600`}
+          >
+            {t('workPermits.title', { defaultValue: 'تصاريح العمل' })}
+            {((badgesData?.work_permits || 0) + (badgesData?.work_permits_notes || 0)) > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse shadow-sm">
+                {(badgesData?.work_permits || 0) + (badgesData?.work_permits_notes || 0)}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => navigate('/safety-reports?tab=violations')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300`}
+          >
+            {isRtl ? 'مخالفات السلامة' : 'Safety Violations'}
+            {((badgesData?.violations || 0) + (badgesData?.violations_notes || 0)) > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse shadow-sm">
+                {(badgesData?.violations || 0) + (badgesData?.violations_notes || 0)}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Filters Section */}
