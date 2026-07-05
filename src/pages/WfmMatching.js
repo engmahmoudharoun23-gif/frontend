@@ -254,8 +254,12 @@ function WfmMatching({ user, onLogout }) {
           const wfmMissingList = [];
 
           for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            if (row.length === 0 || row.every(cell => String(cell).trim() === '')) continue;
+            const rawRow = jsonData[i];
+            // Slice the row to only include columns up to the header length. 
+            // This prevents iterating over 16,000+ empty columns and freezing the browser!
+            const row = rawRow ? rawRow.slice(0, headers.length) : [];
+            
+            if (row.length === 0 || row.every(cell => cell === undefined || cell === null || String(cell).trim() === '')) continue;
             
             actualTotalRows++;
 
