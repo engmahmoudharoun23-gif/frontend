@@ -690,12 +690,14 @@ function QualityReports({ user, onLogout }) {
             <p className="text-gray-500 text-sm mt-1 mr-12">{activeTab === 'warehouse_visits' ? t('qualityReports.warehouseVisitsSubTitle') : t('qualityReports.subTitle')}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-md transition-all"
-            >
-              <Plus className="w-5 h-5" /> {activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew')}
-            </button>
+            {activeTab !== 'violations' && (
+              <button
+                onClick={openAdd}
+                className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-md transition-all"
+              >
+                <Plus className="w-5 h-5" /> {activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew')}
+              </button>
+            )}
           </div>
         </div>
 

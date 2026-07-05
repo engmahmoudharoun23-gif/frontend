@@ -529,9 +529,25 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
             </div>
           )}
 
+          {isFullScreen && !showForm && (
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 mt-2">
+              <div className="flex flex-col">
+                <h3 className="text-lg font-bold text-gray-800">{titleText}</h3>
+                <p className="text-gray-500 text-sm">{subTitleText}</p>
+              </div>
+              <button
+                onClick={openAdd}
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-sm transition-all shadow-md w-full sm:w-auto justify-center"
+              >
+                <Plus className="w-5 h-5" />
+                {d('إضافة مخالفة', 'Add Violation')}
+              </button>
+            </div>
+          )}
+
           {/* Filters Section */}
           {!showForm && (
-            <div className="bg-gray-50/50 border-b border-gray-100 p-4 shrink-0">
+            <div className="bg-gray-50/50 border-b border-gray-100 p-4 shrink-0 mb-4 rounded-xl">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <input
                   type="date"
@@ -588,19 +604,6 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
                   )}
                 </div>
               </div>
-            </div>
-          )}
-
-          {isFullScreen && !showForm && (
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-              <p className="text-gray-500">{subTitleText}</p>
-              <button
-                onClick={openAdd}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-sm transition-all shadow-md w-full sm:w-auto justify-center"
-              >
-                <Plus className="w-5 h-5" />
-                {d('إضافة مخالفة', 'Add Violation')}
-              </button>
             </div>
           )}
 
