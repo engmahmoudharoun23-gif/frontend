@@ -35,10 +35,8 @@ function WfmMatching({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('platform'); // 'platform' | 'wfm'
   
   const [downloadUrl, setDownloadUrl] = useState(null);
-  const [statsDownloadUrl, setStatsDownloadUrl] = useState(null);
 
   const [downloadFilename, setDownloadFilename] = useState('');
-  const [statsFilename, setStatsFilename] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -170,7 +168,6 @@ function WfmMatching({ user, onLogout }) {
     if (selectedFile) {
       setFile(selectedFile);
       setDownloadUrl(null);
-      setStatsDownloadUrl(null);
       setProgress(0);
       setStats({ total: 0, matched: 0, unmatched: 0, duplicates: 0, platformTotal: 0 });
       setPlatformMissing([]);
@@ -347,53 +344,7 @@ function WfmMatching({ user, onLogout }) {
           setDownloadUrl(url);
           const fname = `Cleaned_WFM_${selectedProject}_${new Date().getTime()}.xlsx`;
           setDownloadFilename(fname);
-          
-          // Generate Stats Workbook
-          const statsWorkbook = XLSX.utils.book_new();
-          
-          // Sheet 1: Statistics
-          const statsAOA = [
-            ["الإحصائية", "القيمة"],
-            ["إجمالي WFM", actualTotalRows],
-            ["بلاغات المنصة للمشروع", platformTotal],
-            ["المطابقة المشتركة", finalMatchedCount],
-            ["تكرارات WFM", actualDuplicates],
-            ["استثناءات المنصة", platformMissingData.length],
-            ["استثناءات WFM", wfmMissingList.length]
-          ];
-          const statsWorksheet = XLSX.utils.aoa_to_sheet(statsAOA);
-          XLSX.utils.book_append_sheet(statsWorkbook, statsWorksheet, "الإحصائيات");
-
-          // Sheet 2: Platform Missing
-          const platformMissingAOA = [
-            ["رقم البلاغ", "المحافظة", "المقاول", "تاريخ البلاغ", "السبب"]
-          ];
-          platformMissingData.forEach(item => {
-            platformMissingAOA.push([
-              item.report_number,
-              item.governorate,
-              item.contractor,
-              item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : '-',
-              item.reason
-            ]);
-          });
-          const platformMissingWorksheet = XLSX.utils.aoa_to_sheet(platformMissingAOA);
-          XLSX.utils.book_append_sheet(statsWorkbook, platformMissingWorksheet, "استثناءات المنصة");
-
-          // Sheet 3: WFM Missing
-          const wfmMissingAOA = [
-            ["رقم البلاغ", "السبب"]
-          ];
-          wfmMissingList.forEach(item => {
-            wfmMissingAOA.push([item.report_number, item.reason]);
-          });
-          const wfmMissingWorksheet = XLSX.utils.aoa_to_sheet(wfmMissingAOA);
-          XLSX.utils.book_append_sheet(statsWorkbook, wfmMissingWorksheet, "استثناءات WFM");
-
-          const statsBuffer = XLSX.write(statsWorkbook, { bookType: 'xlsx', type: 'array' });
-          const statsBlob = new Blob([statsBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          setStatsDownloadUrl(URL.createObjectURL(statsBlob));
-          setStatsFilename(`Stats_Exceptions_${selectedProject}_${new Date().getTime()}.xlsx`);
+          setDownloadFilename(fname);
           
           // Save to backend automatically
           try {
