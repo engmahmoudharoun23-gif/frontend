@@ -331,7 +331,7 @@ function WfmMatching({ user, onLogout }) {
 
           setProgress(90);
 
-          const finalAOA = [...prefixRows, headers, ...matchedRows];
+          const finalAOA = prefixRows.concat([headers], matchedRows);
           const newWorksheet = XLSX.utils.aoa_to_sheet(finalAOA);
           const newWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Matched Reports");
@@ -376,7 +376,7 @@ function WfmMatching({ user, onLogout }) {
           
         } catch (error) {
           console.error("Matching Error:", error);
-          toast.error(t('wfmMatching.errorMatching', 'حدث خطأ أثناء عملية المطابقة.'));
+          toast.error(`حدث خطأ: ${error.message || error}`);
         } finally {
           setIsProcessing(false);
         }
