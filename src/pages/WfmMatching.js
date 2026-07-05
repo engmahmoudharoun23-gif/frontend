@@ -35,8 +35,10 @@ function WfmMatching({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('platform'); // 'platform' | 'wfm'
   
   const [downloadUrl, setDownloadUrl] = useState(null);
+  const [statsDownloadUrl, setStatsDownloadUrl] = useState(null);
 
   const [downloadFilename, setDownloadFilename] = useState('');
+  const [statsFilename, setStatsFilename] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -168,6 +170,7 @@ function WfmMatching({ user, onLogout }) {
     if (selectedFile) {
       setFile(selectedFile);
       setDownloadUrl(null);
+      setStatsDownloadUrl(null);
       setProgress(0);
       setStats({ total: 0, matched: 0, unmatched: 0, duplicates: 0, platformTotal: 0 });
       setPlatformMissing([]);
@@ -345,6 +348,53 @@ function WfmMatching({ user, onLogout }) {
           const fname = `Cleaned_WFM_${selectedProject}_${new Date().getTime()}.xlsx`;
           setDownloadFilename(fname);
           
+          // Generate Stats Workbook
+          const statsWorkbook = XLSX.utils.book_new();
+          
+          // Sheet 1: Statistics
+          const statsAOA = [
+            ["الإحصائية", "القيمة"],
+            ["إجمالي WFM", actualTotalRows],
+            ["بلاغات المنصة للمشروع", platformTotal],
+            ["المطابقة المشتركة", finalMatchedCount],
+            ["تكرارات WFM", actualDuplicates],
+            ["استثناءات المنصة", platformMissingData.length],
+            ["استثناءات WFM", wfmMissingList.length]
+          ];
+          const statsWorksheet = XLSX.utils.aoa_to_sheet(statsAOA);
+          XLSX.utils.book_append_sheet(statsWorkbook, statsWorksheet, "الإحصائيات");
+
+          // Sheet 2: Platform Missing
+          const platformMissingAOA = [
+            ["رقم البلاغ", "المحافظة", "المقاول", "تاريخ البلاغ", "السبب"]
+          ];
+          platformMissingData.forEach(item => {
+            platformMissingAOA.push([
+              item.report_number,
+              item.governorate,
+              item.contractor,
+              item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : '-',
+              item.reason
+            ]);
+          });
+          const platformMissingWorksheet = XLSX.utils.aoa_to_sheet(platformMissingAOA);
+          XLSX.utils.book_append_sheet(statsWorkbook, platformMissingWorksheet, "استثناءات المنصة");
+
+          // Sheet 3: WFM Missing
+          const wfmMissingAOA = [
+            ["رقم البلاغ", "السبب"]
+          ];
+          wfmMissingList.forEach(item => {
+            wfmMissingAOA.push([item.report_number, item.reason]);
+          });
+          const wfmMissingWorksheet = XLSX.utils.aoa_to_sheet(wfmMissingAOA);
+          XLSX.utils.book_append_sheet(statsWorkbook, wfmMissingWorksheet, "استثناءات WFM");
+
+          const statsBuffer = XLSX.write(statsWorkbook, { bookType: 'xlsx', type: 'array' });
+          const statsBlob = new Blob([statsBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          setStatsDownloadUrl(URL.createObjectURL(statsBlob));
+          setStatsFilename(`Stats_Exceptions_${selectedProject}_${new Date().getTime()}.xlsx`);
+          
           // Save to backend automatically
           try {
             const formData = new FormData();
@@ -486,7 +536,7 @@ function WfmMatching({ user, onLogout }) {
             </div>
 
             {downloadUrl && (
-              <div className="bg-emerald-50 rounded-3xl border border-emerald-100 p-6">
+              <div className="bg-emerald-50 rounded-3xl border border-emerald-100 p-6 mt-4">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -496,14 +546,16 @@ function WfmMatching({ user, onLogout }) {
                     <p className="text-xs text-emerald-700 mt-1">يحتوي على {stats.matched} بلاغ مطابق</p>
                   </div>
                 </div>
-                <a
-                  href={downloadUrl}
-                  download={downloadFilename}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                  {t("wfmMatching.downloadClean", "تنزيل الملف النهائي المطابق")}
-                </a>
+                <div className="flex flex-col gap-3">
+                  <a
+                    href={downloadUrl}
+                    download={downloadFilename}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    تنزيل الاكسل بعد المطابقة (تمت إزالة المكرر والغير موجود)
+                  </a>
+                </div>
               </div>
             )}
           </div>
