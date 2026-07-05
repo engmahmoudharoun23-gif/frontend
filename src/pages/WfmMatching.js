@@ -331,7 +331,13 @@ function WfmMatching({ user, onLogout }) {
 
           setProgress(90);
 
-          const finalAOA = prefixRows.concat([headers], matchedRows);
+          // Clean up row lengths to prevent "Invalid array length" or huge ranges in SheetJS
+          const maxCols = headers.length;
+          const cleanPrefixRows = prefixRows.map(r => r ? r.slice(0, maxCols) : []);
+          const cleanHeaders = headers.slice(0, maxCols);
+          const cleanMatchedRows = matchedRows.map(r => r ? r.slice(0, maxCols) : []);
+
+          const finalAOA = cleanPrefixRows.concat([cleanHeaders], cleanMatchedRows);
           const newWorksheet = XLSX.utils.aoa_to_sheet(finalAOA);
           const newWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Matched Reports");
