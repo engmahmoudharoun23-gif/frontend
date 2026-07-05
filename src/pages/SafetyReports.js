@@ -6,7 +6,7 @@ import imageCompression from 'browser-image-compression';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { translateBrandingText } from '../utils/brandingTranslation';
 import { Plus, Trash2, Edit2, Eye, X, Camera, Upload, ZoomIn, MoreVertical, ShieldAlert, FileText, Filter, Search, Download, CheckCircle, AlertTriangle, Bell } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ViolationsModal from '../components/ViolationsModal';
 import { useTranslation } from 'react-i18next';
 import {
@@ -75,10 +75,29 @@ function SafetyReports({ user, onLogout }) {
   const [projectGovs, setProjectGovs] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [reportsPerPage, setReportsPerPage] = useState(10);
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [tempDate, setTempDate] = useState('');
   const [tempProject, setTempProject] = useState('');
   const [tempGov, setTempGov] = useState('');
-  const [activeTab, setActiveTab] = useState('field_safety');
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    return (tab === 'violations' || tab === 'work_permits') ? tab : 'field_safety';
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'violations') {
+      setActiveTab('violations');
+    } else if (tab === 'work_permits') {
+      setActiveTab('work_permits');
+    } else {
+      setActiveTab('field_safety');
+    }
+  }, [location.search]);
 
   const [appliedDate, setAppliedDate] = useState('');
   const [appliedProject, setAppliedProject] = useState('');
@@ -607,23 +626,13 @@ function SafetyReports({ user, onLogout }) {
             >
               <Plus className="w-5 h-5" /> {t('safetyReports.addNew')}
             </button>
-            {hasPermission('work_permits') && (
-              <Link to="/work-permits" className="relative flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-md transition-all">
-                <FileText className="w-5 h-5" /> {t('workPermits.title', { defaultValue: 'تصاريح العمل' })}
-                {((badgesData?.work_permits || 0) > 0 || (badgesData?.work_permits_notes || 0) > 0) && (
-                  <div className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 animate-pulse border-2 border-white shadow-sm flex items-center justify-center">
-                    <Bell className="w-3.5 h-3.5" />
-                  </div>
-                )}
-              </Link>
-            )}
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap">
           <button
-            onClick={() => setActiveTab('field_safety')}
+            onClick={() => { setActiveTab('field_safety'); navigate('/safety-reports'); }}
             className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'field_safety' ? 'border-orange-600 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
           >
             {t('safetyReports.title')}
@@ -633,8 +642,21 @@ function SafetyReports({ user, onLogout }) {
               </span>
             )}
           </button>
+          {hasPermission('work_permits') && (
+            <button
+              onClick={() => navigate('/work-permits')}
+              className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300`}
+            >
+              {t('workPermits.title', { defaultValue: 'تصاريح العمل' })}
+              {((badgesData?.work_permits || 0) + (badgesData?.work_permits_notes || 0)) > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse shadow-sm">
+                  {(badgesData?.work_permits || 0) + (badgesData?.work_permits_notes || 0)}
+                </span>
+              )}
+            </button>
+          )}
           <button
-            onClick={() => setActiveTab('violations')}
+            onClick={() => { setActiveTab('violations'); navigate('/safety-reports?tab=violations'); }}
             className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'violations' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
           >
             {isRtl ? 'مخالفات السلامة' : 'Safety Violations'}
