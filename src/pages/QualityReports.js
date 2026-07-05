@@ -728,15 +728,25 @@ function QualityReports({ user, onLogout }) {
         <div className="flex border-b border-gray-200 mb-6">
           <button
             onClick={() => setActiveTab('field_quality')}
-            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 ${activeTab === 'field_quality' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'field_quality' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
           >
             {t('qualityReports.fieldQualityReportsTab')}
+            {((badgesData?.quality || 0) + (badgesData?.quality_notes || 0)) > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse shadow-sm">
+                {(badgesData?.quality || 0) + (badgesData?.quality_notes || 0)}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('warehouse_visits')}
-            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 ${activeTab === 'warehouse_visits' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'warehouse_visits' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
           >
             {t('qualityReports.warehouseVisitsTab')}
+            {(badgesData?.warehouse || 0) > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse shadow-sm">
+                {badgesData?.warehouse}
+              </span>
+            )}
           </button>
         </div>
 
