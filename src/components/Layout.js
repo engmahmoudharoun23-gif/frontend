@@ -146,8 +146,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     return colors[colorType] || colors.primary;
   };
   
-  // نظام إشعارات البلاغات الجديدة
   const [reportNotificationsOpen, setReportNotificationsOpen] = useState(false);
+  const [repairedUnseenCount, setRepairedUnseenCount] = useState(0);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationTab, setNotificationTab] = useState('unread'); // 'unread' أو 'read'
   const [unseenReports, setUnseenReports] = useState([]);
@@ -523,7 +523,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           previousUnseenCount.current = newUnseenCount;
           
           setUnseenReportsCount(newUnseenCount);
-          setUnseenReports(unseenResponse.data.reports || []);
+          const reps = unseenResponse.data.reports || [];
+          setUnseenReports(reps);
+          setRepairedUnseenCount(reps.filter(r => ['تم الإصلاح', 'لا يوجد تسريب', 'لا يوجد تسرب'].includes(r.status)).length);
           setUnseenReportsByGov(unseenResponse.data.by_governorate || []);
           setUnseenWaterConnections(unseenResponse.data.water_connections || []);
           setUnseenSewageConnections(unseenResponse.data.sewage_connections || []);
@@ -1182,6 +1184,13 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                       <span className="absolute -top-1.5 -right-1.5 bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[26px] h-[26px] flex items-center justify-center px-1 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
                         {pendingReviewCount}
                       </span>
+                    )}
+                    {/* مؤشر البلاغات التي تغيرت حالتها */}
+                    {repairedUnseenCount > 0 && (
+                      <span 
+                        className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-red-600 border-2 border-white rounded-full animate-pulse shadow-md" 
+                        title={isRtl ? 'تم تحديث حالة بلاغات إلى (تم الإصلاح) أو (لا يوجد تسريب)' : 'Reports status updated'}
+                      ></span>
                     )}
                   </button>
                   
