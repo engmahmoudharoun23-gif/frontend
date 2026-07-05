@@ -81,7 +81,6 @@ function QualityReports({ user, onLogout }) {
   const [tempDate, setTempDate] = useState('');
   const [tempProject, setTempProject] = useState('');
   const [tempGov, setTempGov] = useState('');
-  const [showViolations, setShowViolations] = useState(false);
 
   const [appliedDate, setAppliedDate] = useState('');
   const [appliedProject, setAppliedProject] = useState('');
@@ -576,20 +575,7 @@ function QualityReports({ user, onLogout }) {
   return (
     <Layout user={user} onLogout={onLogout}>
       <div className="p-4 md:p-6 max-w-7xl mx-auto" dir={isRtl ? 'rtl' : 'ltr'}>
-        {showViolations ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-fade-in">
-            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
-              <button onClick={() => setShowViolations(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 text-gray-600 font-bold">
-                <span className="text-2xl leading-none">{isRtl ? '←' : '→'}</span>
-                <span>{isRtl ? 'الرجوع' : 'Back'}</span>
-              </button>
-              <h2 className="text-2xl font-bold text-gray-800 border-r-4 border-red-500 pr-4">
-                {isRtl ? 'المخالفات' : 'Violations'}
-              </h2>
-            </div>
-            <ViolationsModal isFullScreen={true} onClose={() => setShowViolations(false)} user={user} projectGovs={projectGovs} type="quality" />
-          </div>
-        ) : showModal ? (
+        {showModal ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in">
             <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 text-gray-600 font-bold">
@@ -710,22 +696,11 @@ function QualityReports({ user, onLogout }) {
             >
               <Plus className="w-5 h-5" /> {activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew')}
             </button>
-            <button
-              onClick={() => setShowViolations(true)}
-              className="relative flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium shadow-md transition-all"
-            >
-              <AlertTriangle className="w-5 h-5" /> {isRtl ? 'مخالفات الجودة' : 'Quality Violations'}
-              {((badgesData?.violations || 0) > 0 || (badgesData?.violations_notes || 0) > 0) && (
-                  <div className="absolute -top-3 -right-3 bg-slate-800 text-white rounded-full p-1 animate-pulse border-2 border-white shadow-sm flex items-center justify-center">
-                    <Bell className="w-3.5 h-3.5" />
-                  </div>
-              )}
-            </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
+        <div className="flex border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap">
           <button
             onClick={() => setActiveTab('field_quality')}
             className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'field_quality' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
@@ -748,10 +723,21 @@ function QualityReports({ user, onLogout }) {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab('violations')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'violations' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            {isRtl ? 'مخالفات الجودة' : 'Quality Violations'}
+            {((badgesData?.violations || 0) + (badgesData?.violations_notes || 0)) > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse shadow-sm">
+                {(badgesData?.violations || 0) + (badgesData?.violations_notes || 0)}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Filters Section */}
-        {!loading && (
+        {!loading && activeTab !== 'violations' && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 items-center justify-start animate-fade-in animate-scale-in">
             <div className="flex items-center gap-2 text-gray-700 font-bold text-sm min-w-[120px]">
               <Filter className="w-5 h-5 text-teal-600 animate-pulse" />
@@ -818,7 +804,11 @@ function QualityReports({ user, onLogout }) {
         )}
 
         {/* Table & Content */}
-        {filteredReports.length === 0 && loading ? (
+        {activeTab === 'violations' ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-fade-in">
+            <ViolationsModal isFullScreen={true} onClose={() => setActiveTab('field_quality')} user={user} projectGovs={projectGovs} type="quality" />
+          </div>
+        ) : filteredReports.length === 0 && loading ? (
           <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{isRtl ? 'جاري تحميل البيانات...' : 'Loading Data...'}</span></div>
         ) : filteredReports.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
