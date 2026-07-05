@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import axios from 'axios';
 import imageCompression from 'browser-image-compression';
 import { toast } from 'react-toastify';
@@ -24,7 +24,7 @@ const emptyForm = {
   images: [],
 };
 
-export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpen, isFullScreen, type = 'safety' }) {
+const ViolationsModal = forwardRef(({ user, projectGovs = {}, onClose, isOpen, isFullScreen, type = 'safety' }, ref) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const d = (ar, en) => (isRtl ? ar : en);
@@ -41,6 +41,10 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
   const [viewViolation, setViewViolation] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useImperativeHandle(ref, () => ({
+    openAdd
+  }));
 
   const titleText = type === 'quality' ? d('مخالفات الجودة', 'Quality Violations') : d('مخالفات السلامة', 'Safety Violations');
   const subTitleText = type === 'quality' ? d('إدارة وعرض مخالفات الجودة الميدانية', 'Manage and view quality violations') : d('إدارة وعرض مخالفات السلامة الميدانية', 'Manage and view field safety violations');
@@ -526,22 +530,6 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
                   <X className="w-6 h-6" />
                 </button>
               </div>
-            </div>
-          )}
-
-          {isFullScreen && !showForm && (
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 mt-2">
-              <div className="flex flex-col">
-                <h3 className="text-lg font-bold text-gray-800">{titleText}</h3>
-                <p className="text-gray-500 text-sm">{subTitleText}</p>
-              </div>
-              <button
-                onClick={openAdd}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-sm transition-all shadow-md w-full sm:w-auto justify-center"
-              >
-                <Plus className="w-5 h-5" />
-                {d('إضافة مخالفة', 'Add Violation')}
-              </button>
             </div>
           )}
 
@@ -1234,4 +1222,6 @@ export default function ViolationsModal({ user, projectGovs = {}, onClose, isOpe
       )}
     </>
   );
-}
+});
+
+export default ViolationsModal;

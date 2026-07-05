@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import Layout from '../components/Layout';
@@ -42,6 +42,7 @@ function QualityReports({ user, onLogout }) {
   const [reports, setReports] = useState(getInitialReports);
   const [warehouseVisits, setWarehouseVisits] = useState([]);
   const [activeTab, setActiveTab] = useState('field_quality'); // 'field_quality' or 'warehouse_visits'
+  const violationsModalRef = useRef(null);
 
   const [activeNotesReportId, setActiveNotesReportId] = useState(null);
   const [consultantNote, setConsultantNote] = useState('');
@@ -690,12 +691,19 @@ function QualityReports({ user, onLogout }) {
             <p className="text-gray-500 text-sm mt-1 mr-12">{activeTab === 'warehouse_visits' ? t('qualityReports.warehouseVisitsSubTitle') : t('qualityReports.subTitle')}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {activeTab !== 'violations' && (
+            {activeTab !== 'violations' ? (
               <button
                 onClick={openAdd}
                 className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-medium shadow-md transition-all"
               >
                 <Plus className="w-5 h-5" /> {activeTab === 'warehouse_visits' ? t('qualityReports.addWarehouseVisit') : t('qualityReports.addNew')}
+              </button>
+            ) : (
+              <button
+                onClick={() => violationsModalRef.current?.openAdd()}
+                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium shadow-md transition-all"
+              >
+                <Plus className="w-5 h-5" /> {isRtl ? 'إضافة مخالفة' : 'Add Violation'}
               </button>
             )}
           </div>
@@ -808,7 +816,7 @@ function QualityReports({ user, onLogout }) {
         {/* Table & Content */}
         {activeTab === 'violations' ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-fade-in">
-            <ViolationsModal isFullScreen={true} onClose={() => setActiveTab('field_quality')} user={user} projectGovs={projectGovs} type="quality" />
+            <ViolationsModal ref={violationsModalRef} isFullScreen={true} onClose={() => setActiveTab('field_quality')} user={user} projectGovs={projectGovs} type="quality" />
           </div>
         ) : filteredReports.length === 0 && loading ? (
           <div className="flex items-center justify-center py-20 text-gray-500 text-sm font-medium"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span className="mr-2">{isRtl ? 'جاري تحميل البيانات...' : 'Loading Data...'}</span></div>
