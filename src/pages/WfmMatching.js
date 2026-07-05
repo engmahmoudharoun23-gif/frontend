@@ -254,10 +254,6 @@ function WfmMatching({ user, onLogout }) {
           const wfmMissingList = [];
 
           for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
-            if (i % 5000 === 0) {
-              await new Promise(r => setTimeout(r, 10)); // Yield event loop
-            }
-            
             const row = jsonData[i];
             if (row.length === 0 || row.every(cell => String(cell).trim() === '')) continue;
             
@@ -301,11 +297,7 @@ function WfmMatching({ user, onLogout }) {
           const matchedSet = new Set(matchedOriginals);
 
           const matchedRows = [];
-          let loopCounter = 0;
           for (const item of uniqueRows) {
-            if (++loopCounter % 5000 === 0) {
-              await new Promise(r => setTimeout(r, 10)); // Yield event loop
-            }
             const { row, ticketVal, originalTicketVal } = item;
             if (matchedSet.has(ticketVal)) {
               matchedRows.push(row);
@@ -338,18 +330,12 @@ function WfmMatching({ user, onLogout }) {
           setWfmMissing(wfmMissingList);
 
           setProgress(90);
-          await new Promise(r => setTimeout(r, 50)); // Yield to prevent browser freeze
 
-          const finalAOA = [];
-          for (let r = 0; r < prefixRows.length; r++) finalAOA.push(prefixRows[r]);
-          finalAOA.push(headers);
-          for (let r = 0; r < matchedRows.length; r++) finalAOA.push(matchedRows[r]);
-
+          const finalAOA = [...prefixRows, headers, ...matchedRows];
           const newWorksheet = XLSX.utils.aoa_to_sheet(finalAOA);
           const newWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Matched Reports");
 
-          await new Promise(r => setTimeout(r, 50)); // Yield before heavy write
           const excelBuffer = XLSX.write(newWorkbook, { bookType: 'xlsx', type: 'array' });
 
           const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
