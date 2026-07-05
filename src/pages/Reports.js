@@ -3644,28 +3644,40 @@ const fetchReports = async () => {
                         }
                         
                         let maxIndex = 0;
+                        let existingFilesCount = 0;
                         for await (const entry of dirHandle.values()) {
                           if (entry.kind === 'file') {
                             const match = entry.name.match(/media(?:_selected)?(?:_\d+)?_(\d+)/) || entry.name.match(/media_(\d+)/);
                             if (match) {
                               maxIndex = Math.max(maxIndex, parseInt(match[1]));
+                              existingFilesCount++;
                             }
                           }
                         }
 
-                        for (let i = 0; i < selectedImages.length; i++) {
+                        let downloadedCount = 0;
+                        // نتجاهل الصور التي تم تحميلها سابقاً بناءً على عدد الملفات الموجودة
+                        const startIndex = existingFilesCount; // استخدام عدد الملفات كبداية (أو maxIndex)
+
+                        for (let i = startIndex; i < selectedImages.length; i++) {
                           const imgData = selectedImages[i];
                           const url = resolveImageUrl(imgData);
                           const response = await fetch(url);
                           const blob = await response.blob();
                           const extension = isVideo(imgData) ? 'webm' : 'jpg';
-                          const name = `media_${maxIndex + i + 1}.${extension}`;
+                          const name = `media_${i + 1}.${extension}`;
                           const fileHandle = await dirHandle.getFileHandle(name, { create: true });
                           const writable = await fileHandle.createWritable();
                           await writable.write(blob);
                           await writable.close();
+                          downloadedCount++;
                         }
-                        toast.success(`✅ ${t('reports.imagesModal.downloadSuccess', {defaultValue: 'تم تحميل'})} ${selectedImages.length} ${t('reports.imagesModal.filesSuccessfully', {defaultValue: 'ملف بنجاح في مجلد'})} ${dirHandle.name}`);
+                        
+                        if (downloadedCount === 0) {
+                          toast.info(`📁 جميع الملفات (${selectedImages.length}) موجودة مسبقاً في المجلد ${dirHandle.name}`);
+                        } else {
+                          toast.success(`✅ تم تحديث المجلد: تحميل ${downloadedCount} ملف جديد بنجاح في ${dirHandle.name}`);
+                        }
                         return;
                       } catch (e) {
                         if (e.name === 'AbortError') return;
