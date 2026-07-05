@@ -1349,58 +1349,95 @@ const fetchReports = async () => {
       });
   };
 
+  const quickSearchTimeoutRef = React.useRef(null);
+
   // دالة للبحث الفوري عند الكتابة
   const handleQuickSearch = (field, value) => {
-    const newFilters = {...filters, [field]: value};
+    let newFilters = {...filters, [field]: value};
+    
+    // محرك البحث العملاق: تفريغ الفلاتر المقيدة إذا كان البحث نصياً
+    const isSearchActive = field === 'search' && value && value.trim() !== '';
+    if (isSearchActive) {
+      newFilters.status = '';
+      newFilters.review_status = '';
+      newFilters.license_status = '';
+      newFilters.report_type = '';
+      newFilters.contractor = '';
+      newFilters.my_reports = false;
+      newFilters.created_by = '';
+      setIsNewReportsFilter(false);
+    }
+
     setFilters(newFilters);
     setCurrentPage(1);
     
-    const params = new URLSearchParams();
-    Object.entries(newFilters).forEach(([key, val]) => { 
+    const newUrlParams = new URLSearchParams(searchParams);
+    if (isSearchActive) {
+      newUrlParams.delete('filter');
+    }
+    
+    Object.entries(newFilters).forEach(([key, val]) => {
       if (val && typeof val === 'string' && val.trim()) {
-        if (key === 'date') {
-          params.append('date_from', val);
-          params.append('date_to', val);
-        } else if (key === 'start_date') {
-          params.append('start_date_from', val);
-          params.append('start_date_to', val);
-        } else {
-          params.append(key, typeof val === 'string' ? val.trim() : val);
-        }
+        newUrlParams.set(key, val); // DO NOT TRIM HERE! preserves space while typing
+      } else {
+        newUrlParams.delete(key);
       }
     });
-    
-    if (!params.has('project') && currentProject) {
-      params.append('project', currentProject);
-    }
-    params.append('page', 1);
-    params.append('limit', reportsPerPage);
-    
-    // Update the URL so it doesn't revert
-    const newUrlParams = new URLSearchParams(searchParams);
-    if (value && typeof value === 'string' && value.trim()) {
-      newUrlParams.set(field, value); // DO NOT TRIM HERE! preserves space while typing
-    } else {
-      newUrlParams.delete(field);
+
+    if (!newUrlParams.has('project') && currentProject) {
+      newUrlParams.set('project', currentProject);
     }
     newUrlParams.set('page', 1);
-    setSearchParams(newUrlParams);
+    setSearchParams(newUrlParams, { replace: true });
+
+    if (quickSearchTimeoutRef.current) clearTimeout(quickSearchTimeoutRef.current);
     
-    axios.get(`${API}/reports?${params}`)
-      .then(response => {
-        const fetchedReports = response.data.reports || [];
-        setReports(fetchedReports);
-        
-        if (newFilters.project) {
-          try {
-            localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
-          } catch (e) {}
+    quickSearchTimeoutRef.current = setTimeout(() => {
+      const params = new URLSearchParams();
+      
+      if (isSearchActive) {
+        params.append('search', value.trim());
+        if (newFilters.project) params.append('project', newFilters.project);
+        if (newFilters.governorate) params.append('governorate', newFilters.governorate);
+        if (newFilters.exact) params.append('exact', 'true');
+      } else {
+        Object.entries(newFilters).forEach(([key, val]) => { 
+          if (val && typeof val === 'string' && val.trim()) {
+            if (key === 'date') {
+              params.append('date_from', val);
+              params.append('date_to', val);
+            } else if (key === 'start_date') {
+              params.append('start_date_from', val);
+              params.append('start_date_to', val);
+            } else {
+              params.append(key, typeof val === 'string' ? val.trim() : val);
+            }
+          }
+        });
+        if (!params.has('project') && currentProject) {
+          params.append('project', currentProject);
         }
-        
-        setTotalReports(response.data.total_count || 0);
-        setTotalPages(response.data.total_pages || 0);
-      })
-      .catch(error => console.error('Search error:', error));
+      }
+      
+      params.append('page', 1);
+      params.append('limit', reportsPerPage);
+      
+      axios.get(`${API}/reports?${params}`)
+        .then(response => {
+          const fetchedReports = response.data.reports || [];
+          setReports(fetchedReports);
+          
+          if (newFilters.project) {
+            try {
+              localStorage.setItem(`reports_cache_${newFilters.project}`, JSON.stringify(fetchedReports));
+            } catch (e) {}
+          }
+          
+          setTotalReports(response.data.total_count || 0);
+          setTotalPages(response.data.total_pages || 0);
+        })
+        .catch(error => console.error('Search error:', error));
+    }, 600); // 600ms debounce
   };
 
   const handleDelete = async (id) => {
