@@ -1109,8 +1109,19 @@ const fetchReports = async () => {
     try {
       const params = new URLSearchParams();
       
-      if (isNewReportsFilter) {
+      const isSearchActive = filters.search && filters.search.trim() !== '';
+      
+      if (isSearchActive) {
+          // محرك البحث العملاق: نتجاهل الفلاتر المقيدة (مثل الحالة، قيد المراجعة، البلاغات الجديدة) 
+          // لكي نبحث في كامل المشروع عن البلاغ المطلوب
+          params.append('search', filters.search.trim());
+          if (filters.project) params.append('project', filters.project);
+          if (filters.governorate) params.append('governorate', filters.governorate);
+          if (filters.exact) params.append('exact', 'true');
+          // لا نضيف أي فلاتر أخرى تعيق البحث
+      } else if (isNewReportsFilter) {
           params.append('unseen_only', 'true');
+          if (filters.project) params.append('project', filters.project);
       } else {
           Object.entries(filters).forEach(([key, value]) => { 
             if (value) {
@@ -1183,13 +1194,32 @@ const fetchReports = async () => {
 
   const handleSearch = () => {
     const newParams = new URLSearchParams(searchParams);
-    Object.entries(filters).forEach(([key, value]) => {
+    const isSearchActive = filters.search && filters.search.trim() !== '';
+    let updatedFilters = { ...filters };
+
+    if (isSearchActive) {
+      // محرك البحث العملاق: تفريغ الفلاتر المقيدة للبحث في المشروع بالكامل
+      updatedFilters.status = '';
+      updatedFilters.review_status = '';
+      updatedFilters.license_status = '';
+      updatedFilters.report_type = '';
+      updatedFilters.contractor = '';
+      updatedFilters.my_reports = false;
+      updatedFilters.created_by = '';
+      setIsNewReportsFilter(false);
+      newParams.delete('filter');
+    }
+
+    setFilters(updatedFilters);
+
+    Object.entries(updatedFilters).forEach(([key, value]) => {
       if (value) {
         newParams.set(key, typeof value === 'string' ? value.trim() : value);
       } else {
         newParams.delete(key);
       }
     });
+
     if (!newParams.has('project') && currentProject) {
       newParams.set('project', currentProject);
     }
