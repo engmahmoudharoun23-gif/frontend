@@ -298,7 +298,23 @@ function AIImageAudit({ user, onLogout }) {
                       {isRtl ? 'تقرير التحليل المفصل' : 'Detailed Analysis Report'}
                     </h4>
                     <p className="text-gray-700 leading-relaxed font-medium whitespace-pre-wrap">
-                      {result.details}
+                      {(() => {
+                        const text = result.details || "";
+                        const highlightPhrase = "يمكنك ارسال صورة بالنهار لتاكيد صحتها";
+                        if (text.includes(highlightPhrase)) {
+                          const parts = text.split(highlightPhrase);
+                          return (
+                            <>
+                              {parts[0]}
+                              <span className="bg-yellow-300 text-yellow-900 font-black px-2 py-1 rounded-md shadow-sm border border-yellow-500 mx-1 inline-block animate-pulse">
+                                {highlightPhrase}
+                              </span>
+                              {parts[1]}
+                            </>
+                          );
+                        }
+                        return text;
+                      })()}
                     </p>
                   </div>
 
