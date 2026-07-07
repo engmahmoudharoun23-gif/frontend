@@ -17,6 +17,12 @@ function AIImageAudit({ user, onLogout }) {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
+  const [daytimeFile, setDaytimeFile] = useState(null);
+  const [daytimePreviewUrl, setDaytimePreviewUrl] = useState(null);
+  const [isDaytimeScanning, setIsDaytimeScanning] = useState(false);
+  const [daytimeResult, setDaytimeResult] = useState(null);
+  const daytimeFileInputRef = useRef(null);
+
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -86,14 +92,59 @@ function AIImageAudit({ user, onLogout }) {
     }
   };
 
+  const handleDaytimeFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+        setError(isRtl ? 'الرجاء اختيار ملف صورة صالح للمقارنة' : 'Please select a valid image file');
+        return;
+      }
+      setDaytimeFile(file);
+      setDaytimePreviewUrl(URL.createObjectURL(file));
+      setDaytimeResult(null);
+      setError(null);
+      
+      triggerDaytimeScan(file);
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 300);
+    }
+  };
+
+  const triggerDaytimeScan = async (fileToScan) => {
+    setIsDaytimeScanning(true);
+    const formData = new FormData();
+    formData.append('file', fileToScan);
+    formData.append('lang', isRtl ? 'ar' : 'en');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/ai-image-audit`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setDaytimeResult(response.data.result);
+      } else {
+        setError(response.data.error || 'Error scanning daytime image');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to connect to AI server for daytime scan.');
+    } finally {
+      setIsDaytimeScanning(false);
+    }
+  };
+
   const resetScanner = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
     setResult(null);
     setError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setDaytimeFile(null);
+    setDaytimePreviewUrl(null);
+    setDaytimeResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (daytimeFileInputRef.current) daytimeFileInputRef.current.value = '';
   };
 
   return (
@@ -319,7 +370,7 @@ function AIImageAudit({ user, onLogout }) {
                   </div>
 
                   {/* Daytime Photo Upload Prompt */}
-                  {result.details && result.details.includes("يمكنك ارسال صورة بالنهار لتاكيد صحتها") && (
+                  {result.details && result.details.includes("يمكنك ارسال صورة بالنهار لتاكيد صحتها") && !daytimePreviewUrl && (
                     <div className="mt-4 bg-yellow-50 rounded-2xl p-6 border-2 border-dashed border-yellow-400 shadow-md text-center animate-fade-in-up">
                       <h4 className="text-lg font-black text-yellow-800 mb-2">
                         {isRtl ? 'التحقق النهاري مطلوب لحسم الأمر' : 'Daytime Verification Required'}
@@ -328,14 +379,11 @@ function AIImageAudit({ user, onLogout }) {
                         {isRtl ? 'أرفق الصورة النهارية الآن ليقوم النظام بمراجعتها وإصدار الحكم النهائي القاطع.' : 'Upload the daytime photo now so the system can review it and issue a definitive verdict.'}
                       </p>
                       <button 
-                        onClick={() => {
-                          if (fileInputRef.current) fileInputRef.current.click();
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
+                        onClick={() => daytimeFileInputRef.current?.click()}
                         className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-all flex items-center gap-3 mx-auto"
                       >
                         <UploadCloud className="w-6 h-6" />
-                        {isRtl ? 'إرفاق الصورة النهارية وبدء الفحص' : 'Upload Daytime Photo & Scan'}
+                        {isRtl ? 'إرفاق الصورة النهارية للمقارنة' : 'Upload Daytime Photo & Scan'}
                       </button>
                     </div>
                   )}
@@ -345,6 +393,74 @@ function AIImageAudit({ user, onLogout }) {
             </div>
           </div>
         </div>
+        
+        {/* Daytime Comparison Section */}
+        {daytimePreviewUrl && (
+          <div className="mt-12 bg-white rounded-3xl p-6 md:p-8 shadow-2xl border border-indigo-100 animate-fade-in-up relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400 rounded-bl-full opacity-10"></div>
+            <h2 className="text-2xl font-black text-gray-800 mb-8 flex items-center gap-3 relative z-10">
+               <Search className="w-8 h-8 text-yellow-600" />
+               {isRtl ? 'نافذة المقارنة الفورية (الصورة النهارية)' : 'Instant Comparison Window (Daytime Photo)'}
+            </h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
+               {/* Left: The Daytime Image */}
+               <div className="relative rounded-2xl overflow-hidden bg-gray-900 shadow-lg h-80 flex items-center justify-center">
+                  <img src={daytimePreviewUrl} alt="Daytime Preview" className={`max-w-full max-h-full object-contain ${isDaytimeScanning ? 'opacity-40 blur-sm' : 'opacity-100'}`} />
+                  {isDaytimeScanning && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center">
+                       <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-4 shadow-lg"></div>
+                       <p className="text-white font-bold text-lg animate-pulse bg-black/50 px-4 py-2 rounded-xl backdrop-blur-sm">
+                         {isRtl ? 'جاري فحص الصورة ومطابقتها مع الصورة الليلية...' : 'Scanning daytime photo...'}
+                       </p>
+                     </div>
+                  )}
+               </div>
+
+               {/* Right: The Daytime Result */}
+               <div className="h-full flex flex-col">
+                 {!daytimeResult && isDaytimeScanning && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-yellow-600 space-y-4">
+                      <div className="w-12 h-12 border-4 border-yellow-200 border-t-yellow-600 rounded-full animate-spin"></div>
+                      <p className="font-bold animate-pulse text-center px-4">{isRtl ? 'يتم مطابقة الخطوط والأبعاد والتأكد من ملمس الأسفلت نهاراً...' : 'Matching lines and dimensions with previous photo...'}</p>
+                    </div>
+                 )}
+                 {daytimeResult && (
+                    <div className="animate-fade-in-up space-y-6 flex-1">
+                      <div className={`p-5 rounded-2xl flex flex-col gap-4 shadow-sm border ${
+                        daytimeResult.is_manipulated ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      }`}>
+                        <div className="flex items-center gap-4">
+                          <div className={`p-3 rounded-xl shadow-inner flex-shrink-0 ${daytimeResult.is_manipulated ? 'bg-red-100' : 'bg-emerald-100'}`}>
+                            {daytimeResult.is_manipulated ? <AlertTriangle className="w-8 h-8 text-red-600" /> : <CheckCircle className="w-8 h-8 text-emerald-600" />}
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-black mb-1">
+                              {daytimeResult.is_manipulated 
+                                ? (isRtl ? 'تم اكتشاف تزييف فعلي في هذه الصورة!' : 'Manipulation detected')
+                                : (isRtl ? 'مطابقة ناجحة: الصورة النهارية تؤكد براءة التنفيذ بنسبة 100%!' : 'Daytime image is authentic!')}
+                            </h3>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-yellow-50 rounded-2xl p-5 border border-yellow-200 shadow-sm flex-1">
+                        <h4 className="text-sm font-bold text-yellow-800 mb-2 uppercase flex items-center gap-2">
+                          <Info className="w-4 h-4" />
+                          {isRtl ? 'القرار النهائي بناءً على المقارنة' : 'Final Comparison Report'}
+                        </h4>
+                        <p className="text-gray-900 leading-relaxed font-bold whitespace-pre-wrap">
+                          {daytimeResult.details}
+                        </p>
+                      </div>
+                    </div>
+                 )}
+               </div>
+            </div>
+          </div>
+        )}
+
+        <input type="file" ref={daytimeFileInputRef} onChange={handleDaytimeFileChange} className="hidden" accept="image/*" />
       </div>
       
       {/* Global style for scan animation */}
