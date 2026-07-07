@@ -318,6 +318,28 @@ function AIImageAudit({ user, onLogout }) {
                     </p>
                   </div>
 
+                  {/* Daytime Photo Upload Prompt */}
+                  {result.details && result.details.includes("يمكنك ارسال صورة بالنهار لتاكيد صحتها") && (
+                    <div className="mt-4 bg-yellow-50 rounded-2xl p-6 border-2 border-dashed border-yellow-400 shadow-md text-center animate-fade-in-up">
+                      <h4 className="text-lg font-black text-yellow-800 mb-2">
+                        {isRtl ? 'التحقق النهاري مطلوب لحسم الأمر' : 'Daytime Verification Required'}
+                      </h4>
+                      <p className="text-yellow-700 mb-5 text-sm font-bold">
+                        {isRtl ? 'أرفق الصورة النهارية الآن ليقوم النظام بمراجعتها وإصدار الحكم النهائي القاطع.' : 'Upload the daytime photo now so the system can review it and issue a definitive verdict.'}
+                      </p>
+                      <button 
+                        onClick={() => {
+                          if (fileInputRef.current) fileInputRef.current.click();
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-all flex items-center gap-3 mx-auto"
+                      >
+                        <UploadCloud className="w-6 h-6" />
+                        {isRtl ? 'إرفاق الصورة النهارية وبدء الفحص' : 'Upload Daytime Photo & Scan'}
+                      </button>
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>
