@@ -1112,11 +1112,9 @@ const fetchReports = async () => {
       const isSearchActive = filters.search && filters.search.trim() !== '';
       
       if (isSearchActive) {
-          // محرك البحث العملاق: نتجاهل الفلاتر المقيدة (مثل الحالة، قيد المراجعة، البلاغات الجديدة) 
-          // لكي نبحث في كامل المشروع عن البلاغ المطلوب
+          // محرك البحث العملاق: نتجاهل جميع الفلاتر (بما فيها المشروع والمحافظة) 
+          // لكي نبحث في كامل المنصة (حسب صلاحيات المستخدم) عن البلاغ المطلوب
           params.append('search', filters.search.trim());
-          if (filters.project) params.append('project', filters.project);
-          if (filters.governorate) params.append('governorate', filters.governorate);
           if (filters.exact) params.append('exact', 'true');
           // لا نضيف أي فلاتر أخرى تعيق البحث
       } else if (isNewReportsFilter) {
@@ -1509,6 +1507,12 @@ const fetchReports = async () => {
       newFilters.date_to = '';
       newFilters.start_date_from = '';
       newFilters.start_date_to = '';
+    }
+    
+    // إذا تم تغيير نص البحث اليدوي، نلغي حالة المطابقة التامة (exact) 
+    // لكي يعمل الفلتر بذكاء ويبحث في رقم البلاغ ورقم الرخصة
+    if (field === 'search') {
+      newFilters.exact = false;
     }
 
     if (field === 'date_from') {
