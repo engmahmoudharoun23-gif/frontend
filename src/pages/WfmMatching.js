@@ -29,6 +29,7 @@ function WfmMatching({ user, onLogout }) {
     duplicates: 0,
     platformTotal: 0
   });
+  const [dateLabel, setDateLabel] = useState(null); // تسمية الفترة الزمنية المستخرجة من الإكسيل
   
   const [platformMissing, setPlatformMissing] = useState([]);
   const [wfmMissing, setWfmMissing] = useState([]);
@@ -212,6 +213,35 @@ function WfmMatching({ user, onLogout }) {
           
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
           
+          // ========= استخراج نطاق التاريخ من الإكسيل =========
+          // البحث عن عمود التاريخ وأخذ أصغر وأكبر تاريخ
+          let wfmDateFrom = null;
+          let wfmDateTo = null;
+          try {
+            // الحصول على الصفوف الخام مع تحويل التواريخ
+            const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false, dateNF: 'YYYY-MM-DD' });
+            const dateKeys = rawRows.length > 0 ? Object.keys(rawRows[0]).filter(k => 
+              k.includes('تاريخ') || k.toLowerCase().includes('date') || k.includes('التاريخ')
+            ) : [];
+            const allDates = [];
+            rawRows.forEach(row => {
+              dateKeys.forEach(k => {
+                const v = row[k];
+                if (v && typeof v === 'string' && /\d{4}-\d{2}-\d{2}/.test(v)) {
+                  allDates.push(new Date(v));
+                }
+              });
+            });
+            if (allDates.length > 0) {
+              const minD = new Date(Math.min(...allDates));
+              const maxD = new Date(Math.max(...allDates));
+              wfmDateFrom = minD.toISOString().split('T')[0];
+              wfmDateTo = maxD.toISOString().split('T')[0];
+            }
+          } catch (dateErr) {
+            console.warn('Could not extract date range from Excel:', dateErr);
+          }
+          
           if (jsonData.length < 2) {
             toast.error(t('wfmMatching.errorMatching', 'الملف فارغ أو لا يحتوي على بيانات.'));
             setIsProcessing(false);
@@ -284,7 +314,9 @@ function WfmMatching({ user, onLogout }) {
             `${API}/wfm_matching/check`,
             { 
               project: selectedProject,
-              report_numbers: extractedTickets 
+              report_numbers: extractedTickets,
+              date_from: wfmDateFrom,   // أول تاريخ في الإكسيل
+              date_to: wfmDateTo        // آخر تاريخ في الإكسيل
             },
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -294,6 +326,8 @@ function WfmMatching({ user, onLogout }) {
           const matchedOriginals = response.data.matched || [];
           const platformMissingData = response.data.platform_missing || [];
           const platformTotal = response.data.platform_total || 0;
+          const receivedDateLabel = response.data.date_label || null;
+          setDateLabel(receivedDateLabel);
           const matchedSet = new Set(matchedOriginals);
 
           const matchedRows = [];
@@ -523,7 +557,12 @@ function WfmMatching({ user, onLogout }) {
                 </div>
 
                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col items-center text-center">
-                  <p className="text-xs font-bold text-blue-700 mb-1">{t('wfmMatching.platformTotal', 'بلاغات المنصة للمشروع')}</p>
+                  <p className="text-xs font-bold text-blue-700 mb-1">
+                    {dateLabel 
+                      ? `${t('wfmMatching.platformTotalMonth', 'إجمالي المنصة')} - ${dateLabel}`
+                      : t('wfmMatching.platformTotal', 'بلاغات المنصة للمشروع')
+                    }
+                  </p>
                   <p className="text-2xl font-black text-blue-800">{stats.platformTotal.toLocaleString()}</p>
                 </div>
 
