@@ -296,6 +296,7 @@ function ReportForm({ user, onLogout }) {
   const [addingContractor, setAddingContractor] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   // منع إغلاق المتصفح أثناء الرفع
   useEffect(() => {
@@ -1753,6 +1754,66 @@ function ReportForm({ user, onLogout }) {
     // لا نقوم بإخفاء الشاشة هنا، سيتم إخفاؤها في finally الخاصة بـ handleSubmit بعد الانتقال
   };
 
+  const handleFilesSelected = async (filesArray) => {
+    if (filesArray.length === 0) return;
+
+    // ⚡ ضغط الصور فوراً عند التحديد!
+    setCompressingImages(true);
+    setCompressionProgress(0);
+    
+    const compressedFiles = [];
+    let processedCount = 0;
+    for (let i = 0; i < filesArray.length; i++) {
+      const file = filesArray[i];
+      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') continue;
+      
+      // تحديث التقدم
+      setCompressionProgress(Math.round(((i + 1) / filesArray.length) * 100));
+      
+      // ضغط الصورة
+      let processedFile = file;
+      if (file.type.startsWith('image/')) {
+         processedFile = await compressImage(file);
+      }
+      compressedFiles.push(processedFile);
+      processedCount++;
+    }
+    
+    setImages(prev => [...prev, ...compressedFiles]);
+    setCompressingImages(false);
+    if (processedCount > 0) {
+      toast.success(isRtl ? `تم إضافة ${processedCount} ملفات بنجاح` : `Successfully added ${processedCount} files`);
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalPaste = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        const hasFiles = e.clipboardData.files && e.clipboardData.files.length > 0;
+        if (!hasFiles) return; 
+      }
+      
+      if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        const file = e.clipboardData.files[0];
+
+        // ⚡ إذا كان اللصق داخل قسم إضافة الموقع، نستخرج الإحداثيات فقط ولا نرفعها
+        if (e.target.closest('#location-section')) {
+          if (file.type.startsWith('image/')) {
+            handleImageOcrChange({ target: { files: [file] } });
+          }
+          return;
+        }
+
+        // إذا كان اللصق في أي مكان آخر، نرفع الصور
+        handleFilesSelected(Array.from(e.clipboardData.files));
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, []);
+
   return (
     <Layout user={user} onLogout={onLogout}>
       <div className="max-w-4xl mx-auto">
@@ -2051,11 +2112,29 @@ function ReportForm({ user, onLogout }) {
                 <input type="number" step="0.01" required value={formData.diameter_mm} onChange={(e) => setFormData({...formData, diameter_mm: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
-              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              <div 
+                id="location-section"
+                className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100 transition-all focus-within:ring-2 focus-within:ring-blue-500 hover:border-blue-300"
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-blue-100', 'border-blue-400', 'border-dashed', 'border-2'); }}
+                onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove('bg-blue-100', 'border-blue-400', 'border-dashed', 'border-2'); }}
+                onDrop={(e) => { 
+                  e.preventDefault(); 
+                  e.currentTarget.classList.remove('bg-blue-100', 'border-blue-400', 'border-dashed', 'border-2'); 
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.type.startsWith('image/')) {
+                      handleImageOcrChange({ target: { files: [file] } });
+                    }
+                  }
+                }}
+              >
                 <div className="sm:col-span-2 mb-2 flex justify-between items-center flex-wrap gap-2">
                   <div>
                     <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2">📍 {t('reportForm.addLocation', {defaultValue: 'إضافة الموقع (خط الطول وخط العرض)'})}</h4>
-                    <p className="text-xs text-blue-600 mt-1">{t('reportForm.locationPastingTip', {defaultValue: 'يمكنك كتابة الإحداثيات يدوياً، أو استخدام زر الموقع، أو'})} <b className="text-blue-800">{t('reportForm.locationPastingTipBold', {defaultValue: 'نسخ رابط جوجل ماب ولصقه في أي مربع'})}</b> {t('reportForm.locationPastingTipEnd', {defaultValue: 'وسيتم استخراج الإحداثيات تلقائياً، أو افتح صورة الموقع لقراءة الإحداثيات منها.'})}</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      {t('reportForm.locationPastingTip', {defaultValue: 'يمكنك كتابة الإحداثيات يدوياً، أو استخدام زر الموقع، أو'})} <b className="text-blue-800">{t('reportForm.locationPastingTipBold', {defaultValue: 'نسخ رابط جوجل ماب ولصقه في أي مربع'})}</b> {t('reportForm.locationPastingTipEnd', {defaultValue: 'وسيتم استخراج الإحداثيات تلقائياً، أو افتح صورة الموقع لقراءة الإحداثيات منها.'})}
+                      <span className="block mt-1 font-bold bg-blue-100 p-1 rounded inline-block">✨ جديد: يمكنك لصق (Ctrl+V) أو سحب وإفلات أي صورة داخل هذا المربع لاستخراج إحداثياتها فوراً!</span>
+                    </p>
                   </div>
                   <div>
                     {/* زر عرض صورة الموقع */}
@@ -2488,41 +2567,56 @@ function ReportForm({ user, onLogout }) {
                 </div>
               )}
               
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {id ? t('reportForm.addNewImages') : t('reportForm.uploadNotice')} (PDF, JPG, PNG)
-                </label>
-                <input 
-                  type="file" 
-                  multiple 
-                  accept=".pdf,.jpg,.jpeg,.png" 
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files);
-                    if (files.length === 0) return;
-                    
-                    // ⚡ ضغط الصور فوراً عند التحديد!
-                    setCompressingImages(true);
-                    setCompressionProgress(0);
-                    
-                    const compressedFiles = [];
-                    for (let i = 0; i < files.length; i++) {
-                      const file = files[i];
-                      
-                      // تحديث التقدم
-                      setCompressionProgress(Math.round(((i + 1) / files.length) * 100));
-                      
-                      // ضغط الصورة
-                      const compressed = await compressImage(file);
-                      compressedFiles.push(compressed);
-                    }
-                    
-                    setImages(compressedFiles);
-                    setCompressingImages(false);
-                    toast.success(t('reportForm.compressImagesSuccess', {count: files.length}));
-                  }} 
-                  disabled={compressingImages}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" 
-                />
+              <div 
+                className={`md:col-span-2 rounded-xl transition-all duration-300 ${isDragging ? 'bg-blue-100 border-2 border-dashed border-blue-500 p-6 scale-[1.02]' : 'border-2 border-transparent p-2'}`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                onDrop={(e) => { 
+                  e.preventDefault(); 
+                  setIsDragging(false); 
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFilesSelected(Array.from(e.dataTransfer.files));
+                  }
+                }}
+              >
+                <div className="flex flex-wrap items-center justify-between mb-2 gap-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {id ? t('reportForm.addNewImages') : t('reportForm.uploadNotice')} (PDF, JPG, PNG)
+                    <span className="mr-2 inline-block text-xs text-blue-700 bg-blue-100 px-3 py-1 rounded-full shadow-sm font-semibold border border-blue-200">
+                      {isRtl ? '✨ اسحب أو انسخ (Ctrl+V) للرفع السريع' : '✨ Drag or paste (Ctrl+V) for quick upload'}
+                    </span>
+                  </label>
+                  {images.length > 0 && (
+                    <span className="text-sm font-bold bg-green-100 text-green-800 px-3 py-1.5 rounded-lg border border-green-300 shadow-sm animate-pulse flex items-center gap-1">
+                      📸 {isRtl ? `الصور الجديدة الجاهزة للرفع: ${images.length}` : `New ready images: ${images.length}`}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <div 
+                    tabIndex={0}
+                    className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center cursor-default"
+                  >
+                    <input 
+                      id="image-upload-input"
+                      type="file" 
+                      multiple 
+                      accept=".pdf,.jpg,.jpeg,.png" 
+                      onChange={(e) => {
+                        handleFilesSelected(Array.from(e.target.files));
+                        e.target.value = '';
+                      }} 
+                      disabled={compressingImages}
+                      className="cursor-pointer text-gray-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer" 
+                    />
+                  </div>
+                  
+                  {isDragging && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-blue-100/80 rounded-lg pointer-events-none border-2 border-blue-500 backdrop-blur-[2px]">
+                      <span className="text-blue-800 font-bold text-xl">{isRtl ? 'أفلت الصور هنا للإضافة' : 'Drop images here to add'}</span>
+                    </div>
+                  )}
+                </div>
                 
                 {/* مؤشر ضغط الصور */}
                 {compressingImages && (

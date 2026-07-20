@@ -63,15 +63,22 @@ export default function PerformanceIndicators({ user, onLogout }) {
 
   // تحديث قائمة المحافظات الذكية عند تغيير المشروع
   useEffect(() => {
+    let govsList = [];
     if (selectedProject && allGovsMap[selectedProject]) {
-      setGovernorates(allGovsMap[selectedProject]);
+      govsList = allGovsMap[selectedProject];
     } else {
       const all = Object.values(allGovsMap).flat();
-      setGovernorates([...new Set(all)]);
+      govsList = [...new Set(all)];
     }
+    
+    if (user && user.role !== 'admin' && user.governorates && user.governorates.length > 0) {
+      govsList = govsList.filter(g => user.governorates.includes(g));
+    }
+    
+    setGovernorates(govsList);
     // مسح المحافظة المختارة إذا لم تعد موجودة في القائمة الجديدة
     setSelectedGovernorate('');
-  }, [selectedProject, allGovsMap]);
+  }, [selectedProject, allGovsMap, user]);
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
@@ -121,60 +128,6 @@ export default function PerformanceIndicators({ user, onLogout }) {
     fetchDuplicates();
   }, [selectedProject, selectedGovernorate, dateFrom, dateTo, fetchSummary, fetchDuplicates]);
 
-  const handleExportExcel = () => {
-    if (!duplicates || !duplicates.duplicate_locations || duplicates.duplicate_locations.length === 0) {
-      toast.info('لا توجد بيانات للتصدير');
-      return;
-    }
-    const excelData = [];
-    
-    // Filter duplicates by selected project & governorate unless both are empty (allowAll)
-    const allowAll = (selectedProject === '' && selectedGovernorate === '');
-    const filteredLocations = duplicates.duplicate_locations.filter(group => {
-      if (allowAll) return true;
-      const matchesProject = !selectedProject || (group.project === selectedProject || group.reports?.some(r => r.project === selectedProject));
-      const matchesGov = !selectedGovernorate || (group.governorate === selectedGovernorate);
-      return matchesProject && matchesGov;
-    });
-
-    if (filteredLocations.length === 0) {
-      toast.info('لا توجد بيانات مطابقة للفلاتر المحددة للتصدير');
-      return;
-    }
-
-    let groupIndexCount = 1;
-    filteredLocations.forEach((group) => {
-      const groupName = `مجموعة تكرار ${groupIndexCount++}`;
-      group.reports.forEach(report => {
-        if (!allowAll) {
-          if (selectedProject && report.project && report.project !== selectedProject) return;
-          if (selectedGovernorate && report.governorate && report.governorate !== selectedGovernorate) return;
-        }
-        
-        excelData.push({
-          'المجموعة': groupName,
-          'رقم البلاغ': report.report_number || 'غير محدد',
-          'رقم الرخصة': report.license_number || 'بدون رخصة',
-          'المشروع': translateBrandingText(report.project || group.project, isRtl) || 'غير محدد',
-          'المحافظة': translateBrandingText(report.governorate || group.governorate, isRtl) || 'غير محدد',
-          'الحي': translateBrandingText(report.neighborhood || group.neighborhood, isRtl) || 'غير محدد',
-          'المقاول': translateBrandingText(report.contractor, isRtl) || 'غير محدد',
-          'نوع البلاغ': translateBrandingText(report.report_type || group.report_type, isRtl) || 'غير محدد',
-          'الحالة': report.status ? t(`statusMap.${report.status}`, report.status) : 'غير محدد',
-          'تاريخ البلاغ': report.created_at ? new Date(report.created_at).toLocaleDateString('en-GB') : 'غير محدد',
-          'إحداثية البلاغ': `${report.latitude || ''}, ${report.longitude || ''}`,
-          'مركز الإحداثية للمجموعة': `${group.avg_lat?.toFixed(5) || ''}, ${group.avg_lon?.toFixed(5) || ''}`,
-          'المسافة عن المركز (متر)': report.distance_from_center != null ? Math.round(report.distance_from_center) : 0
-        });
-      });
-    });
-    
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "مواقع مكررة");
-    XLSX.writeFile(workbook, `تحليل_التكرار_${new Date().toISOString().split('T')[0]}.xlsx`);
-    toast.success('تم التصدير إلى Excel بنجاح');
-  };
 
   const handleExportPDF = async () => {
     if (!summary && (!duplicates || !duplicates.duplicate_locations || duplicates.duplicate_locations.length === 0)) {
@@ -339,25 +292,6 @@ export default function PerformanceIndicators({ user, onLogout }) {
           {/* أزرار التصدير */}
           <div style={{ display: 'flex', gap: 8, marginLeft: isRtl ? 0 : 'auto', marginRight: isRtl ? 'auto' : 0 }}>
             <button
-              onClick={handleExportExcel}
-              style={{
-                padding: '10px 16px',
-                background: '#10b981',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 10,
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}
-              title="تصدير إلى Excel"
-            >
-              📊 Excel
-            </button>
-            <button
               onClick={handleExportPDF}
               style={{
                 padding: '10px 16px',
@@ -398,7 +332,10 @@ export default function PerformanceIndicators({ user, onLogout }) {
             {projects.length > 0 && projects
               .filter(proj => !selectedProject || proj.name === selectedProject)
               .map(proj => {
-              const projGovs = allGovsMap[proj.name] || [];
+              let projGovs = allGovsMap[proj.name] || [];
+              if (user && user.role !== 'admin' && user.governorates && user.governorates.length > 0) {
+                projGovs = projGovs.filter(g => user.governorates.includes(g));
+              }
               const projData = (summary.by_governorate || []).filter(g => g.project === proj.name);
               const projTotal = projData.reduce((acc, curr) => acc + curr.count, 0);
 
@@ -476,7 +413,10 @@ export default function PerformanceIndicators({ user, onLogout }) {
               {projects.length > 0 && projects
                 .filter(proj => !selectedProject || proj.name === selectedProject)
                 .map(proj => {
-                const projGovs = allGovsMap[proj.name] || [];
+                let projGovs = allGovsMap[proj.name] || [];
+                if (user && user.role !== 'admin' && user.governorates && user.governorates.length > 0) {
+                  projGovs = projGovs.filter(g => user.governorates.includes(g));
+                }
                 const projData = (duplicates.by_governorate || [])
                   .filter(g => g.project === proj.name)
                   .filter(g => !selectedGovernorate || g.governorate === selectedGovernorate);

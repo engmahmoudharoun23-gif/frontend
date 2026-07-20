@@ -322,14 +322,14 @@ function UpdateReports({ user, onLogout }) {
                       return (
                       <tr key={i} className="hover:bg-yellow-50/50 transition-colors">
                         <td className="px-4 py-3">
-                          <a href={`/reports?search=${r.number}&exact=true`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg font-mono text-xs shadow-sm transition-colors group" dir="ltr" title={t('updateReports.viewReport', 'عرض البلاغ')}>
+                          <a href={`/reports?search=${r.number}&exact=true`} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1 border px-3 py-1.5 rounded-lg font-mono text-xs shadow-sm transition-colors group ${r.changed_fields?.some(f => f.field === 'رقم البلاغ') ? 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300' : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'}`} dir="ltr" title={t('updateReports.viewReport', 'عرض البلاغ')}>
                             <span>{r.number}</span>
-                            <svg className="w-3.5 h-3.5 text-indigo-400 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            <svg className={`w-3.5 h-3.5 transition-colors ${r.changed_fields?.some(f => f.field === 'رقم البلاغ') ? 'text-yellow-600 group-hover:text-yellow-800' : 'text-indigo-400 group-hover:text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                           </a>
                         </td>
                         <td className="px-4 py-3">
                           {r.license ? (
-                            <span className="text-[11px] text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded border border-gray-200" dir="ltr">
+                            <span className={`text-[11px] font-mono px-2 py-1 rounded border ${r.changed_fields?.some(f => f.field === 'رقم الرخصة') ? 'bg-yellow-200 border-yellow-300 text-yellow-800' : 'bg-gray-100 border-gray-200 text-gray-600'}`} dir="ltr">
                               {r.license}
                             </span>
                           ) : '-'}

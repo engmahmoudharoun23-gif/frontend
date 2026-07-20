@@ -1438,15 +1438,19 @@ const fetchReports = async () => {
     }, 600); // 600ms debounce
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm(t('reports.confirmDelete'))) return;
+  const handleDelete = async (reportId) => {
+    if (!window.confirm(t('reports.deleteConfirm', { defaultValue: 'هل أنت متأكد من حذف هذا البلاغ؟' }))) return;
     try {
-      await axios.delete(`${API}/reports/${id}`);
-      toast.success(t('reports.deleteSuccess'));
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/reports/${reportId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(t('reports.deleteSuccess', { defaultValue: 'تم حذف البلاغ بنجاح' }));
+      setActiveDropdown(null);
       fetchReports();
     } catch (error) {
       console.error('Failed to delete report:', error);
-      toast.error(t('common.error'));
+      toast.error(t('common.error', { defaultValue: 'حدث خطأ أثناء الحذف' }));
     }
   };
 
@@ -1466,6 +1470,190 @@ const fetchReports = async () => {
     } catch (error) {
       console.error('Failed to delete reports:', error);
       toast.error(t('common.error'));
+    }
+  };
+
+  const handleSmartBulkDownload = async () => {
+    if (selectedReports.length === 0) {
+      toast.warning('يرجى تحديد البلاغات أولاً');
+      return;
+    }
+    
+    try {
+      const dirHandle = await window.showDirectoryPicker({
+        id: 'bulk_sync_dir',
+        mode: 'readwrite',
+      });
+      
+      const token = localStorage.getItem('token') || '';
+
+      // مصفوفات لجمع النتائج
+      const newFoldersList = [];   // بلاغات أنشئت لأول مرة
+      const updatedList = [];      // بلاغات أضيفت لها ملفات جديدة
+      const upToDateList = [];     // بلاغات لا يوجد جديد
+      const failedList = [];       // بلاغات فشل جلبها
+
+      // دالة بناء الرابط الكامل مع التوكن
+      const buildUrl = (imgPath) => {
+        const pathStr = String(imgPath);
+        if (pathStr.startsWith('data:') || pathStr.startsWith('http://') || pathStr.startsWith('https://')) {
+          return pathStr;
+        } else if (pathStr.startsWith('/api/')) {
+          const sep = pathStr.includes('?') ? '&' : '?';
+          return `${BACKEND_URL}${pathStr}${sep}auth=${encodeURIComponent(token)}`;
+        } else if (pathStr.startsWith('/')) {
+          return `${BACKEND_URL}${pathStr}`;
+        }
+        return pathStr;
+      };
+
+      // إشعار التقدم (يتحدث تلقائياً)
+      const toastId = toast.info(
+        `⏳ جاري المزامنة... (0 / ${selectedReports.length})`,
+        { autoClose: false, closeOnClick: false }
+      );
+
+      for (let idx = 0; idx < selectedReports.length; idx++) {
+        const id = selectedReports[idx];
+        try {
+          const res = await axios.get(`${API}/reports/${id}`);
+          const report = res.data;
+          const reportNum = report.report_number || report.id;
+
+          toast.update(toastId, {
+            render: `⏳ جاري مزامنة البلاغ: ${reportNum} (${idx + 1} / ${selectedReports.length})`
+          });
+
+          // ذكاء اسم المجلد: CCB تلقائي → رقم الرخصة، يدوي → رقم البلاغ
+          const isAutoCCB = /^CCB-R-\d+$/.test(String(reportNum));
+          const licenseNum = report.license_number || '';
+          const folderLabel = isAutoCCB && licenseNum ? licenseNum : reportNum;
+          const displayLabel = isAutoCCB && licenseNum ? licenseNum : reportNum;
+          const reportDirName = String(folderLabel).replace(/[<>:"/\\|?*]+/g, '_');
+
+          // هل المجلد موجود مسبقاً؟
+          let isNewFolder = false;
+          try {
+            await dirHandle.getDirectoryHandle(reportDirName, { create: false });
+          } catch (e) {
+            isNewFolder = true;
+          }
+          const reportDirHandle = await dirHandle.getDirectoryHandle(reportDirName, { create: true });
+
+          let reportNewImages = 0;
+
+          const downloadAndSave = async (imgPath, filename) => {
+            try {
+              try {
+                await reportDirHandle.getFileHandle(filename);
+                return false; // موجود مسبقاً
+              } catch (e) { /* غير موجود، نكمل */ }
+
+              const fullUrl = buildUrl(imgPath);
+              const response = await fetch(fullUrl);
+              if (!response.ok) return false;
+              const blob = await response.blob();
+              if (!blob || blob.size === 0) return false;
+              const fileHandle = await reportDirHandle.getFileHandle(filename, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+              return true;
+            } catch(e) {
+              console.error("Failed to sync file:", filename, e);
+              return false;
+            }
+          };
+
+          // مزامنة الصور
+          if (report.images && report.images.length > 0) {
+            for (let i = 0; i < report.images.length; i++) {
+              const imgPath = report.images[i];
+              if (!imgPath) continue;
+              const pathStr = String(imgPath);
+              const baseName = pathStr.split('/').pop().split('?')[0];
+              const dotIdx = baseName.lastIndexOf('.');
+              const ext = dotIdx !== -1 ? baseName.substring(dotIdx + 1).toLowerCase() : (isVideo(imgPath) ? 'webm' : 'jpg');
+              const safeExt = ['jpg','jpeg','png','webp','gif','webm','mp4','mov'].includes(ext) ? ext : 'jpg';
+              const saved = await downloadAndSave(imgPath, `media_${i + 1}.${safeExt}`);
+              if (saved) reportNewImages++;
+            }
+          }
+
+          // مزامنة PDF إن وجد
+          if (report.report_pdf) {
+            const saved = await downloadAndSave(report.report_pdf, `Report_${reportDirName}.pdf`);
+            if (saved) reportNewImages++;
+          }
+
+          // تصنيف النتيجة
+          if (isNewFolder) {
+            newFoldersList.push(displayLabel);
+          } else if (reportNewImages > 0) {
+            updatedList.push(`${displayLabel} (${reportNewImages} ملف)`);
+          } else {
+            upToDateList.push(displayLabel);
+          }
+
+        } catch (err) {
+          console.error("Error fetching report data for sync", id, err);
+          failedList.push(id);
+        }
+      }
+
+      // أغلق إشعار التقدم
+      toast.dismiss(toastId);
+
+      // عرض ملخص موحد في نهاية العملية
+      if (newFoldersList.length > 0) {
+        toast.success(
+          <div style={{ textAlign: 'right', direction: 'rtl' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>📁 مجلدات جديدة ({newFoldersList.length}):</div>
+            <div style={{ maxHeight: '150px', overflowY: 'auto', fontSize: '14px' }}>
+              {newFoldersList.map((item, i) => <div key={i} style={{ padding: '2px 0' }}>• {item}</div>)}
+            </div>
+          </div>,
+          { autoClose: 8000 }
+        );
+      }
+      if (updatedList.length > 0) {
+        toast.info(
+          <div style={{ textAlign: 'right', direction: 'rtl' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>🖼️ بلاغات تم تحديثها ({updatedList.length}):</div>
+            <div style={{ maxHeight: '150px', overflowY: 'auto', fontSize: '14px' }}>
+              {updatedList.map((item, i) => <div key={i} style={{ padding: '2px 0' }}>• {item}</div>)}
+            </div>
+          </div>,
+          { autoClose: 8000 }
+        );
+      }
+      if (upToDateList.length > 0) {
+        toast.success(
+          <div style={{ textAlign: 'right', direction: 'rtl' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>✔️ ملفات موجودة مسبقاً — لا يوجد تحديث ({upToDateList.length}):</div>
+            <div style={{ maxHeight: '150px', overflowY: 'auto', fontSize: '14px' }}>
+              {upToDateList.map((item, i) => <div key={i} style={{ padding: '2px 0' }}>• {item}</div>)}
+            </div>
+          </div>,
+          { autoClose: 8000 }
+        );
+      }
+      if (failedList.length > 0) {
+        toast.warning(
+          <div style={{ textAlign: 'right', direction: 'rtl' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>⚠️ فشل جلب بيانات ({failedList.length}) بلاغ:</div>
+            <div style={{ maxHeight: '150px', overflowY: 'auto', fontSize: '14px' }}>
+              {failedList.map((item, i) => <div key={i} style={{ padding: '2px 0' }}>• {item}</div>)}
+            </div>
+          </div>,
+          { autoClose: 8000 }
+        );
+      }
+
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      console.error('Sync failed:', error);
+      toast.error('حدث خطأ أثناء المزامنة الجماعية. تأكد من أن المتصفح يدعم هذه الخاصية.');
     }
   };
 
@@ -2859,6 +3047,19 @@ const fetchReports = async () => {
                 </svg>
                 {selectedReports.length > 0 ? t('reports.exportPdfWithCount', { count: selectedReports.length, defaultValue: `تصدير PDF (${selectedReports.length})` }) : t('reports.exportPdf')}
               </button>
+              
+              {selectedReports.length > 0 && (
+                <button 
+                  onClick={handleSmartBulkDownload}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center shadow-sm"
+                  title="تحميل الصور والملفات وتحديث المجلدات الذكي"
+                >
+                  <svg className="inline-block w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  مزامنة ذكية ({selectedReports.length})
+                </button>
+              )}
               {selectedReports.length > 0 && (hasPermission('reports_delete') || user?.role === 'admin') && (
                 <button 
                   onClick={handleBulkDelete}
@@ -2897,6 +3098,63 @@ const fetchReports = async () => {
             </div>
           )}
         </div>
+        )}
+
+        {isNewReportsFilter && selectedReports.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-4 mb-4 border-2 border-indigo-200">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-indigo-900">تم تحديد ({selectedReports.length}) بلاغ</span>
+                <button
+                  onClick={() => setSelectedReports([])}
+                  className="text-xs text-indigo-700 hover:text-indigo-900 underline"
+                >
+                  {t('common.cancel', {defaultValue: 'إلغاء التحديد'})}
+                </button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button 
+                  onClick={() => handleExportSelected('excel')} 
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+                >
+                  <svg className="inline-block w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {t('reports.exportExcelWithCount', { count: selectedReports.length, defaultValue: `تصدير Excel (${selectedReports.length})` })}
+                </button>
+                <button 
+                  onClick={() => handleExportSelected('pdf')} 
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+                >
+                  <svg className="inline-block w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  {t('reports.exportPdfWithCount', { count: selectedReports.length, defaultValue: `تصدير PDF (${selectedReports.length})` })}
+                </button>
+                <button 
+                  onClick={handleSmartBulkDownload}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center shadow-sm"
+                  title="تحميل الصور والملفات وتحديث المجلدات الذكي"
+                >
+                  <svg className="inline-block w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  مزامنة ذكية ({selectedReports.length})
+                </button>
+                {(hasPermission('reports_delete') || user?.role === 'admin') && (
+                  <button 
+                    onClick={handleBulkDelete}
+                    className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+                  >
+                    <svg className="inline-block w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    {t('reports.deleteSelectedWithCount', { count: selectedReports.length, defaultValue: `حذف المحدد (${selectedReports.length})` })}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         )}
         
         {totalReports > 0 && (
