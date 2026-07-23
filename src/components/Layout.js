@@ -464,6 +464,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           }
           previousPendingReviewCount.current = newPendingReviewCount;
           setPendingReviewCount(newPendingReviewCount);
+          setRepairedUnseenCount(countResponse.data.asphalt_repaired_count || 0);
         }).catch(e => console.error(e));
 
       // 2. Governorate Counts
@@ -525,7 +526,6 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           setUnseenReportsCount(newUnseenCount);
           const reps = unseenResponse.data.reports || [];
           setUnseenReports(reps);
-          setRepairedUnseenCount(reps.filter(r => ['تم الإصلاح', 'لا يوجد تسريب', 'لا يوجد تسرب'].includes(r.status)).length);
           setUnseenReportsByGov(unseenResponse.data.by_governorate || []);
           setUnseenWaterConnections(unseenResponse.data.water_connections || []);
           setUnseenSewageConnections(unseenResponse.data.sewage_connections || []);
@@ -1185,11 +1185,11 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                         {pendingReviewCount}
                       </span>
                     )}
-                    {/* مؤشر البلاغات التي تغيرت حالتها */}
+                    {/* مؤشر البلاغات التي تغيرت حالتها من متبقي الأسفلت إلى تم الإصلاح */}
                     {repairedUnseenCount > 0 && (
                       <span 
                         className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-red-600 border-2 border-white rounded-full animate-pulse shadow-md" 
-                        title={isRtl ? 'تم تحديث حالة بلاغات إلى (تم الإصلاح) أو (لا يوجد تسريب)' : 'Reports status updated'}
+                        title={isRtl ? 'يوجد بلاغات تم تحويل حالتها من (متبقي الأسفلت) إلى (تم الإصلاح) وبانتظار المراجعة' : 'Reports status updated from pending asphalt to repaired'}
                       ></span>
                     )}
                   </button>
