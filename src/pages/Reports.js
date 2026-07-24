@@ -1516,7 +1516,9 @@ const fetchReports = async () => {
       for (let idx = 0; idx < selectedReports.length; idx++) {
         const id = selectedReports[idx];
         try {
-          const res = await axios.get(`${API}/reports/${id}`);
+          const res = await axios.get(`${API}/reports/${id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
           const report = res.data;
           const reportNum = report.report_number || report.id;
 
