@@ -1788,30 +1788,55 @@ function ReportForm({ user, onLogout }) {
 
   useEffect(() => {
     const handleGlobalPaste = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        const hasFiles = e.clipboardData.files && e.clipboardData.files.length > 0;
-        if (!hasFiles) return; 
-      }
-      
-      if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+      const isInputOrTextarea = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+      const isInsideLocationSection = !!e.target.closest('#location-section');
+      const isInsideDropzone = !!e.target.closest('#images-dropzone');
+
+      if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        // إذا كان المربع نصياً وخارج قسم الموقع وقسم المرفقات المخصص، نمنع معالجة الملفات كصور للبلاغ
+        if (isInputOrTextarea && !isInsideLocationSection && !isInsideDropzone) {
+          return;
+        }
+
         e.preventDefault();
         const file = e.clipboardData.files[0];
 
         // ⚡ إذا كان اللصق داخل قسم إضافة الموقع، نستخرج الإحداثيات فقط ولا نرفعها
-        if (e.target.closest('#location-section')) {
+        if (isInsideLocationSection) {
           if (file.type.startsWith('image/')) {
             handleImageOcrChange({ target: { files: [file] } });
           }
           return;
         }
 
-        // إذا كان اللصق في أي مكان آخر، نرفع الصور
-        handleFilesSelected(Array.from(e.clipboardData.files));
+        // إذا كان اللصق في المنطقة المخصصة، نرفع الصور
+        if (isInsideDropzone) {
+          handleFilesSelected(Array.from(e.clipboardData.files));
+        }
+      }
+    };
+
+    const handleGlobalDrop = (e) => {
+      const isInputOrTextarea = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+      const isInsideLocationSection = !!e.target.closest('#location-section');
+      const isInsideDropzone = !!e.target.closest('#images-dropzone');
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        // إذا تم الإسقاط داخل مربع نص عادي وليس في قسم الموقع ولا قسم المرفقات المخصص
+        if (isInputOrTextarea && !isInsideLocationSection && !isInsideDropzone) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
       }
     };
 
     window.addEventListener('paste', handleGlobalPaste);
-    return () => window.removeEventListener('paste', handleGlobalPaste);
+    window.addEventListener('drop', handleGlobalDrop, true);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+      window.removeEventListener('drop', handleGlobalDrop, true);
+    };
   }, []);
 
   return (
@@ -2568,6 +2593,7 @@ function ReportForm({ user, onLogout }) {
               )}
               
               <div 
+                id="images-dropzone"
                 className={`md:col-span-2 rounded-xl transition-all duration-300 ${isDragging ? 'bg-blue-100 border-2 border-dashed border-blue-500 p-6 scale-[1.02]' : 'border-2 border-transparent p-2'}`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
