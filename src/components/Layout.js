@@ -1270,30 +1270,60 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                   </div>
                                   <div className="divide-y divide-gray-50">
                                     {items.map((item, idx) => (
-                                      <Link
-                                        key={idx}
-                                        to={`/reports?license_status=review_pending&scroll=true&governorate=${encodeURIComponent(item.originalGov || item.governorate)}${item.project ? `&project=${encodeURIComponent(item.project)}` : ''}${item.created_by ? `&created_by=${encodeURIComponent(item.created_by)}` : ''}&t=${Date.now()}`}
-                                        onClick={() => {
-                                          setNotificationsOpen(false);
-                                        }}
-                                        className="block px-4 py-3 hover:bg-blue-50 transition-colors"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                                            </svg>
-                                            <div className="flex flex-col">
-                                              <span className="text-sm font-medium text-gray-900">
-                                                {translateBrandingText(item.governorate, isRtl)}
-                                              </span>
+                                      <div key={idx} className="border-b border-gray-100 last:border-0">
+                                        <Link
+                                          to={`/reports?license_status=review_pending&scroll=true&governorate=${encodeURIComponent(item.originalGov || item.governorate)}${item.project ? `&project=${encodeURIComponent(item.project)}` : ''}${item.created_by ? `&created_by=${encodeURIComponent(item.created_by)}` : ''}&t=${Date.now()}`}
+                                          onClick={() => {
+                                            setNotificationsOpen(false);
+                                          }}
+                                          className="block px-4 py-2.5 hover:bg-blue-50 transition-colors"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                              </svg>
+                                              <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-gray-900">
+                                                  {translateBrandingText(item.governorate, isRtl)}
+                                                </span>
+                                              </div>
                                             </div>
+                                            <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold text-white bg-blue-600 rounded-full shadow-sm">
+                                              {item.count}
+                                            </span>
                                           </div>
-                                          <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold text-white bg-red-500 rounded-full">
-                                            {item.count}
-                                          </span>
+                                        </Link>
+
+                                        {/* زر تفاعلي ذكي: عرض بلاغات محافظة [اسم المحافظة] */}
+                                        <div className="px-4 py-1.5 bg-slate-50/80 border-t border-dashed border-slate-200 flex justify-end items-center">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              setNotificationsOpen(false);
+                                              const targetGov = item.originalGov || (item.governorate ? item.governorate.split(' - ')[0] : '');
+                                              const targetUrl = `/reports?license_status=review_pending&governorate=${encodeURIComponent(targetGov)}${item.project ? `&project=${encodeURIComponent(item.project)}` : ''}&t=${Date.now()}`;
+                                              if (location.pathname === '/reports') {
+                                                window.location.href = targetUrl;
+                                              } else {
+                                                navigate(targetUrl);
+                                              }
+                                            }}
+                                            className="text-xs font-bold text-blue-700 hover:text-blue-900 bg-blue-100/90 hover:bg-blue-200 px-3 py-1 rounded-md transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                                          >
+                                            <span>
+                                              {isRtl 
+                                                ? `عرض بلاغات محافظة ${translateBrandingText(item.originalGov || item.governorate, true)}` 
+                                                : `View reports for ${translateBrandingText(item.originalGov || item.governorate, false)}`}
+                                            </span>
+                                            <svg className="w-3.5 h-3.5 transform rtl:rotate-180 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                          </button>
                                         </div>
-                                      </Link>
+                                      </div>
                                     ))}
                                   </div>
                                 </div>
