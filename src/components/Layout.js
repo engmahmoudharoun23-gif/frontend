@@ -1560,6 +1560,34 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                       </div>
                                     </div>
                                   ))}
+                                  {/* زر فاصل تفاعلي: عرض بلاغات محافظة [اسم المحافظة] */}
+                                  <div className="px-4 py-2 bg-indigo-50/90 border-t border-indigo-200 flex justify-end items-center">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setReportNotificationsOpen(false);
+                                        const targetGov = govGroup.governorate || "";
+                                        const targetUrl = `/reports?license_status=review_pending&governorate=${encodeURIComponent(targetGov)}${govGroup.project ? `&project=${encodeURIComponent(govGroup.project)}` : ""}&t=${Date.now()}`;
+                                        if (location.pathname === "/reports") {
+                                          window.location.href = targetUrl;
+                                        } else {
+                                          navigate(targetUrl);
+                                        }
+                                      }}
+                                      className="text-xs font-bold text-indigo-700 hover:text-indigo-950 bg-indigo-100 hover:bg-indigo-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                                    >
+                                      <span>
+                                        {isRtl 
+                                          ? `عرض بلاغات محافظة ${translateBrandingText(govGroup.governorate, true)}` 
+                                          : `View reports for ${translateBrandingText(govGroup.governorate, false)}`}
+                                      </span>
+                                      <svg className="w-3.5 h-3.5 transform rtl:rotate-180 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                               
