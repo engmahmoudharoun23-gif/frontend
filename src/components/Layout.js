@@ -1539,7 +1539,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                                         e.stopPropagation();
                                         setReportNotificationsOpen(false);
                                         const targetGov = govGroup.governorate || "";
-                                        const targetUrl = `/reports?license_status=review_pending&governorate=${encodeURIComponent(targetGov)}${govGroup.project ? `&project=${encodeURIComponent(govGroup.project)}` : ""}&t=${Date.now()}`;
+                                        const targetUrl = `/reports?unseen_only=true&governorate=${encodeURIComponent(targetGov)}${govGroup.project ? `&project=${encodeURIComponent(govGroup.project)}` : ""}&t=${Date.now()}`;
                                         if (location.pathname === "/reports") {
                                           window.location.href = targetUrl;
                                         } else {

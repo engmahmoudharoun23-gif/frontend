@@ -499,8 +499,13 @@ function Reports({ user, onLogout }) {
       return;
     }
     
+    const unseenOnlyFromUrl = searchParams.get('unseen_only') === 'true';
+    if (unseenOnlyFromUrl && !isNewReportsFilter) {
+      setIsNewReportsFilter(true);
+    }
+    
     // إذا كان هناك فلاتر من URL (إضافة projectFromUrl للشرط)
-    if (reviewStatusFromUrl || licenseStatusFromUrl || governorateFromUrl || projectFromUrl) {
+    if (reviewStatusFromUrl || licenseStatusFromUrl || governorateFromUrl || projectFromUrl || unseenOnlyFromUrl) {
       let newLicenseStatus = '';
       
       // أولاً: تحقق من license_status مباشرة
@@ -1120,6 +1125,7 @@ const fetchReports = async () => {
       } else if (isNewReportsFilter) {
           params.append('unseen_only', 'true');
           if (filters.project) params.append('project', filters.project);
+          if (filters.governorate) params.append('governorate', filters.governorate);
       } else {
           Object.entries(filters).forEach(([key, value]) => { 
             if (value) {
