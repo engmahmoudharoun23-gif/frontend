@@ -9,6 +9,7 @@ import { Search, Eye, Edit2, Trash2, Plus, RefreshCw, MapPin, ImageIcon, X, File
 import { resolveImageUrl, isVideo } from '../utils/imageUrl';
 import { hasProjectPermission } from '../utils/permissions';
 import { useTranslation } from 'react-i18next';
+import ZoomableImage from '../components/ZoomableImage';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -1796,7 +1797,7 @@ function SewageConnections({ user, onLogout }) {
             {isVideo(selectedImage) ? (
               <video src={resolveImageUrl(selectedImage)} className="max-w-full max-h-full object-contain" controls autoPlay onClick={(e) => e.stopPropagation()} />
             ) : (
-              <img src={resolveImageUrl(selectedImage)} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+              <ZoomableImage src={resolveImageUrl(selectedImage)} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
             )}
             <button className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full animate-fade-in" onClick={() => setShowImageModal(false)}><X className="w-6 h-6 text-white" /></button>
             <button className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors"

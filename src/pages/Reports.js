@@ -9,6 +9,7 @@ import { resolveImageUrl, isVideo } from '../utils/imageUrl';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useBranding } from '../hooks/useBranding';
+import ZoomableImage from '../components/ZoomableImage';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -4104,7 +4105,7 @@ const fetchReports = async () => {
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <img 
+                    <ZoomableImage 
                       src={resolveImageUrl(fullscreenImage)} 
                       alt={t('reports.imagesModal.enlargedImage', {defaultValue: 'صورة مكبرة'})} 
                       className="max-w-full max-h-full object-contain rounded-lg shadow-2xl pointer-events-auto select-none"

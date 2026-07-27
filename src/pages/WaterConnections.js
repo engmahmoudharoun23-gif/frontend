@@ -9,6 +9,7 @@ import { Search, Eye, Edit2, Trash2, Plus, RefreshCw, MapPin, ImageIcon, X, File
 import { resolveImageUrl } from '../utils/imageUrl';
 import { hasProjectPermission } from '../utils/permissions';
 import { useTranslation } from 'react-i18next';
+import ZoomableImage from '../components/ZoomableImage';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -2011,7 +2012,7 @@ function WaterConnections({ user, onLogout }) {
         {/* Image Fullscreen Modal */}
         {showImageModal && (
           <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60]" onClick={() => setShowImageModal(false)}>
-            <img src={resolveImageUrl(selectedImage)} alt="" className="max-w-full max-h-full object-contain" />
+            <ZoomableImage src={resolveImageUrl(selectedImage)} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
             <button className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors" onClick={() => setShowImageModal(false)}>
               <X className="w-6 h-6 text-white" />
             </button>
