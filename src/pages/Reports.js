@@ -310,7 +310,7 @@ function Reports({ user, onLogout }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentProject = searchParams.get('project') || '';
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
-  const [reportsPerPage, setReportsPerPage] = useState(parseInt(searchParams.get('limit')) || 10);
+  const [reportsPerPage, setReportsPerPage] = useState(parseInt(searchParams.get('limit')) || 20);
   const [totalReports, setTotalReports] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [urlFiltersApplied, setUrlFiltersApplied] = useState(false);
