@@ -1189,7 +1189,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                     {repairedUnseenCount > 0 && (
                       <span 
                         className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-red-600 border-2 border-white rounded-full animate-pulse shadow-md" 
-                        title={isRtl ? 'يوجد بلاغات تم تحويل حالتها من (متبقي الأسفلت) إلى (تم الإصلاح) وبانتظار المراجعة' : 'Reports status updated from pending asphalt to repaired'}
+                        title={isRtl ? 'يوجد بلاغات بحالة (تم الإصلاح / لا يوجد تسرب) وبانتظار المراجعة' : 'Reports with status (Repaired / No Leak Found) pending review'}
                       ></span>
                     )}
                   </button>
