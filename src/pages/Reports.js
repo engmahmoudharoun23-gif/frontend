@@ -4153,32 +4153,56 @@ const fetchReports = async () => {
                 {(() => {
                   const r = reports.find(r => r.id === selectedConsultantReportId);
                   if (!r || !r.consultant_note || !r.consultant_note.trim()) return null;
-                  return (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleToggleProcess();
-                      }}
-                      title="تغيير حالة الملاحظة"
-                      className={`text-xs px-3 py-1.5 rounded-full mr-2 flex items-center gap-1.5 font-bold transition-colors border hover:shadow-sm cursor-pointer ${
-                        r.consultant_note_processed 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                          : 'bg-slate-800 text-white border-slate-900 hover:bg-slate-700'
-                      }`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {r.consultant_note_processed ? (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        ) : (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        )}
-                      </svg>
-                      {r.consultant_note_processed 
-                        ? t('consultantNoteModal.processed', { defaultValue: 'تمت المعالجة' }) 
-                        : t('consultantNoteModal.underProcessing', { defaultValue: 'قيد المعالجة' })}
-                    </button>
-                  );
+                  const isConsultant = hasReportPermission({ project: r.project }, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                  if (isConsultant) {
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToggleProcess();
+                        }}
+                        title="تغيير حالة الملاحظة"
+                        className={`text-xs px-3 py-1.5 rounded-full mr-2 flex items-center gap-1.5 font-bold transition-colors border hover:shadow-sm cursor-pointer ${
+                          r.consultant_note_processed 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                            : 'bg-slate-800 text-white border-slate-900 hover:bg-slate-700'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {r.consultant_note_processed ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          )}
+                        </svg>
+                        {r.consultant_note_processed 
+                          ? t('consultantNoteModal.processed', { defaultValue: 'تمت المعالجة' }) 
+                          : t('consultantNoteModal.underProcessing', { defaultValue: 'جاري المعالجة' })}
+                      </button>
+                    );
+                  } else {
+                    return (
+                      <span
+                        className={`text-xs px-3 py-1.5 rounded-full mr-2 flex items-center gap-1.5 font-bold border select-none ${
+                          r.consultant_note_processed 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                            : 'bg-slate-800 text-white border-slate-900'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {r.consultant_note_processed ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          )}
+                        </svg>
+                        {r.consultant_note_processed 
+                          ? t('consultantNoteModal.processed', { defaultValue: 'تمت المعالجة' }) 
+                          : t('consultantNoteModal.underProcessing', { defaultValue: 'جاري المعالجة' })}
+                      </span>
+                    );
+                  }
                 })()}
               </h3>
               <button
@@ -4191,18 +4215,29 @@ const fetchReports = async () => {
               </button>
             </div>
             
-            <div className="mb-4">
-              <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.writeNoteLabel', { defaultValue: 'اكتب الملاحظة هنا:' })}</label>
-              <textarea
-                value={currentConsultantNote}
-                onChange={(e) => setCurrentConsultantNote(e.target.value)}
-                placeholder={t('consultantNoteModal.writeNotePlaceholder', { defaultValue: 'اكتب ملاحظات الاستشاري...' })}
-                className={`w-full h-40 p-4 border border-gray-300 rounded-xl resize-none transition-all ${reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed ? 'bg-gray-50 text-gray-600 focus:ring-0 cursor-not-allowed' : 'focus:ring-2 focus:ring-teal-500 focus:border-teal-500'}`}
-                dir="auto"
-                disabled={reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_processed || !hasReportPermission({ project: reports.find(r => r.id === selectedConsultantReportId)?.project }, 'consultant_notes')}
-              ></textarea>
-              <p className="text-xs text-gray-500 mt-2">{t('consultantNoteModal.helpText', { defaultValue: 'يمكنك تعديل أو حذف الملاحظة عن طريق مسح النص وحفظه.' })}</p>
-            </div>
+            {(() => {
+              const r = reports.find(rep => rep.id === selectedConsultantReportId);
+              const isConsultant = hasReportPermission({ project: r?.project }, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+              const isProcessed = r?.consultant_note_processed;
+              const isEditableByCurrentUser = isConsultant && !isProcessed;
+              return (
+                <div className="mb-4">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.writeNoteLabel', { defaultValue: 'ملاحظة الاستشاري:' })}</label>
+                  <textarea
+                    value={currentConsultantNote}
+                    onChange={(e) => isEditableByCurrentUser && setCurrentConsultantNote(e.target.value)}
+                    placeholder={t('consultantNoteModal.writeNotePlaceholder', { defaultValue: 'ملاحظات الاستشاري...' })}
+                    className={`w-full h-40 p-4 border border-gray-300 rounded-xl resize-none transition-all ${!isEditableByCurrentUser ? 'bg-gray-50 text-gray-700 font-medium focus:ring-0 cursor-not-allowed border-gray-200' : 'focus:ring-2 focus:ring-teal-500 focus:border-teal-500'}`}
+                    dir="auto"
+                    readOnly={!isEditableByCurrentUser}
+                    disabled={!isEditableByCurrentUser}
+                  ></textarea>
+                  {isEditableByCurrentUser && (
+                    <p className="text-xs text-gray-500 mt-2">{t('consultantNoteModal.helpText', { defaultValue: 'يمكنك تعديل أو حذف الملاحظة عن طريق مسح النص وحفظه.' })}</p>
+                  )}
+                </div>
+              );
+            })()}
             
             {reports.find(r => r.id === selectedConsultantReportId)?.consultant_note_reply && (
               <div className="mb-5 flex flex-col gap-4">
@@ -4345,11 +4380,25 @@ const fetchReports = async () => {
               </div>
             ) : showConsultantReplyBox && (
               <div className="mb-5">
-                <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.additionalReplyLabel', { defaultValue: 'تعقيب الاستشاري (إضافي):' })}</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  {(() => {
+                    const r = reports.find(rep => rep.id === selectedConsultantReportId);
+                    const isConsultant = hasReportPermission({ project: r?.project }, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                    return isConsultant 
+                      ? t('consultantNoteModal.additionalReplyLabel', { defaultValue: 'تعقيب الاستشاري:' })
+                      : t('consultantNoteModal.contractorReplyLabel', { defaultValue: 'رد المقاول على ملاحظة الاستشاري:' });
+                  })()}
+                </label>
                 <textarea
                   value={consultantReplyText}
                   onChange={(e) => setConsultantReplyText(e.target.value)}
-                  placeholder={t('consultantNoteModal.writeReplyPlaceholder', { defaultValue: 'اكتب ردك أو تعقيبك هنا...' })}
+                  placeholder={(() => {
+                    const r = reports.find(rep => rep.id === selectedConsultantReportId);
+                    const isConsultant = hasReportPermission({ project: r?.project }, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                    return isConsultant 
+                      ? t('consultantNoteModal.writeReplyPlaceholder', { defaultValue: 'اكتب ردك أو تعقيبك هنا...' })
+                      : t('consultantNoteModal.writeContractorReplyPlaceholder', { defaultValue: 'اكتب رد المقاول على الملاحظة هنا...' });
+                  })()}
                   className="w-full h-32 p-4 border border-teal-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none transition-all bg-teal-50"
                   dir="auto"
                 ></textarea>
