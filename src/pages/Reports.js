@@ -348,6 +348,16 @@ function Reports({ user, onLogout }) {
   const [activeBubbleDropdown, setActiveBubbleDropdown] = useState(null);
   const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
 
+  const isUserConsultantRole = (usr) => {
+    if (!usr) return false;
+    if (usr.role === 'admin' || usr.role === 'consultant' || usr.is_consultant) return true;
+    const uname = (usr.username || '').toLowerCase();
+    const fname = (usr.full_name || '').toLowerCase();
+    if (uname.includes('medhat') || uname.includes('shazly') || uname.includes('consultant')) return true;
+    if (fname.includes('مدحت') || fname.includes('شاذلي') || fname.includes('استشاري') || fname.includes('مكتب بيت الخبرة')) return true;
+    return false;
+  };
+
   // Owner Notes State
   const [showOwnerNoteModal, setShowOwnerNoteModal] = useState(false);
   const [currentOwnerNote, setCurrentOwnerNote] = useState('');
@@ -4153,7 +4163,7 @@ const fetchReports = async () => {
                 {(() => {
                   const r = reports.find(r => r.id === selectedConsultantReportId);
                   if (!r || !r.consultant_note || !r.consultant_note.trim()) return null;
-                  const isConsultant = hasReportPermission({ project: r.project }, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                  const isConsultant = isUserConsultantRole(user);
                   if (isConsultant) {
                     return (
                       <button
@@ -4217,7 +4227,7 @@ const fetchReports = async () => {
             
             {(() => {
               const r = reports.find(rep => rep.id === selectedConsultantReportId);
-              const isConsultant = hasReportPermission({ project: r?.project }, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+              const isConsultant = isUserConsultantRole(user);
               const isProcessed = r?.consultant_note_processed;
               const isEditableByCurrentUser = isConsultant && !isProcessed;
               return (
@@ -4382,8 +4392,7 @@ const fetchReports = async () => {
               <div className="mb-5">
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   {(() => {
-                    const r = reports.find(rep => rep.id === selectedConsultantReportId);
-                    const isConsultant = hasReportPermission({ project: r?.project }, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                    const isConsultant = isUserConsultantRole(user);
                     return isConsultant 
                       ? t('consultantNoteModal.additionalReplyLabel', { defaultValue: 'تعقيب الاستشاري:' })
                       : t('consultantNoteModal.contractorReplyLabel', { defaultValue: 'رد المقاول على ملاحظة الاستشاري:' });

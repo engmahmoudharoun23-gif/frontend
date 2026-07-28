@@ -53,6 +53,16 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
 const [isSavingNote, setIsSavingNote] = useState(false);
 
+  const isUserConsultantRole = (usr) => {
+    if (!usr) return false;
+    if (usr.role === 'admin' || usr.role === 'consultant' || usr.is_consultant) return true;
+    const uname = (usr.username || '').toLowerCase();
+    const fname = (usr.full_name || '').toLowerCase();
+    if (uname.includes('medhat') || uname.includes('shazly') || uname.includes('consultant')) return true;
+    if (fname.includes('مدحت') || fname.includes('شاذلي') || fname.includes('استشاري') || fname.includes('مكتب بيت الخبرة')) return true;
+    return false;
+  };
+
   const fetchNotes = async (page = currentPage, limit = itemsPerPage, search = searchQuery, status = statusFilter) => {
     try {
       setLoading(true);
@@ -764,7 +774,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                 {(() => {
                   const r = reports.find(r => r.id === selectedConsultantReportId);
                   if (!r || !r.consultant_note || !r.consultant_note.trim()) return null;
-                  const isConsultant = hasProjectPermission(user, r.project, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                  const isConsultant = isUserConsultantRole(user);
                   if (isConsultant) {
                     return (
                       <button
@@ -828,7 +838,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
             
             {(() => {
               const r = reports.find(rep => rep.id === selectedConsultantReportId);
-              const isConsultant = hasProjectPermission(user, r?.project, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+              const isConsultant = isUserConsultantRole(user);
               const isProcessed = r?.consultant_note_processed;
               const isEditableByCurrentUser = isConsultant && !isProcessed;
               return (
@@ -993,8 +1003,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
               <div className="mb-5">
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   {(() => {
-                    const r = reports.find(rep => rep.id === selectedConsultantReportId);
-                    const isConsultant = hasProjectPermission(user, r?.project, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                    const isConsultant = isUserConsultantRole(user);
                     return isConsultant 
                       ? t('consultantNoteModal.additionalReplyLabel', { defaultValue: 'تعقيب الاستشاري:' })
                       : t('consultantNoteModal.contractorReplyLabel', { defaultValue: 'رد المقاول على ملاحظة الاستشاري:' });
@@ -1004,8 +1013,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                   value={consultantReplyText}
                   onChange={(e) => setConsultantReplyText(e.target.value)}
                   placeholder={(() => {
-                    const r = reports.find(rep => rep.id === selectedConsultantReportId);
-                    const isConsultant = hasProjectPermission(user, r?.project, 'consultant_notes') || user?.role === 'admin' || (user?.username && user.username.toLowerCase().includes('medhat'));
+                    const isConsultant = isUserConsultantRole(user);
                     return isConsultant 
                       ? t('consultantNoteModal.writeReplyPlaceholder', { defaultValue: 'اكتب ردك أو تعقيبك هنا...' })
                       : t('consultantNoteModal.writeContractorReplyPlaceholder', { defaultValue: 'اكتب رد المقاول على الملاحظة هنا...' });
