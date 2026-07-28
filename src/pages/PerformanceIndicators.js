@@ -26,7 +26,14 @@ export default function PerformanceIndicators({ user, onLogout }) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState('');
+  const getInitialProject = () => {
+    if (user && user.role !== 'admin') {
+      const allowed = user.project_permissions ? Object.keys(user.project_permissions) : (user.projects || []);
+      if (allowed.length === 1) return allowed[0];
+    }
+    return '';
+  };
+  const [selectedProject, setSelectedProject] = useState(getInitialProject);
   const [selectedGovernorate, setSelectedGovernorate] = useState('');
   const [dateFrom, setDateFrom] = useState(currentMonthFirstDay);
   const [dateTo, setDateTo] = useState(currentMonthLastDay);
@@ -37,6 +44,7 @@ export default function PerformanceIndicators({ user, onLogout }) {
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [governorates, setGovernorates] = useState([]);
   const [allGovsMap, setAllGovsMap] = useState({});
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
 
   // جلب المشاريع
   useEffect(() => {
@@ -44,8 +52,15 @@ export default function PerformanceIndicators({ user, onLogout }) {
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${API}/projects`, { headers: { Authorization: `Bearer ${token}` } });
-        setProjects(res.data || []);
+        let list = res.data || [];
+        setProjects(list);
+        if (list.length === 1 && list[0]?.name) {
+          setSelectedProject(list[0].name);
+        }
       } catch (e) { console.error(e); }
+      finally {
+        setProjectsLoaded(true);
+      }
     };
     fetchProjects();
   }, []);
@@ -124,9 +139,10 @@ export default function PerformanceIndicators({ user, onLogout }) {
   }, [selectedProject, selectedGovernorate, dateFrom, dateTo]);
 
   useEffect(() => {
+    if (!projectsLoaded && !selectedProject) return;
     fetchSummary();
     fetchDuplicates();
-  }, [selectedProject, selectedGovernorate, dateFrom, dateTo, fetchSummary, fetchDuplicates]);
+  }, [projectsLoaded, selectedProject, selectedGovernorate, dateFrom, dateTo, fetchSummary, fetchDuplicates]);
 
 
   const handleExportPDF = async () => {
@@ -225,8 +241,14 @@ export default function PerformanceIndicators({ user, onLogout }) {
               onChange={e => setSelectedProject(e.target.value)}
               style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: 14, outline: 'none' }}
             >
-              <option value="">{t('performance_indicators.all_projects', 'جميع المشاريع')}</option>
-              {projects.map(p => <option key={p.name || p.id} value={p.name}>{translateBrandingText(p.name, isRtl)}</option>)}
+              {(user?.role === 'admin' || (projects.length > 1 && !selectedProject)) && (
+                <option value="">{t('performance_indicators.all_projects', 'جميع المشاريع')}</option>
+              )}
+              {projects.length > 0 ? (
+                projects.map(p => <option key={p.name || p.id} value={p.name}>{translateBrandingText(p.name, isRtl)}</option>)
+              ) : selectedProject ? (
+                <option value={selectedProject}>{translateBrandingText(selectedProject, isRtl)}</option>
+              ) : null}
             </select>
           </div>
 

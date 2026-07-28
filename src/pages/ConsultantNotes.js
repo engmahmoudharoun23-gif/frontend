@@ -52,6 +52,27 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const [showConsultantReplyBox, setShowConsultantReplyBox] = useState(false);
   const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
 const [isSavingNote, setIsSavingNote] = useState(false);
+  const [showReportNoteModal, setShowReportNoteModal] = useState(false);
+  const [selectedReportForNotes, setSelectedReportForNotes] = useState(null);
+
+  const handleOpenReportNoteModal = (report) => {
+    setSelectedReportForNotes(report);
+    setShowReportNoteModal(true);
+    setActiveDropdown(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (token && report?.id) {
+        axios.get(`${API}/reports/${report.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(res => {
+          if (res.data) {
+            setSelectedReportForNotes(res.data);
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  };
 
   const isUserConsultantRole = (usr) => {
     if (!usr) return false;
@@ -577,17 +598,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                                   <div key={i} className={`rounded-xl border text-sm mt-3 p-3 shadow-sm ${bgClass} w-fit min-w-[200px] max-w-full`}>
                                     <div className="font-bold mb-2 opacity-90 text-[12px] flex justify-between items-center">
                                       <span>{prefixText} {bubbleName}</span>
-                                      {(!report.consultant_note_processed && (user?.full_name === b.name || user?.username === b.name || (b.name === 'المستوى الثالث' && !user?.full_name && !user?.username) || (b.name && user?.username?.toLowerCase().includes('medhat') && b.name.toLowerCase().includes('medhat')))) && (
-                                        <div className="flex gap-2">
-                                          <button onClick={() => { setEditingBubbleIndex(`${report.id}-${i}`); setEditingBubbleText(b.text); }} className="text-blue-600 hover:text-blue-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-blue-200">{t("common.edit", { defaultValue: "تعديل" })}</button>
-                                          <button onClick={() => {
-                                            if(!window.confirm(t("consultantNotesPage.confirmDeleteReply", { defaultValue: "هل أنت متأكد من حذف ردك؟" }))) return;
-                                            const newBubbles = bubbles.filter((_, idx) => idx !== i);
-                                            const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                            updateConsultantReplyString(report.id, newStr);
-                                          }} className="text-red-600 hover:text-red-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-red-200">{t("common.delete", { defaultValue: "حذف" })}</button>
-                                        </div>
-                                      )}
+
                                     </div>
                                     {editingBubbleIndex === `${report.id}-${i}` ? (
                                       <div className="mt-2">
@@ -637,6 +648,19 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                                 </svg>
                                 {t("consultantNotesPage.viewReport", { defaultValue: "عرض البلاغ" })}
                               </Link>
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenReportNoteModal(report);
+                                }}
+                                className="w-full text-right px-4 py-3 text-sm text-amber-700 hover:bg-amber-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
+                              >
+                                <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {t("consultantNotesPage.viewReportNote", { defaultValue: "عرض ملاحظة البلاغ" })}
+                              </button>
                               
                               
                               {(user?.role === 'admin' || user?.can_create_subusers) ? (
@@ -1302,6 +1326,35 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                 ) : (
                   <>{t("common.save", { defaultValue: "حفظ" })}</>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal الملاحظات المطابق تماماً لصفحة المشاريع */}
+      {showReportNoteModal && selectedReportForNotes && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowReportNoteModal(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">📝 {t('reports.notesModal.title', {defaultValue: 'الملاحظات'})}</h3>
+              <button
+                onClick={() => setShowReportNoteModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 whitespace-pre-wrap text-gray-700">
+              {translateBrandingText(selectedReportForNotes?.notes || selectedReportForNotes?.note || selectedReportForNotes?.description || t('reports.notesModal.empty', {defaultValue: 'لا توجد ملاحظات'}), isRtl)}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowReportNoteModal(false)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                {t('common.close', {defaultValue: 'إغلاق'})}
               </button>
             </div>
           </div>

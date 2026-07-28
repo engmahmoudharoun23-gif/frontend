@@ -4344,17 +4344,7 @@ const fetchReports = async () => {
                       <div key={i} className={`rounded-xl border p-4 text-sm mt-3 shadow-sm ${bgClass}`}>
                         <div className="font-bold mb-2 opacity-90 text-[12px] flex justify-between items-center">
                           <span>{prefixText} {bubbleName}</span>
-                          {(!r.consultant_note_processed && (user?.full_name === b.name || user?.username === b.name || (b.name === 'المستوى الثالث' && !user?.full_name && !user?.username) || (b.name && user?.username?.toLowerCase().includes('medhat') && b.name.toLowerCase().includes('medhat')))) && (
-                            <div className="flex gap-2">
-                              <button onClick={() => { setEditingBubbleIndex(i); setEditingBubbleText(b.text); }} className="text-blue-600 hover:text-blue-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-blue-200">{t("common.edit", { defaultValue: "تعديل" })}</button>
-                              <button onClick={() => {
-                                if(!window.confirm(t("consultantNotesPage.confirmDeleteReply", { defaultValue: "هل أنت متأكد من حذف ردك؟" }))) return;
-                                const newBubbles = bubbles.filter((_, idx) => idx !== i);
-                                const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                updateConsultantReplyString(newStr);
-                              }} className="text-red-600 hover:text-red-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-red-200">{t("common.delete", { defaultValue: "حذف" })}</button>
-                            </div>
-                          )}
+
                         </div>
                         {editingBubbleIndex === i ? (
                           <div className="mt-2">
