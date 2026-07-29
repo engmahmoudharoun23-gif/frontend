@@ -42,6 +42,19 @@ const ConsultantNotes = ({ user, onLogout }) => {
   const [editingBubbleText, setEditingBubbleText] = useState('');
   const [activeBubbleDropdown, setActiveBubbleDropdown] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
+
+  // الإغلاق التلقائي عند النقر في أي مكان خارج القائمة المنسدلة
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (activeDropdown !== null) {
+        if (!e.target.closest('.dropdown-menu-container')) {
+          setActiveDropdown(null);
+        }
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeDropdown]);
   const [showEditNoteModal, setShowEditNoteModal] = useState(false);
   const [editingNoteText, setEditingNoteText] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -162,16 +175,26 @@ const [isSavingNote, setIsSavingNote] = useState(false);
     }
   };
 
-  const updateConsultantReplyString = async (reportId, newReplyStr) => {
+  const updateConsultantReplyString = async (reportIdOrNewReplyStr, newReplyStr) => {
+    let targetReportId = reportIdOrNewReplyStr;
+    let targetReplyStr = newReplyStr;
+    
+    if (newReplyStr === undefined) {
+      targetReportId = selectedConsultantReportId;
+      targetReplyStr = reportIdOrNewReplyStr;
+    }
+
+    if (!targetReportId) return;
+
     setIsSavingReply(true);
     try {
-      const response = await axios.put(`${API}/reports/${reportId}/consultant_note_reply`, { reply: newReplyStr }, {
+      const response = await axios.put(`${API}/reports/${targetReportId}/consultant_note_reply`, { reply: targetReplyStr }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (response.data.success) {
         setReports(reports.map(r => 
-          r.id === reportId 
-            ? { ...r, consultant_note_reply: response.data.reply, consultant_note_replied_by: response.data.replied_by } 
+          r.id === targetReportId 
+            ? { ...r, consultant_note_reply: response.data.reply, consultant_note_replied_by: response.data.replied_by, consultant_note_processed: false } 
             : r
         ));
         toast.success(t('consultantNotesPage.replySuccess', { defaultValue: 'تم التحديث بنجاح' }));
@@ -626,7 +649,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <div className="relative inline-block text-right">
+                        <div className="relative inline-block text-right dropdown-menu-container">
                           <button 
                             onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === report.id ? null : report.id); }}
                             className="p-2 hover:bg-gray-100 rounded-full transition-colors focus:outline-none"
@@ -986,7 +1009,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                                 if(!window.confirm(t("consultantNotesPage.confirmDeleteReply", { defaultValue: "هل أنت متأكد من حذف ردك؟" }))) return;
                                 const newBubbles = bubbles.filter((_, idx) => idx !== i);
                                 const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                updateConsultantReplyString(newStr);
+                                updateConsultantReplyString(r.id, newStr);
                               }} className="text-red-600 hover:text-red-800 transition-colors bg-white px-2 py-0.5 rounded shadow-sm border border-red-200">{t("common.delete", { defaultValue: "حذف" })}</button>
                             </div>
                           )}
@@ -999,7 +1022,7 @@ const [isSavingNote, setIsSavingNote] = useState(false);
                                 const newBubbles = [...bubbles];
                                 newBubbles[i].text = editingBubbleText;
                                 const newStr = newBubbles.map(bub => `---رد: ${bub.name}---\n${bub.text}`).join('\n\n');
-                                updateConsultantReplyString(newStr);
+                                updateConsultantReplyString(r.id, newStr);
                               }} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 shadow-sm border border-blue-600">{t("common.saveEdit", { defaultValue: "حفظ التعديل" })}</button>
                               <button onClick={() => setEditingBubbleIndex(null)} className="bg-white text-gray-700 px-3 py-1 rounded text-xs font-bold hover:bg-gray-50 shadow-sm border border-gray-300">{t("common.cancel", { defaultValue: "إلغاء" })}</button>
                             </div>
