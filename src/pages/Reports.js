@@ -448,11 +448,17 @@ function Reports({ user, onLogout }) {
     const searchQuery = searchParams.get('search');
     
     // إذا كان الفلتر للبلاغات الجديدة
-    if (filterNew === 'new') {
+    const unseenOnlyFromUrl = searchParams.get('unseen_only') === 'true';
+    
+    if (filterNew === 'new' || unseenOnlyFromUrl) {
       setIsNewReportsFilter(true);
-      setFilters(prev => ({ ...prev, search: '', license_number: '' }));
-      setUrlFiltersApplied(true);
-      return;
+      if (filterNew === 'new') {
+        setFilters(prev => ({ ...prev, search: '', license_number: '' }));
+      }
+      if (filterNew === 'new' && !unseenOnlyFromUrl) {
+        setUrlFiltersApplied(true);
+        return;
+      }
     } else {
       setIsNewReportsFilter(false);
     }
@@ -508,11 +514,6 @@ function Reports({ user, onLogout }) {
       };
       fetchWithSearch();
       return;
-    }
-    
-    const unseenOnlyFromUrl = searchParams.get('unseen_only') === 'true';
-    if (unseenOnlyFromUrl && !isNewReportsFilter) {
-      setIsNewReportsFilter(true);
     }
     
     // إذا كان هناك فلاتر من URL (إضافة projectFromUrl للشرط)
@@ -611,9 +612,14 @@ function Reports({ user, onLogout }) {
       
       // جلب البلاغات مباشرة بالفلاتر الجديدة
       const fetchWithUrlFilters = async () => {
+        setSelectedReports([]);
+        setIsAllSelected(false);
         try {
           const params = new URLSearchParams();
           Object.entries(newFilters).forEach(([key, value]) => { if (value) params.append(key, value); });
+          if (unseenOnlyFromUrl) {
+            params.append('unseen_only', 'true');
+          }
           params.append('page', pageFromUrl);
           params.append('limit', reportsPerPage);
           
@@ -1668,6 +1674,10 @@ const fetchReports = async () => {
           { autoClose: 8000 }
         );
       }
+
+      // إضافة تفريغ علامات الصح (التحديد) بعد الانتهاء من المزامنة بنجاح
+      setSelectedReports([]);
+      setIsAllSelected(false);
 
     } catch (error) {
       if (error.name === 'AbortError') return;

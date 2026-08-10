@@ -487,6 +487,7 @@ function SewageConnections({ user, onLogout }) {
   };
 
   const fetchConnections = useCallback(async () => {
+    setSelectedIds([]);
     try {
       // setLoading(true);
       const params = new URLSearchParams();

@@ -275,7 +275,7 @@ function ReportForm({ user, onLogout }) {
 
   const [formData, setFormData] = useState({
     report_number: '', license_number: '', report_type: '',
-    status: '', 
+    status: '', license_issue_date: '', license_expiry_date: '',
     governorate: id ? (location.state?.governorate || '') : '', 
     project: getDefaultProject(),
     depth_meters: '', diameter_mm: '', contractor: '',
@@ -1172,7 +1172,9 @@ function ReportForm({ user, onLogout }) {
         notes: report.notes || '',
         created_at: report.created_at ? report.created_at.split('T')[0] : '',
         closed_at: report.closed_at ? report.closed_at.split('T')[0] : '',
-        start_date: report.start_date ? report.start_date.split('T')[0] : ''
+        start_date: report.start_date ? report.start_date.split('T')[0] : '',
+        license_issue_date: report.license_issue_date ? report.license_issue_date.split('T')[0] : '',
+        license_expiry_date: report.license_expiry_date ? report.license_expiry_date.split('T')[0] : ''
       });
       
       // ⚡ جلب الصور في الخلفية بشكل منفصل
@@ -1545,23 +1547,52 @@ function ReportForm({ user, onLogout }) {
     
     // Validate coordinates and neighborhood
     if (!formData.latitude || !formData.longitude) {
-      toast.error(
-        isRtl 
-          ? '🚨 لا يمكن إضافة بلاغ جديد إلا بعد إضافة الإحداثيات (خط الطول والعرض).' 
-          : '🚨 Cannot add a new report without adding coordinates (latitude and longitude).',
-        { autoClose: false, closeOnClick: false }
-      );
+      Swal.fire({
+        icon: 'error',
+        title: isRtl ? 'تنبيه هام!' : 'Important Alert!',
+        text: isRtl 
+          ? 'لا يمكن إضافة بلاغ جديد إلا بعد إضافة الإحداثيات (خط الطول والعرض).' 
+          : 'Cannot add a new report without adding coordinates (latitude and longitude).',
+        confirmButtonText: isRtl ? 'حسناً' : 'OK',
+        confirmButtonColor: '#ef4444',
+        width: 'auto',
+        customClass: { popup: 'rounded-2xl' }
+      });
       return;
     }
     
     if (!formData.neighborhood || formData.neighborhood.trim() === '') {
-      toast.error(
-        isRtl 
-          ? '🚨 لا يمكن إضافة بلاغ جديد إلا بعد استخراج أو كتابة اسم الحي.' 
-          : '🚨 Cannot add a new report without extracting or typing the neighborhood name.',
-        { autoClose: false, closeOnClick: false }
-      );
+      Swal.fire({
+        icon: 'error',
+        title: isRtl ? 'تنبيه هام!' : 'Important Alert!',
+        text: isRtl 
+          ? 'لا يمكن إضافة بلاغ جديد إلا بعد استخراج أو كتابة اسم الحي.' 
+          : 'Cannot add a new report without extracting or typing the neighborhood name.',
+        confirmButtonText: isRtl ? 'حسناً' : 'OK',
+        confirmButtonColor: '#ef4444',
+        width: 'auto',
+        customClass: { popup: 'rounded-2xl' }
+      });
       return;
+    }
+
+    // Validate Closing Date for "تم الاصلاح" status
+    const normalizedStatus = formData.status ? formData.status.trim().replace('إ', 'ا') : '';
+    if (normalizedStatus === 'تم الاصلاح') {
+      if (!formData.closed_at || formData.closed_at.trim() === '') {
+        Swal.fire({
+          icon: 'error',
+          title: isRtl ? 'تنبيه هام!' : 'Important Alert!',
+          text: isRtl 
+            ? 'لا يمكنك حفظ البلاغ في حالة "تم الاصلاح" إلا بعد إضافة "تاريخ إغلاق البلاغ".'
+            : 'Cannot save the report in "Fixed" status without adding a "Closing Date".',
+          confirmButtonText: isRtl ? 'حسناً' : 'OK',
+          confirmButtonColor: '#ef4444',
+          width: 'auto',
+          customClass: { popup: 'rounded-2xl' }
+        });
+        return;
+      }
     }
 
     if (loading) return; // منع التكرار
@@ -1581,6 +1612,8 @@ function ReportForm({ user, onLogout }) {
       // إضافة البيانات الأساسية فقط (بدون الصور)
       form.append('report_number', autoReportNumber && !id ? 'AUTO' : formData.report_number);
       form.append('license_number', formData.license_number);
+      if (formData.license_issue_date) form.append('license_issue_date', formData.license_issue_date);
+      if (formData.license_expiry_date) form.append('license_expiry_date', formData.license_expiry_date);
       form.append('report_type', formData.report_type);
       form.append('status', formData.status);
       form.append('governorate', formData.governorate);
@@ -1974,6 +2007,11 @@ function ReportForm({ user, onLogout }) {
                   <p className="text-[10px] text-blue-600 mt-1 mr-1">{t('reportForm.autoNumberTip')}</p>
                 )}
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.licenseNumber')} *</label>
+                <input type="text" required value={formData.license_number} onChange={(e) => setFormData({...formData, license_number: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.receiveDate')} *</label>
@@ -1984,10 +2022,26 @@ function ReportForm({ user, onLogout }) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.startDate')}</label>
                 <input type="date" value={formData.start_date} onChange={(e) => setFormData({...formData, start_date: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('reports.licenseNumber')} *</label>
-                <input type="text" required value={formData.license_number} onChange={(e) => setFormData({...formData, license_number: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isRtl ? 'تاريخ اصدار الرخصة' : 'License Issue Date'}</label>
+                <input 
+                  type="date" 
+                  value={formData.license_issue_date} 
+                  onChange={(e) => {
+                    const issueDate = e.target.value;
+                    const updates = { license_issue_date: issueDate };
+                    if (issueDate) {
+                      const dateObj = new Date(issueDate);
+                      dateObj.setDate(dateObj.getDate() + 10);
+                      updates.license_expiry_date = dateObj.toISOString().split('T')[0];
+                    } else {
+                      updates.license_expiry_date = '';
+                    }
+                    setFormData({...formData, ...updates});
+                  }} 
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                />
               </div>
               
               <div>
@@ -1997,42 +2051,6 @@ function ReportForm({ user, onLogout }) {
                   {reportTypes.map(rt => (
                     <option key={rt.id || rt.name} value={rt.name}>{t(`statusMap.${rt.name}`, rt.name)}</option>
                   ))}
-                </select>
-              </div>
-              
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <label className="block text-sm font-medium text-gray-700">{t('reports.status')} *</label>
-                  {(user.role === 'admin' || user.can_create_subusers) && (
-                    <button
-                      type="button"
-                      onClick={() => setShowStatusModal(true)}
-                      style={{
-                        backgroundColor: '#8b5cf6',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ➕ {t('reportForm.addStatus')}
-                    </button>
-                  )}
-                </div>
-                <select required value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">{t('reportForm.selectStatus')}</option>
-                  {reportStatuses.length > 0 ? (
-                    reportStatuses.map(status => (
-                      <option key={status.id || status.name} value={status.name}>{t(`statusMap.${status.name}`, status.name)}</option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="تم الإصلاح">{t('statusMap.تم الإصلاح', {defaultValue: 'تم الإصلاح'})}</option>
-                      <option value="تم الإصلاح-ومتبقي الأسفلت">{t('statusMap.تم الإصلاح - ومتبقي الأسفلت', {defaultValue: 'تم الإصلاح - ومتبقي الأسفلت'})}</option>
-                    </>
-                  )}
                 </select>
               </div>
               
@@ -2077,6 +2095,42 @@ function ReportForm({ user, onLogout }) {
                     {translateBrandingText(formData.project, isRtl) || ''}
                   </p>
                 </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <label className="block text-sm font-medium text-gray-700">{t('reports.status')} *</label>
+                  {(user.role === 'admin' || user.can_create_subusers) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowStatusModal(true)}
+                      style={{
+                        backgroundColor: '#8b5cf6',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ➕ {t('reportForm.addStatus')}
+                    </button>
+                  )}
+                </div>
+                <select required value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">{t('reportForm.selectStatus')}</option>
+                  {reportStatuses.length > 0 ? (
+                    reportStatuses.map(status => (
+                      <option key={status.id || status.name} value={status.name}>{t(`statusMap.${status.name}`, status.name)}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="تم الإصلاح">{t('statusMap.تم الإصلاح', {defaultValue: 'تم الإصلاح'})}</option>
+                      <option value="تم الإصلاح-ومتبقي الأسفلت">{t('statusMap.تم الإصلاح - ومتبقي الأسفلت', {defaultValue: 'تم الإصلاح - ومتبقي الأسفلت'})}</option>
+                    </>
+                  )}
+                </select>
               </div>
 
               <div>
@@ -2126,6 +2180,7 @@ function ReportForm({ user, onLogout }) {
                   </p>
                 )}
               </div>
+              <div className="hidden md:block"></div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('reportForm.depth', {defaultValue: 'العمق'})} ({t('reportForm.cm', {defaultValue: 'بالسنتيمتر'})})</label>

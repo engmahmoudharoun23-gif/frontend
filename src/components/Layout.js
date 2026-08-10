@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { hasProjectPermission as hasProjectPermUtil, PROJECT_SCOPED_PERMISSIONS } from '../utils/permissions';
 import { useBranding } from '../hooks/useBranding';
-import { Globe, ShieldAlert, ClipboardCheck, FileBarChart2, Bell, UserCircle, X, AlertTriangle, FileText } from 'lucide-react';
+import { Globe, ShieldAlert, ClipboardCheck, FileBarChart2, Bell, UserCircle, X, AlertTriangle, FileText, Award } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 
@@ -79,6 +79,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
   const [pendingConsultantCount, setPendingConsultantCount] = useState(() => getCachedCount('cache_pendingConsultantCount'));
   const [unreadChatCount, setUnreadChatCount] = useState(() => getCachedCount('cache_unreadChatCount'));
   const [pendingReportNotesCount, setPendingReportNotesCount] = useState(() => getCachedCount('cache_pendingReportNotesCount'));
+  const [pendingLicensesReturnedCount, setPendingLicensesReturnedCount] = useState(() => getCachedCount('cache_pendingLicensesReturnedCount'));
+  const [pendingLicensesProcessedCount, setPendingLicensesProcessedCount] = useState(() => getCachedCount('cache_pendingLicensesProcessedCount'));
   const [showReportNotesPopup, setShowReportNotesPopup] = useState(false);
   const previousReportNotesCount = useRef(0);
 
@@ -95,7 +97,9 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
     localStorage.setItem('cache_pendingConsultantCount', pendingConsultantCount);
     localStorage.setItem('cache_unreadChatCount', unreadChatCount);
     localStorage.setItem('cache_pendingReportNotesCount', pendingReportNotesCount);
-  }, [pendingReviewCount, pendingInvoicesCount, pendingRequestsCount, signedRequestsCount, supportMessagesCount, pendingExtractsCount, pendingSafetyCount, pendingQualityCount, pendingBusinessCount, pendingConsultantCount, unreadChatCount, pendingReportNotesCount]);
+    localStorage.setItem('cache_pendingLicensesReturnedCount', pendingLicensesReturnedCount);
+      localStorage.setItem('cache_pendingLicensesProcessedCount', pendingLicensesProcessedCount);
+  }, [pendingReviewCount, pendingInvoicesCount, pendingRequestsCount, signedRequestsCount, supportMessagesCount, pendingExtractsCount, pendingSafetyCount, pendingQualityCount, pendingBusinessCount, pendingConsultantCount, unreadChatCount, pendingReportNotesCount, pendingLicensesReturnedCount, pendingLicensesProcessedCount]);
 
   const previousSignedCount = useRef(getCachedCount('cache_signedRequestsCount'));
   const previousPendingReviewCount = useRef(getCachedCount('cache_pendingReviewCount'));
@@ -595,6 +599,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
           setPendingQualityCount(qualityTotal);
           setPendingBusinessCount(data.business || 0);
           setPendingConsultantCount(data.consultant || 0);
+          setPendingLicensesReturnedCount(data.licenses_returned || 0);
+          setPendingLicensesProcessedCount(data.licenses_processed || 0);
           
           const newReportNotes = data.report_notes || 0;
           const dismissedCount = parseInt(localStorage.getItem('dismissedReportNotesCount') || '0', 10);
@@ -1999,6 +2005,8 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                   </div>
                 </Link>
               )}
+
+
               
               {/* ملاحظات البلاغات */}
               {hasPermission('report_notes') && (
@@ -2013,6 +2021,28 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                         {pendingReportNotesCount > 9 ? '9+' : pendingReportNotesCount}
                       </span>
                     )}
+                  </div>
+                </Link>
+              )}
+              
+              {/* إدارة التراخيص */}
+              {(hasPermission('licenses') || hasPermission('licenses_view') || hasPermission('licenses_review')) && (
+                <Link to="/licenses" onClick={() => setSidebarOpen(false)} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/licenses') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <svg className="inline-block w-4 h-4 ml-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                      {i18n.language === 'ar' ? 'إدارة الرخص' : 'Licenses'}
+                    </div>
+                    <div className="flex items-center gap-2 rtl:gap-reverse">
+                      {pendingLicensesReturnedCount > 0 && (
+                        <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-sm font-black rounded-full min-w-[28px] h-[28px] flex items-center justify-center px-2 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
+                          {pendingLicensesReturnedCount}
+                        </span>
+                      )}
+                      
+                    </div>
                   </div>
                 </Link>
               )}
@@ -2187,6 +2217,20 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <Link to="/update-reports" onClick={(e) => handleLinkClick(e, "/update-reports")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/update-reports') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <svg className="inline-block w-4 h-4 ml-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                   {t('sidebar.updateReports', { defaultValue: 'تحديث البلاغات' })}
+                </Link>
+              )}
+
+              {/* إدارة التراخيص */}
+              {(hasPermission('licenses') || hasPermission('licenses_view') || hasPermission('licenses_review')) && (
+                <Link to="/licenses" onClick={(e) => handleLinkClick(e, "/licenses")} className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive('/licenses') ? 'active-nav-item' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <svg className="inline-block w-4 h-4 ml-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                      {i18n.language === 'ar' ? 'إدارة الرخص' : 'Licenses'}
+                    </div>
+                  </div>
                 </Link>
               )}
 
@@ -2424,6 +2468,32 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 </div>
               </Link>
             )}
+            
+            {/* إدارة التراخيص */}
+            {(hasPermission('licenses') || hasPermission('licenses_view') || hasPermission('licenses_review')) && (
+              <Link
+                to="/licenses" onClick={(e) => handleLinkClick(e, "/licenses")}
+                className={`sidebar-item ${isActive('/licenses') ? 'sidebar-item-active' : 'text-gray-700'}`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <div className="sidebar-icon-box">
+                      <Award className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <span className="sidebar-text">{i18n.language === 'ar' ? 'إدارة الرخص' : 'Licenses'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 rtl:gap-reverse">
+                    {pendingLicensesReturnedCount > 0 && (
+                      <div className="flex items-center gap-1" title={i18n.language === 'ar' ? 'رخص معادة' : 'Returned Licenses'}>
+                        <span className="bg-gradient-to-br from-red-600 to-red-500 text-white text-xs font-black rounded-full min-w-[22px] h-[22px] flex items-center justify-center px-1 shadow-[0_0_12px_rgba(239,68,68,0.9)] border-[2px] border-white ring-2 ring-red-200">
+                          {pendingLicensesReturnedCount}
+                        </span>
+                      </div>
+                    )}
+                    </div>
+                  </div>
+                </Link>
+                )}
             
             {/* تدقيق الصورة بالذكاء الاصطناعي */}
             {hasPermission('ai_image_audit') && (
@@ -2690,6 +2760,7 @@ function Layout({ children, user, onLogout, fullWidth = false }) {
                 <span className="sidebar-text">{t('sidebar.updateReports', { defaultValue: 'تحديث البلاغات' })}</span>
               </Link>
             )}
+
 
             {/* سجل التعديلات */}
             {hasPermission('audit_logs') && (

@@ -798,7 +798,16 @@
       "wfm_matching": "WFM Reports Matching",
       "update_reports": "Update Reports from Excel",
       "audit_logs": "Audit Logs",
-      "ai_image_audit": "AI Image Audit"
+      "ai_image_audit": "AI Image Audit",
+      "licenses": "Licenses Management",
+      "licenses_view": "View License",
+      "licenses_edit": "Edit License",
+      "licenses_review": "Review Processing",
+      "file_matching": "File Matching",
+      "licenses_process_send": "Returned Licenses",
+      "licenses_delete": "Delete License",
+      "licenses_center_closure": "Submit & Close to Center",
+      "licenses_infra_closure": "Infra Close"
     },
     "subTitle": "Manage users, permissions, and projects",
     "userCount": "users",
@@ -957,7 +966,8 @@
       "تقارير السلامة": "Safety Reports",
       "تقارير الجودة": "Quality Reports",
       "تقارير الأعمال": "Business Reports",
-      "تصاريح العمل": "Work Permits"
+      "تصاريح العمل": "Work Permits",
+      "إدارة الرخص": "Licenses Management"
     }
   },
   "contractors": {

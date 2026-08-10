@@ -131,7 +131,8 @@ function Users({ user, onLogout }) {
     'contractors', 'projects', 'users_manage', 'team', 'project_settings',
     'cars', 'cars_manage', 'fleet_maintenance', 'hr_management',
     'safety_reports', 'quality_reports', 'business_reports', 'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit', 'quality_reports_delete', 'business_reports_edit', 'business_reports_delete', 'business_reports_review', 'consultant_close',
-    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations', 'meetings', 'meetings_add', 'wfm_matching', 'update_reports', 'audit_logs'
+    'work_permits', 'work_permits_edit', 'work_permits_delete', 'violations', 'meetings', 'meetings_add', 'wfm_matching', 'update_reports', 'audit_logs',
+    'licenses', 'licenses_view', 'licenses_edit', 'licenses_delete', 'licenses_review', 'licenses_match_file', 'licenses_send_all', 'file_matching', 'licenses_process_send', 'licenses_center_closure', 'licenses_infra_closure'
   ];
   
   // دالة توحيد النص العربي للمقارنة (تعالج اختلافات الهمزات والتاء المربوطة)

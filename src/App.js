@@ -42,6 +42,7 @@ import WfmMatching from './pages/WfmMatching';
 import UpdateReports from './pages/UpdateReports';
 import PerformanceIndicators from './pages/PerformanceIndicators';
 import AuditLogs from './pages/AuditLogs';
+import Licenses from './pages/Licenses';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -467,6 +468,10 @@ function App() {
         <Route
           path="/violations"
           element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'violations')) ? <Violations user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
+        />
+        <Route
+          path="/licenses"
+          element={user && (user.role === 'admin' || hasAnyProjectPermission(user, 'licenses') || hasAnyProjectPermission(user, 'licenses_view')) ? <Licenses user={user} onLogout={handleLogout} /> : <Navigate to={user ? "/" : "/login"} />}
         />
         <Route
           path="/meetings"

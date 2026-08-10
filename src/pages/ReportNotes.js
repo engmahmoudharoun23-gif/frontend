@@ -34,6 +34,43 @@ const ReportNotes = ({ user, onLogout }) => {
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editingNoteText, setEditingNoteText] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
+  
+  // Consultant Note States
+  const [showConsultantNoteModal, setShowConsultantNoteModal] = useState(false);
+  const [currentConsultantNote, setCurrentConsultantNote] = useState('');
+  const [isSavingConsultantNote, setIsSavingConsultantNote] = useState(false);
+  const [selectedReportForNote, setSelectedReportForNote] = useState(null);
+
+  const handleSaveConsultantNote = async () => {
+    if (!selectedReportForNote) return;
+    setIsSavingConsultantNote(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/reports/${selectedReportForNote.id}/consultant_note`, {
+        consultant_note: currentConsultantNote
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setReports(reports.map(r => {
+        if (r.id === selectedReportForNote.id) {
+          const updatedReport = { ...r, consultant_note: currentConsultantNote };
+          if (r.consultant_note !== currentConsultantNote) {
+            updatedReport.consultant_note_processed = false;
+          }
+          return updatedReport;
+        }
+        return r;
+      }));
+      toast.success(t('consultantNoteModal.saveSuccess', { defaultValue: 'تم الحفظ بنجاح' }));
+      setShowConsultantNoteModal(false);
+    } catch (error) {
+      console.error('Error saving consultant note:', error);
+      toast.error(t('consultantNoteModal.saveError', { defaultValue: 'حدث خطأ' }));
+    } finally {
+      setIsSavingConsultantNote(false);
+    }
+  };
 
   const fetchNotes = async (page = currentPage, limit = itemsPerPage, search = searchQuery) => {
     try {
@@ -198,8 +235,13 @@ const ReportNotes = ({ user, onLogout }) => {
                   {currentItems.map((report, idx) => (
                     <tr key={report.id} className="hover:bg-indigo-50/30 transition-colors">
                       <td className="px-6 py-4 font-bold text-indigo-600 whitespace-nowrap">
-                        <div className="flex items-center justify-start gap-2">
+                        <div className="flex flex-col items-start justify-center gap-1">
                           <span>{report.report_number || report.id.substring(0, 8)}</span>
+                          {!report.consultant_note && (
+                            <span className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded shadow-md animate-pulse mt-1">
+                              {t('common.new', { defaultValue: 'جديد' })}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{translateBrandingText(report.project, isRtl)}</td>
@@ -259,32 +301,45 @@ const ReportNotes = ({ user, onLogout }) => {
                               {(user?.role === 'admin' || user?.can_create_subusers) && (
                                 <>
 
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveDropdown(null);
-                                      setEditingNoteId(report.id);
-                                      setEditingNoteText(report.notes);
-                                    }}
-                                    className="w-full text-right px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
-                                  >
-                                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    {t("common.edit", { defaultValue: "تعديل الملاحظة" })}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveDropdown(null);
-                                      handleDeleteNote(report.id);
-                                    }}
-                                    className="w-full text-right px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
-                                  >
-                                    <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    {t("common.delete", { defaultValue: "حذف الملاحظة" })}
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveDropdown(null);
+                                        setEditingNoteId(report.id);
+                                        setEditingNoteText(report.notes);
+                                      }}
+                                      className="w-full text-right px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
+                                    >
+                                      <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                      {t("common.edit", { defaultValue: "تعديل الملاحظة" })}
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveDropdown(null);
+                                        setSelectedReportForNote(report);
+                                        setCurrentConsultantNote(report.consultant_note || '');
+                                        setShowConsultantNoteModal(true);
+                                      }}
+                                      className="w-full text-right px-4 py-3 text-sm text-amber-600 hover:bg-amber-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
+                                    >
+                                      <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                      {t("common.consultantNote", { defaultValue: "ملاحظة الاستشاري" })}
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveDropdown(null);
+                                        handleDeleteNote(report.id);
+                                      }}
+                                      className="w-full text-right px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-3 transition-colors border-b border-gray-50"
+                                    >
+                                      <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                      {t("common.delete", { defaultValue: "حذف الملاحظة" })}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                           )}
                         </div>
                       </td>
@@ -314,6 +369,59 @@ const ReportNotes = ({ user, onLogout }) => {
           )}
         </div>
       </div>
+      
+      {showConsultantNoteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowConsultantNoteModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-4 sm:p-6 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 text-amber-600 rounded-xl">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">{t('consultantNoteModal.title', { defaultValue: 'ملاحظة الاستشاري' })}</h3>
+              </div>
+              <button onClick={() => setShowConsultantNoteModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-white/50">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            
+            <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
+              <label className="block text-sm font-bold text-gray-700 mb-2">{t('consultantNoteModal.writeNoteLabel', { defaultValue: 'اكتب ملاحظتك:' })}</label>
+              <textarea
+                className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 min-h-[150px] transition-all text-gray-800 resize-y"
+                value={currentConsultantNote}
+                onChange={(e) => setCurrentConsultantNote(e.target.value)}
+                placeholder={t('consultantNoteModal.placeholder', { defaultValue: 'قم بكتابة ملاحظات الاستشاري هنا...' })}
+                dir="auto"
+              />
+            </div>
+            
+            <div className="p-4 sm:p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 rounded-b-2xl">
+              <button
+                onClick={() => setShowConsultantNoteModal(false)}
+                className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+                disabled={isSavingConsultantNote}
+              >
+                {t('common.cancel', { defaultValue: 'إلغاء' })}
+              </button>
+              <button
+                onClick={handleSaveConsultantNote}
+                disabled={isSavingConsultantNote}
+                className="px-5 py-2.5 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSavingConsultantNote ? (
+                  <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div> {t('common.saving', { defaultValue: 'جاري الحفظ...' })}</>
+                ) : (
+                  <>{t('common.save', { defaultValue: 'حفظ' })}</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 };

@@ -16,8 +16,9 @@ export const PROJECT_SCOPED_PERMISSIONS = new Set([
   'safety_reports_edit', 'safety_reports_delete', 'quality_reports_edit',
   'quality_reports_delete', 'business_reports_edit', 'business_reports_delete',
   'business_reports_review',
-  'work_permits', 'work_permits_edit', 'work_permits_delete', 'meetings', 'meetings_add', 'audit_logs'
-]);
+  'work_permits', 'work_permits_edit', 'work_permits_delete', 'meetings', 'meetings_add', 'audit_logs',
+  'licenses', 'licenses_view', 'licenses_edit', 'licenses_delete', 'licenses_review', 'licenses_match_file', 'licenses_send_all', 'file_matching', 'licenses_process_send', 'licenses_center_closure', 'licenses_infra_closure'
+  ]);
 
 /**
  * التحقق من صلاحية عامة للمستخدم (غير مرتبطة بمشروع)

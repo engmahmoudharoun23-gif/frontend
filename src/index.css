@@ -721,3 +721,27 @@ code {
   border-right-width: 4px !important;
 }
 
+
+/* ===== SweetAlert2 Responsive Customizations ===== */
+.swal2-popup {
+  border-radius: 1.25rem !important;
+  width: auto !important;
+  min-width: 300px;
+  max-width: 92vw !important;
+  padding: 1.5rem !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+.swal2-title {
+  font-size: 1.25rem !important;
+}
+.swal2-html-container {
+  font-size: 0.95rem !important;
+}
+.swal2-actions {
+  width: 100% !important;
+  flex-wrap: wrap !important;
+}
+.swal2-confirm, .swal2-cancel {
+  border-radius: 0.75rem !important;
+  margin: 0.25rem !important;
+}
