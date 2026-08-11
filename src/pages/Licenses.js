@@ -124,6 +124,7 @@ export default function Licenses({ user, onLogout }) {
   const [selectedGov, setSelectedGov] = useState('');
   const [selectedFilterProject, setSelectedFilterProject] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedReportType, setSelectedReportType] = useState('');
   const [selectedOffice, setSelectedOffice] = useState('');
   const [quickFilter, setQuickFilter] = useState('all'); // all, valid, expiring_soon, expired
 
@@ -220,7 +221,8 @@ export default function Licenses({ user, onLogout }) {
       const params = {
         search: search || undefined,
         governorate: selectedGov || undefined,
-        project: selectedFilterProject || undefined
+        project: selectedFilterProject || undefined,
+        report_type: selectedReportType || undefined
       };
       const res = await axios.get(`${API}/licenses/summary`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -230,7 +232,7 @@ export default function Licenses({ user, onLogout }) {
     } catch (e) {
       console.error('Failed to fetch summary:', e);
     }
-  }, [search, selectedGov, selectedFilterProject]);
+  }, [search, selectedGov, selectedFilterProject, selectedReportType]);
 
   // Fetch licenses list
   const fetchLicenses = useCallback(async () => {
@@ -245,7 +247,8 @@ export default function Licenses({ user, onLogout }) {
         project: selectedFilterProject || undefined,
         status: selectedStatus || undefined,
         consultant_office: selectedOffice || undefined,
-        quick_filter: quickFilter !== 'all' ? quickFilter : undefined
+        quick_filter: quickFilter !== 'all' ? quickFilter : undefined,
+        report_type: selectedReportType || undefined
       };
       const res = await axios.get(`${API}/licenses`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -261,7 +264,7 @@ export default function Licenses({ user, onLogout }) {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, selectedGov, selectedFilterProject, selectedStatus, selectedOffice, quickFilter, isRtl]);
+  }, [page, limit, search, selectedGov, selectedFilterProject, selectedStatus, selectedOffice, selectedReportType, quickFilter, isRtl]);
 
   useEffect(() => {
     fetchSummary();
@@ -1308,7 +1311,7 @@ export default function Licenses({ user, onLogout }) {
     if (currentFilter === 'returned_infra') return isRtl ? 'لا توجد رخص معادة من مركز البنية التحتية' : 'No licenses returned by infra center';
     if (currentFilter === 'center_closure') return isRtl ? 'لا توجد رخص مرفوعة للإغلاق لمركز البنية التحتية' : 'No licenses submitted for center closure';
     if (currentFilter === 'expired') return isRtl ? 'لا توجد رخص منتهية بعد فترة صلاحيتها الصادرة بـ 10 أيام' : 'No expired licenses';
-    if (currentFilter === 'expiring_soon') return isRtl ? 'لا توجد رخص أوشكت على الانتهاء خلال فترة صلاحيتها الصادرة بـ 10 أيام' : 'No licenses expiring soon';
+    if (currentFilter === 'expiring_soon') return isRtl ? 'لا توجد رخص أوشكت علي الانتهاء خلال فترة صلاحيتها الصادرة بـ10 ايام فقط' : 'No licenses expiring soon';
     if (currentFilter === 'valid' || currentFilter === 'active') return isRtl ? 'لا توجد رخص سارية' : 'No active licenses';
     
     return isRtl ? 'لا توجد رخص مطابقة' : 'No licenses found';
@@ -1356,7 +1359,7 @@ export default function Licenses({ user, onLogout }) {
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between col-span-2 sm:col-span-3 lg:col-span-1">
-            <span className="text-[14px] text-gray-600 font-bold whitespace-nowrap">{isRtl ? 'رخص أوشكت علي الانتهاء خلال فترة صلاحيتها الصادرة بـ10 ايام' : 'Nearing Expiration (10 days)'}</span>
+            <span className="text-[14px] text-gray-600 font-bold whitespace-nowrap">{isRtl ? 'رخص أوشكت علي الانتهاء خلال فترة صلاحيتها الصادرة بـ10 ايام فقط' : 'Nearing Expiration (10 days)'}</span>
             <div className="flex items-baseline justify-between mt-2">
               <span className="text-2xl font-black text-amber-600">{summary.expiring_soon}</span>
               <Clock className="w-5 h-5 text-amber-500" />
@@ -1403,7 +1406,7 @@ export default function Licenses({ user, onLogout }) {
               onClick={() => { setQuickFilter('expiring_soon'); setPage(1); }}
               className={`px-4 py-1.5 rounded-lg text-sm sm:text-base font-semibold transition-all ${quickFilter === 'expiring_soon' ? 'bg-amber-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              🟡 {isRtl ? 'رخص أوشكت على الانتهاء' : 'Nearing Expiration'}
+              🟡 {isRtl ? 'رخص أوشكت علي الانتهاء خلال فترة صلاحيتها الصادرة بـ10 ايام فقط' : 'Nearing Expiration'}
             </button>
 
             <button
@@ -1536,6 +1539,25 @@ export default function Licenses({ user, onLogout }) {
               })()}
             </select>
 
+            {/* Report Type Filter */}
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedReportType}
+                onChange={(e) => { setSelectedReportType(e.target.value); setPage(1); }}
+                className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+              >
+                <option value="">{isRtl ? 'جميع أنواع البلاغات' : 'All Report Types'}</option>
+                <option value="أسفلت">{isRtl ? 'أسفلت' : 'Asphalt'}</option>
+                <option value="بلاط">{isRtl ? 'بلاط' : 'Tiles'}</option>
+                <option value="ترابي">{isRtl ? 'ترابي' : 'Dirt'}</option>
+              </select>
+              {selectedReportType && (
+                <div className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-bold rounded-lg whitespace-nowrap" title={isRtl ? 'إجمالي الرخص بهذا النوع' : 'Total licenses'}>
+                  {summary.total}
+                </div>
+              )}
+            </div>
+
             {/* Status Filter */}
             <select
               value={selectedStatus}
@@ -1544,7 +1566,7 @@ export default function Licenses({ user, onLogout }) {
             >
               <option value="">{isRtl ? 'جميع الحالات' : 'All Statuses'}</option>
               <option value="active">{isRtl ? 'الرخص السارية' : 'Active License'}</option>
-              <option value="expiring_soon">{isRtl ? 'رخص أوشكت على الانتهاء خلال فترة صلاحيتها الصادرة بـ 10 أيام' : 'Licenses Expiring Soon (Within 10 days)'}</option>
+              <option value="expiring_soon">{isRtl ? 'رخص أوشكت علي الانتهاء خلال فترة صلاحيتها الصادرة بـ10 ايام فقط' : 'Licenses Expiring Soon (Within 10 days)'}</option>
               <option value="expired">{isRtl ? 'الرخص المنتهية بعد فترة صلاحيتها الصادرة بـ 10 أيام' : 'Expired Licenses (After 10 days)'}</option>
               <option value="center_closure">{isRtl ? 'الرخصة مرفوعة للإغلاق لمركز البنية التحتية' : 'Submitted for Center Closure'}</option>
               <option value="returned_consultant">{isRtl ? 'الرخصة معادة من الاستشاري' : 'Returned by Consultant'}</option>
@@ -1558,6 +1580,7 @@ export default function Licenses({ user, onLogout }) {
                 setSelectedFilterProject('');
                 setSelectedGov('');
                 setSelectedStatus('');
+                setSelectedReportType('');
                 setSelectedOffice('');
                 setQuickFilter('all');
                 setPage(1);
